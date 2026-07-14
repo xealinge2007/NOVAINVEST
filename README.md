@@ -31,14 +31,32 @@ Sin `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` en el entorno escribe en
 `jobs/_cache_local/` (parquet) en vez de fallar — sirve para probar el
 pipeline sin credenciales.
 
-## Pendiente de Alex antes de que F0 quede desplegado de verdad
+## Notas sobre las keys de Supabase
 
-1. Crear proyecto en [Supabase](https://supabase.com) (free tier) y aplicar
-   `db/schema.sql` completo en el SQL editor.
-2. Insertar el primer admin: `insert into roles_usuario (user_id, rol) values ('<uuid>', 'admin');`
-3. Crear servicio en [Render](https://render.com) apuntando a `apps/api`
-   (build: `pip install -r requirements.txt`, start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`).
-4. Crear proyecto en [Vercel](https://vercel.com) apuntando a `apps/web`.
-5. Cargar en GitHub → Settings → Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`.
-6. Con las 3 cuentas activas, correr `python db/test_rls.py` para confirmar
-   el aislamiento de datos entre usuarios (criterio de aceptación F0).
+Los proyectos nuevos de Supabase muestran **Publishable key** / **Secret key**
+en vez de los antiguos `anon key` / `service_role key` — van en las mismas
+variables (`SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_KEY`), supabase-py no
+distingue el formato. `auth.py` valida el JWT del usuario contra el propio
+servidor de Supabase (`auth.get_user()`), no con un secreto local — por eso
+ya no existe `SUPABASE_JWT_SECRET`.
+
+## Estado F0 (14-jul-2026)
+
+Proyecto Supabase creado, `db/schema.sql` aplicado, criterio de aceptación
+verificado contra la base real:
+- 18/18 activos (10 US + 5 BVC + proxy COLCAP + BTC + TRM), 13.773 filas de
+  precios, 3 años de historia — en Supabase.
+- `db/test_rls.py` con 2 usuarios reales: **OK, usuario B no ve el perfil de A**.
+- `/salud/fuentes` responde con los registros reales del último refresco.
+
+## Pendiente de Alex
+
+1. Insertar el primer admin: `insert into roles_usuario (user_id, rol) values ('<uuid>', 'admin');`
+2. Terminar el deploy en [Render](https://render.com) (`apps/api`) y
+   [Vercel](https://vercel.com) (`apps/web`) — pegar `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` como variables de entorno en
+   Render (Vercel solo necesita `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`,
+   nunca la secret key en el frontend).
+3. Cargar en GitHub → repo `NOVAINVEST` → Settings → Secrets and variables →
+   Actions: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` — para que
+   `refresco_diario.yml` corra solo cada madrugada.

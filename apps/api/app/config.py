@@ -6,12 +6,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # En proyectos nuevos de Supabase estas dos vienen del dashboard como
+    # "Publishable key" y "Secret key" (reemplazan a anon key / service_role key).
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_key: str = ""
-    # Secreto usado por Supabase Auth para firmar los JWT (Project Settings > API > JWT Secret)
-    supabase_jwt_secret: str = ""
-    jwt_algorithm: str = "HS256"
     cors_origins: list[str] = ["http://localhost:5173"]
 
 

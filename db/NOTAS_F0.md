@@ -30,10 +30,31 @@ de mercado colombiano). `YfinanceConector.obtener_precios` descarta esas
 filas — un precio sin cierre no es un dato válido (regla de la casa: dato sin
 fecha/valor = rechazado).
 
-## Bloqueo de infraestructura real (no achacable al código)
+## Sistema de keys nuevo de Supabase (14-jul-2026)
 
-No fue posible crear los proyectos reales de Supabase/Render/Vercel ni cargar
-secrets en GitHub Actions — el plan ya anticipa esto: "Alex debe crear las
-cuentas gratuitas (...) y poner los secrets en GitHub — la herramienta no
-maneja esas credenciales." Todo lo que no depende de esas cuentas está
-construido y verificado localmente (ver informe de cierre de F0).
+El proyecto de Alex (creado después del primer cierre de F0) usa el sistema
+nuevo de Supabase: **Publishable key** / **Secret key** en vez de
+`anon key`/`service_role key` + `JWT Secret` fijo. Esto rompía el diseño
+original de `auth.py`, que decodificaba el JWT localmente con un secreto
+HS256 compartido — los proyectos nuevos firman con llaves asimétricas
+(JWT Signing Keys) y no exponen un secreto estático.
+
+**Fix:** `auth.py` ya no decodifica el JWT — llama a `auth.get_user(token)`
+contra el servidor de Supabase Auth, que valida la firma sin importar el
+algoritmo. Se eliminó `SUPABASE_JWT_SECRET`/`jwt_algorithm` de `config.py` y
+la dependencia `python-jose` de `requirements.txt`.
+
+## Cierre F0 — criterio de aceptación verificado contra Supabase real (14-jul-2026)
+
+Con el proyecto Supabase de Alex ya creado y `schema.sql` aplicado:
+- `python jobs/refresco_diario.py --anios 3` → 18/18 activos OK, 13.773 filas
+  en la tabla `precios`, `salud_fuentes` registrado (yfinance y
+  datos_gov_co en estado `ok`).
+- `python db/test_rls.py` con 2 usuarios reales creados vía la API admin de
+  Supabase → **usuario B no pudo leer el perfil de usuario A ni viceversa**.
+- `GET /salud/fuentes` en el backend local responde 200 con los datos reales
+  del refresco.
+
+Los tres criterios de aceptación de F0 quedan cumplidos. Lo único pendiente
+es operativo (no de código): terminar el deploy en Render/Vercel y cargar
+los secrets en GitHub Actions para que el job corra solo — ver `README.md`.

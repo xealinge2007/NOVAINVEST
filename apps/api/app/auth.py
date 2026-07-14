@@ -1,30 +1,16 @@
 """Validación del JWT que emite Supabase Auth. Ningún endpoint personal
 responde sin un JWT válido (regla del plan §1: "ningún endpoint personal
 sin autenticación").
+
+Se valida contra el propio servidor de Supabase Auth (`auth.get_user`) en
+vez de decodificar el JWT localmente: los proyectos nuevos de Supabase usan
+llaves de firma asimétricas (JWT Signing Keys) en vez de un secreto HS256
+fijo, así que no hay un secreto compartido que guardar en el backend.
 """
 
 from fastapi import Header, HTTPException, status
-from jose import JWTError, jwt
 
-from app.config import settings
 from app.database import cliente_para_usuario
-
-
-def _decode_token(token: str) -> dict:
-    if not settings.supabase_jwt_secret:
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "SUPABASE_JWT_SECRET no configurado en el servidor",
-        )
-    try:
-        return jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=[settings.jwt_algorithm],
-            audience="authenticated",
-        )
-    except JWTError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token inválido o expirado")
 
 
 class UsuarioActual:
@@ -37,11 +23,14 @@ async def get_current_usuario(authorization: str = Header(...)) -> UsuarioActual
     if not authorization.startswith("Bearer "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Esquema de auth inválido")
     token = authorization.removeprefix("Bearer ")
-    payload = _decode_token(token)
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token sin sub (user_id)")
-    return UsuarioActual(user_id, token)
+    cliente = cliente_para_usuario(token)
+    try:
+        resp = cliente.auth.get_user(token)
+    except Exception:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token inválido o expirado")
+    if not resp or not resp.user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token inválido o expirado")
+    return UsuarioActual(resp.user.id, token)
 
 
 def cliente_supabase_de(usuario: UsuarioActual):
