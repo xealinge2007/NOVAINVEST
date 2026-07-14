@@ -1,0 +1,26 @@
+name: Refresco diario de precios
+
+on:
+  schedule:
+    # 11:00 UTC = 6:00 am Colombia (antes del reporte macro de las 6:30)
+    - cron: "0 11 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  refresco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r apps/api/requirements.txt
+
+      - name: Ejecutar refresco
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python jobs/refresco_diario.py --anios 3
