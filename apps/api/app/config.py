@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_key: str = ""
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "https://novainvest-seven.vercel.app",
+    ]
 
 
 settings = Settings()
