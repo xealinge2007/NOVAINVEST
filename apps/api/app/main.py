@@ -8,7 +8,19 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from app.config import settings
-from app.routers import cuenta, deudas, finanzas, gastos, perfil, salud
+from app.routers import (
+    cuenta,
+    deudas,
+    etf,
+    finanzas,
+    gastos,
+    importar_broker,
+    objetivos,
+    perfil,
+    portafolio,
+    rebalanceo,
+    salud,
+)
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
@@ -34,6 +46,11 @@ app.include_router(finanzas.router)
 app.include_router(deudas.router)
 app.include_router(gastos.router)
 app.include_router(cuenta.router)
+app.include_router(objetivos.router)
+app.include_router(portafolio.router)
+app.include_router(rebalanceo.router)
+app.include_router(etf.router)
+app.include_router(importar_broker.router)
 
 
 @app.get("/health", tags=["infra"])

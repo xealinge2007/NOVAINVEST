@@ -8,6 +8,9 @@ const LINKS = [
   { to: "/finanzas", texto: "Finanzas" },
   { to: "/deudas", texto: "Deudas" },
   { to: "/gastos", texto: "Gastos" },
+  { to: "/objetivos", texto: "Objetivos" },
+  { to: "/portafolio", texto: "Portafolio" },
+  { to: "/etf", texto: "ETF" },
   { to: "/cuenta", texto: "Cuenta" },
 ];
 

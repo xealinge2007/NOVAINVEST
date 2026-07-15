@@ -3,11 +3,14 @@ import RutaProtegida from "./auth/RutaProtegida";
 import Layout from "./components/Layout";
 import Cuenta from "./pages/Cuenta";
 import Deudas from "./pages/Deudas";
+import FichasEtf from "./pages/FichasEtf";
 import Finanzas from "./pages/Finanzas";
 import Gastos from "./pages/Gastos";
 import Inicio from "./pages/Inicio";
 import Login from "./pages/Login";
+import Objetivos from "./pages/Objetivos";
 import Perfil from "./pages/Perfil";
+import Portafolio from "./pages/Portafolio";
 
 export default function App() {
   return (
@@ -26,6 +29,9 @@ export default function App() {
         <Route path="finanzas" element={<Finanzas />} />
         <Route path="deudas" element={<Deudas />} />
         <Route path="gastos" element={<Gastos />} />
+        <Route path="objetivos" element={<Objetivos />} />
+        <Route path="portafolio" element={<Portafolio />} />
+        <Route path="etf" element={<FichasEtf />} />
         <Route path="cuenta" element={<Cuenta />} />
       </Route>
     </Routes>

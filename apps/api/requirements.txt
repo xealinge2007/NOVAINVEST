@@ -9,3 +9,5 @@ slowapi>=0.1.9
 yfinance>=0.2.51
 requests>=2.32.3
 pandas>=2.3.3
+numpy>=1.26
+PyPortfolioOpt>=1.5.5

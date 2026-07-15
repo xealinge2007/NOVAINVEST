@@ -51,15 +51,11 @@ export const compararEstrategias = (body) => peticion("POST", "/deudas/comparar"
 export const registrarGastoManual = (body) => peticion("POST", "/gastos/manual", body);
 export const getMisGastos = () => peticion("GET", "/gastos");
 
-export async function importarExtracto(archivo) {
+async function subirArchivo(ruta, archivo) {
   const headers = await authHeader();
   const form = new FormData();
   form.append("archivo", archivo);
-  const resp = await fetch(`${API_URL}/gastos/importar-extracto`, {
-    method: "POST",
-    headers,
-    body: form,
-  });
+  const resp = await fetch(`${API_URL}${ruta}`, { method: "POST", headers, body: form });
   if (!resp.ok) {
     const detalle = await resp.json().catch(() => ({}));
     throw new Error(detalle.detail || `API ${resp.status}`);
@@ -67,8 +63,32 @@ export async function importarExtracto(archivo) {
   return resp.json();
 }
 
+export const importarExtracto = (archivo) => subirArchivo("/gastos/importar-extracto", archivo);
+
 // cuenta
 export const aceptarDescargo = () => peticion("POST", "/cuenta/aceptar-descargo");
 export const getDescargoAceptado = () => peticion("GET", "/cuenta/descargo-aceptado");
 export const exportarMisDatos = () => peticion("GET", "/cuenta/exportar");
 export const borrarMiCuenta = () => peticion("DELETE", "/cuenta/mi-cuenta");
+
+// objetivos
+export const crearObjetivo = (body) => peticion("POST", "/objetivos", body);
+export const getMisObjetivos = () => peticion("GET", "/objetivos");
+export const actualizarAvanceObjetivo = (id, body) => peticion("PUT", `/objetivos/${id}/avance`, body);
+export const eliminarObjetivo = (id) => peticion("DELETE", `/objetivos/${id}`);
+export const getMonteCarloObjetivo = (id) => peticion("GET", `/objetivos/${id}/monte-carlo`);
+
+// portafolio
+export const crearPosicion = (body) => peticion("POST", "/portafolio/posiciones", body);
+export const getMisPosiciones = () => peticion("GET", "/portafolio/posiciones");
+export const eliminarPosicion = (id) => peticion("DELETE", `/portafolio/posiciones/${id}`);
+export const getMetricasPortafolio = () => peticion("GET", "/portafolio/metricas");
+export const calcularOptimizador = (body) => peticion("POST", "/portafolio/optimizador", body);
+export const importarExtractoBroker = (archivo) => subirArchivo("/portafolio/importar-broker", archivo);
+
+// rebalanceo
+export const calcularRebalanceo = (body) => peticion("POST", "/rebalanceo", body);
+
+// etf
+export const getFichaEtf = (ticker) => peticion("GET", `/etf/${ticker}`);
+export const getSolapamientoEtf = (a, b) => peticion("GET", `/etf/solapamiento/${a}/${b}`);
