@@ -20,6 +20,7 @@ from app.routers import (
     portafolio,
     rebalanceo,
     salud,
+    senales,
 )
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
@@ -51,6 +52,7 @@ app.include_router(portafolio.router)
 app.include_router(rebalanceo.router)
 app.include_router(etf.router)
 app.include_router(importar_broker.router)
+app.include_router(senales.router)
 
 
 @app.get("/health", tags=["infra"])

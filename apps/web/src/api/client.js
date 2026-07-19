@@ -92,3 +92,13 @@ export const calcularRebalanceo = (body) => peticion("POST", "/rebalanceo", body
 // etf
 export const getFichaEtf = (ticker) => peticion("GET", `/etf/${ticker}`);
 export const getSolapamientoEtf = (a, b) => peticion("GET", `/etf/solapamiento/${a}/${b}`);
+
+// señales
+export const getSenales = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return peticion("GET", `/senales${qs ? `?${qs}` : ""}`);
+};
+export const getBitacoraBacktests = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return peticion("GET", `/senales/bitacora/backtests${qs ? `?${qs}` : ""}`);
+};

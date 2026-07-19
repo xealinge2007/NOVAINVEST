@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Objetivos from "./pages/Objetivos";
 import Perfil from "./pages/Perfil";
 import Portafolio from "./pages/Portafolio";
+import Senales from "./pages/Senales";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="gastos" element={<Gastos />} />
         <Route path="objetivos" element={<Objetivos />} />
         <Route path="portafolio" element={<Portafolio />} />
+        <Route path="senales" element={<Senales />} />
         <Route path="etf" element={<FichasEtf />} />
         <Route path="cuenta" element={<Cuenta />} />
       </Route>

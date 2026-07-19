@@ -1,7 +1,10 @@
 # NOVAINVEST
 
-Ver `../PLAN-ASESOR-FINANCIERO.md` para el plan completo. Este README solo
-cubre cómo levantar lo que ya existe (F0).
+Ver `../PLAN-ASESOR-FINANCIERO.md` para el plan completo y
+**[ESTADO_PROYECTO.md](ESTADO_PROYECTO.md) para el estado actual, la
+infraestructura en vivo y cómo continuar** (léelo primero si vas a seguir
+trabajando en esto). Este README solo cubre cómo levantar el proyecto en
+local.
 
 ## Backend (FastAPI)
 
@@ -40,23 +43,8 @@ distingue el formato. `auth.py` valida el JWT del usuario contra el propio
 servidor de Supabase (`auth.get_user()`), no con un secreto local — por eso
 ya no existe `SUPABASE_JWT_SECRET`.
 
-## Estado F0 (14-jul-2026)
+## Estado y despliegue
 
-Proyecto Supabase creado, `db/schema.sql` aplicado, criterio de aceptación
-verificado contra la base real:
-- 18/18 activos (10 US + 5 BVC + proxy COLCAP + BTC + TRM), 13.773 filas de
-  precios, 3 años de historia — en Supabase.
-- `db/test_rls.py` con 2 usuarios reales: **OK, usuario B no ve el perfil de A**.
-- `/salud/fuentes` responde con los registros reales del último refresco.
-
-## Pendiente de Alex
-
-1. Insertar el primer admin: `insert into roles_usuario (user_id, rol) values ('<uuid>', 'admin');`
-2. Terminar el deploy en [Render](https://render.com) (`apps/api`) y
-   [Vercel](https://vercel.com) (`apps/web`) — pegar `SUPABASE_URL`,
-   `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` como variables de entorno en
-   Render (Vercel solo necesita `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`,
-   nunca la secret key en el frontend).
-3. Cargar en GitHub → repo `NOVAINVEST` → Settings → Secrets and variables →
-   Actions: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` — para que
-   `refresco_diario.yml` corra solo cada madrugada.
+Ver [ESTADO_PROYECTO.md](ESTADO_PROYECTO.md) — infraestructura en vivo, qué
+fases están hechas, cómo sincronizar cambios al repo de GitHub (el repo local
+no tiene remoto propio), y gotchas ya resueltos que no hay que repetir.

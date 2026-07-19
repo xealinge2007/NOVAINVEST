@@ -1,0 +1,27 @@
+name: Generar señales de confluencia
+
+on:
+  schedule:
+    # 30 min después de cada refresco 4h (9,13,17,21 UTC) para que los datos ya estén cargados
+    - cron: "30 9,13,17,21 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  senales:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r apps/api/requirements.txt
+
+      - name: Generar señales
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: python jobs/generar_senales.py

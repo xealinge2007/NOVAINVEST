@@ -1,0 +1,6 @@
+# Dependencias extra para jobs/backtest_reglas.py — NO se instalan en el
+# proceso web de Render (apps/api/requirements.txt no las incluye) porque
+# vectorbt arrastra numba (JIT pesado) y este job corre solo en GitHub
+# Actions, nunca en el dyno web.
+-r ../apps/api/requirements.txt
+vectorbt>=1.1.0

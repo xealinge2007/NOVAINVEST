@@ -1,0 +1,28 @@
+name: Refresco de velas 4h
+
+on:
+  schedule:
+    # cada 4h en horario de mercado EEUU/Colombia: 9,13,17,21 UTC (~4,8,12,16 am Colombia)
+    - cron: "0 9,13,17,21 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  refresco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r apps/api/requirements.txt
+
+      - name: Ejecutar refresco 4h
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        # ventana corta en runs frecuentes: solo rellena lo nuevo desde el último run.
+        # El backfill inicial de ~2 años se corre una vez a mano con --dias 730.
+        run: python jobs/refresco_4h.py --dias 5

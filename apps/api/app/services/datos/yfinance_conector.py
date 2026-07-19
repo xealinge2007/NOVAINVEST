@@ -10,7 +10,7 @@ from datetime import date
 
 import yfinance as yf
 
-from .base import FuenteDatos, PrecioDiario
+from .base import FuenteDatos, PrecioDiario, Vela4h
 
 
 class YfinanceConector(FuenteDatos):
@@ -45,3 +45,29 @@ class YfinanceConector(FuenteDatos):
             return not hist.empty
         except Exception:
             return False
+
+    def obtener_velas_4h(self, ticker: str, dias: int = 730) -> list[Vela4h]:
+        """`dias` topa en ~730 por límite de yfinance para intervalos
+        intradía (verificado F3: pide más y devuelve igual el máximo
+        disponible, no falla, pero no hay que asumir más de 2 años reales).
+        """
+        hist = yf.Ticker(ticker).history(period=f"{min(dias, 730)}d", interval="4h", auto_adjust=False)
+        if hist.empty:
+            return []
+        velas = []
+        for fecha_ts, fila in hist.iterrows():
+            cierre = fila.get("Close")
+            if cierre != cierre:  # NaN
+                continue
+            volumen = fila.get("Volume")
+            velas.append(
+                Vela4h(
+                    fecha_hora=fecha_ts.to_pydatetime(),
+                    apertura=float(fila["Open"]) if fila.get("Open") == fila.get("Open") else None,
+                    alto=float(fila["High"]) if fila.get("High") == fila.get("High") else None,
+                    bajo=float(fila["Low"]) if fila.get("Low") == fila.get("Low") else None,
+                    cierre=float(cierre),
+                    volumen=int(volumen) if volumen == volumen else None,
+                )
+            )
+        return velas

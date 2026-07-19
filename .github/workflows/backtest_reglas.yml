@@ -1,0 +1,26 @@
+name: Backtest de reglas de confluencia
+
+on:
+  schedule:
+    # semanal, domingo 10:00 UTC — vectorbt es costoso, no hace falta correrlo cada día
+    - cron: "0 10 * * 0"
+  workflow_dispatch: {}
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias (incluye vectorbt)
+        run: pip install -r jobs/requirements_backtest.txt
+
+      - name: Correr backtests
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python jobs/backtest_reglas.py
