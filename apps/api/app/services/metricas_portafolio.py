@@ -28,7 +28,11 @@ def _serie_valor_portafolio(posiciones: list[dict], historial_precios: dict[str,
     return pd.DataFrame(series).dropna(how="any")
 
 
-def calcular_metricas(posiciones: list[dict], historial_precios: dict[str, pd.DataFrame]) -> dict:
+def calcular_metricas(
+    posiciones: list[dict],
+    historial_precios: dict[str, pd.DataFrame],
+    mapa_emisor: dict[str, str] | None = None,
+) -> dict:
     valores = _serie_valor_portafolio(posiciones, historial_precios)
     if valores.empty or len(valores) < 5:
         return {"suficiente_historial": False, "detalle": "Menos de 5 días de historial común entre las posiciones."}
@@ -49,10 +53,18 @@ def calcular_metricas(posiciones: list[dict], historial_precios: dict[str, pd.Da
 
     ultimo_valor_por_ticker = valores.iloc[-1]
     total_actual = ultimo_valor_por_ticker.sum()
-    concentracion = {
-        ticker: round(float(v / total_actual * 100), 2) for ticker, v in ultimo_valor_por_ticker.items()
-    }
-    alertas_concentracion = [t for t, pct in concentracion.items() if pct > UMBRAL_CONCENTRACION_PCT]
+
+    # §3.4: ordinaria y preferencial del mismo emisor cuentan como una sola
+    # posición para la alerta de concentración — "misma empresa", no
+    # diversificación. Sin mapa_emisor (ticker no es BVC o no se pasó), el
+    # grupo es el ticker mismo.
+    mapa_emisor = mapa_emisor or {}
+    valor_por_grupo: dict[str, float] = {}
+    for ticker, v in ultimo_valor_por_ticker.items():
+        grupo = mapa_emisor.get(ticker, ticker)
+        valor_por_grupo[grupo] = valor_por_grupo.get(grupo, 0.0) + float(v)
+    concentracion = {grupo: round(v / total_actual * 100, 2) for grupo, v in valor_por_grupo.items()}
+    alertas_concentracion = [g for g, pct in concentracion.items() if pct > UMBRAL_CONCENTRACION_PCT]
 
     exposicion_moneda = {"COP": 0.0, "USD": 0.0}
     mapa_moneda = {p["ticker"]: p.get("moneda_compra", "COP") for p in posiciones}
@@ -76,7 +88,7 @@ def calcular_metricas(posiciones: list[dict], historial_precios: dict[str, pd.Da
         "volatilidad_anualizada_pct": round(float(volatilidad_anualizada) * 100, 2) if volatilidad_anualizada else None,
         "drawdown_maximo_pct": round(float(max_drawdown) * 100, 2),
         "sharpe_aproximado": round(float(sharpe), 2) if sharpe is not None else None,
-        "concentracion_pct_por_ticker": concentracion,
+        "concentracion_pct_por_grupo": concentracion,
         "alertas_concentracion": alertas_concentracion,
         "exposicion_moneda_pct": exposicion_moneda_pct,
         "correlaciones": correlaciones,

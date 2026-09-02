@@ -12,7 +12,7 @@ from app.services.rebalanceo import ASIGNACION_POR_PERFIL
 
 router = APIRouter(prefix="/objetivos", tags=["objetivos"])
 
-ASIGNACION_CORTO_PLAZO = {"renta_fija": 80, "etf_global": 0, "acciones": 0, "cripto": 0, "efectivo": 20}
+ASIGNACION_CORTO_PLAZO = {"renta_fija": 80, "etf_global": 0, "acciones_bvc": 0, "cripto": 0, "efectivo": 20}
 ORDEN_PERFILES = ["conservador", "moderado", "crecimiento", "agresivo"]
 
 

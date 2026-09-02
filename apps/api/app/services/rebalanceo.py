@@ -1,12 +1,18 @@
 """Asignación estratégica por perfil (§3.4) y rebalanceo por bandas neto de
 fricción colombiana (GMF 4×1000 + comisión de broker, parametrizables).
+
+F2b (§0B, §11): la línea de selección propia se renombra a "Acciones BVC"
+(`acciones_bvc`) — es el único cajón donde la herramienta emite tesis de
+empresa; toda posición clase='accion' ya está restringida a la BVC
+(`reglas_portafolio.validar_clase_accion_bvc`), así que el mapeo sigue
+siendo directo.
 """
 
 ASIGNACION_POR_PERFIL = {
-    "conservador": {"renta_fija": 70, "etf_global": 20, "acciones": 0, "cripto": 0, "efectivo": 10},
-    "moderado": {"renta_fija": 50, "etf_global": 30, "acciones": 10, "cripto": 5, "efectivo": 5},
-    "crecimiento": {"renta_fija": 30, "etf_global": 40, "acciones": 20, "cripto": 5, "efectivo": 5},
-    "agresivo": {"renta_fija": 15, "etf_global": 45, "acciones": 30, "cripto": 10, "efectivo": 0},
+    "conservador": {"renta_fija": 70, "etf_global": 20, "acciones_bvc": 0, "cripto": 0, "efectivo": 10},
+    "moderado": {"renta_fija": 50, "etf_global": 30, "acciones_bvc": 10, "cripto": 5, "efectivo": 5},
+    "crecimiento": {"renta_fija": 30, "etf_global": 40, "acciones_bvc": 20, "cripto": 5, "efectivo": 5},
+    "agresivo": {"renta_fija": 15, "etf_global": 45, "acciones_bvc": 30, "cripto": 10, "efectivo": 0},
 }
 
 MAPA_CLASE_A_GRUPO = {
@@ -14,7 +20,7 @@ MAPA_CLASE_A_GRUPO = {
     "fx": "renta_fija",
     "etf": "etf_global",
     "indice_proxy": "etf_global",
-    "accion": "acciones",
+    "accion": "acciones_bvc",
     "cripto": "cripto",
     "efectivo": "efectivo",
 }

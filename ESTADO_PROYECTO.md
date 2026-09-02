@@ -3,6 +3,35 @@
 Última actualización: 15-jul-2026, tras dejar F3 con código completo (falta
 verificación contra Supabase real — ver §"Pendiente para cerrar F3" abajo).
 
+> ⚠️ **Plan actualizado a v3 (01-sep-2026): el análisis de acciones es exclusivo de la BVC.**
+> Se eliminó del alcance el análisis de empresas de bolsas del mundo (para eso Alex usa
+> valuetik.com); Nueva York queda solo como mercado de trading y de opciones. Los
+> fundamentales BVC salen de los PDF trimestrales de 5 años que carga Alex. **Las fases F4
+> en adelante se renumeraron y reordenaron — ver §0B y §11 del plan.** Orden nuevo:
+> **F2b** (podar universo) → **F3** (cerrar señales) → **F4a/F4b/F4c** (motor de fundamentales
+> BVC + valor justo + Estrellas de la BVC) → **F5** (analizador BVC en la PWA) → F6 macro →
+> F7 opciones → F8 stress test + IDI → F9 ocio.
+
+**PDF de emisores BVC ya descargados: `C:\Proyectos\BVC\SIMEV_BVC`** — 270 archivos
+de 13 emisores, patrón `AAAA-PERIODO_Tipo.pdf` (medido 01-sep-2026; Alex sigue
+descargando tandas — **ya son 15 emisores** al ejecutar F2b, con BANCO_DE_BOGOTA y
+PROMIGAS agregados después de escribir el plan — así que el script de ingesta debe ser
+idempotente). 9 emisores ya
+superan los 12 trimestres exigidos por el ranking (PEI incluido: se maneja como acción
+porque cotiza y se negocia). **Alex se comprometió a cargar 20-30 emisores completos, en
+paralelo al desarrollo: dimensiona el pipeline para ~500-700 PDF, no para los 270 de hoy
+(§5.1.1), con **doble extracción independiente (parser + subagente) en todo el lote histórico**,
+auto-aprobación por plantilla probada y revisión por excepción (§5.1.2). Lo de Alex es
+descargar y dejar el PDF en la carpeta; nada más.** Ojo con el modelo de datos: **emisor ≠ instrumento** — las
+preferenciales son especies independientes con precio, dividendo y liquidez propios, así
+que el ranking corre por instrumento (~13-15 candidatos), no por emisor. Ver §3.4. Es el insumo de F4a; el inventario
+completo y los huecos por emisor están en §5.1 del plan.
+
+**Finnhub ya NO es requisito para cerrar F3** (verificado 01-sep-2026): yfinance entrega
+las fechas de resultados gratis y sin key, incluso para tickers `.CL`. De Alex solo hacen
+falta 2 cosas para F3: aplicar `db/migrate_f3_senales.sql` y cargar fechas de FOMC/CPI/NFP
+en `eventos_macro`.
+
 **El plan completo está en `../PLAN-ASESOR-FINANCIERO.md`.** Este archivo es
 el resumen operativo para retomar el trabajo sin releer todo — no reemplaza
 el plan, solo evita tener que reconstruir el contexto de ejecución.
@@ -15,11 +44,14 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F1 | Auth multi-usuario, perfil de riesgo, finanzas personales | ✅ desplegado, verificado |
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
 | F3 | Señales de trading 4h/1D + backtesting | 🟡 código completo y probado localmente (unit tests + venv limpio + boot real) — **falta verificar contra Supabase real y desplegar, ver abajo** |
-| F4 | 15 modelos + calificación por ratios + BVC | ⬜ pendiente (mayor prob. de escalar a Opus) |
-| F5 | Dashboard PWA completo | ⬜ pendiente |
+| F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado (falta push), verificado contra Supabase real |
+| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | ⬜ pendiente — necesita los PDF de Alex |
+| F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
+| F4c | Creación de valor (ROIC/WACC/EVA) + **Estrellas de la BVC** (top 10 a 12 meses) con backtest walk-forward | ⬜ pendiente |
+| F5 | Analizador BVC en la PWA (Estrellas de la BVC de portada, ficha con márgenes, screener, comparador, dividendos, panel COLCAP) + dashboard | ⬜ pendiente |
 | F6 | Reporte macro + subagentes + alertas Telegram | ⬜ pendiente |
-| F7 | Módulo de opciones (niveles 1-4) | ⬜ pendiente — necesita apuntes de Alex |
-| F8 | Base de conocimiento IDI (transcripción Whisper) | ⬜ pendiente |
+| F7 | Módulo de opciones EEUU (niveles 1-4) | ⬜ pendiente — necesita apuntes de Alex |
+| F8 | Stress testing + base de conocimiento IDI (transcripción Whisper) | ⬜ pendiente |
 | F9 | Módulo de Ocio y Entretenimiento | ⬜ pendiente |
 
 Cada fase se ejecutó con la misma disciplina: implementar → probar con datos
@@ -163,11 +195,74 @@ orden de los pasos pendientes abajo importa (backtest antes que señales).
 ## Pendiente para cerrar F3 (necesita a Alex, igual que en F0)
 
 1. **Aplicar `db/migrate_f3_senales.sql`** en el SQL editor de Supabase (después de schema.sql + F1 + F2, ya aplicados).
-2. **Crear cuenta gratis en [finnhub.io](https://finnhub.io)** y conseguir un API key (plan free, sin tarjeta) → agregarlo a `apps/api/.env` local como `FINNHUB_API_KEY=...` y como secret `FINNHUB_API_KEY` en GitHub Actions. Sin esto, el filtro de earnings queda inactivo (no bloquea nada, tampoco protege — se avisa por consola).
+2. ~~Crear cuenta en finnhub.io~~ **YA NO HACE FALTA (v3, 01-sep-2026).** Se verificó que yfinance entrega las fechas de resultados gratis y sin key, incluso para tickers `.CL` de la BVC (`get_earnings_dates` / `calendar`). Sustituir `finnhub_conector.py` por yfinance en el filtro de cuarentena y validar contra el calendario local (§3.7.5 del plan) — la cobertura BVC es irregular: ISA devolvió mezclada una fecha de 2011. Finnhub queda opcional para titulares de noticias en F6.
 3. **Cargar a mano en `eventos_macro`** las próximas fechas conocidas de FOMC/CPI/NFP (públicas, no las inventé para no arriesgar una fecha incorrecta). Con la tabla vacía no hay forma de probar la cuarentena por evento macro con un caso real.
 4. Backfill inicial (una sola vez, con las Supabase env vars locales):
    `python jobs/refresco_4h.py --dias 730` → luego `python jobs/backtest_reglas.py` (necesita `pip install -r jobs/requirements_backtest.txt`) → luego `python jobs/generar_senales.py`.
 5. Con eso, verificar contra Supabase real: crear usuario de prueba, confirmar que ninguna señal en `senales` tiene stop/objetivos/RR<1.5/tamaño nulos, que una señal con earnings <48h (una vez haya key) queda `estado=cuarentena`, y que una regla con expectativa negativa aparece `habilitada=false` en `backtests`. Borrar el usuario de prueba al final.
 6. Commit local (pedir permiso primero) → subtree split + push (pedir permiso) → confirmar Render/Vercel redesplegados.
 
-**Después de F3:** seguir con F4 — 15 modelos + calificación por ratios + BVC (§11 del plan; mayor probabilidad de escalar a Opus).
+**Después de F3:** seguir con **F4a** — ingesta de los 270 PDF de `C:\Proyectos\BVC\SIMEV_BVC` (§5.1 del plan). Pilotos por cobertura real y diversidad de formato: ECOPETROL, GRUPO_CIBEST_BANCOLOMBIA y GRUPO_SURA (CELSIA, con 22 trimestres, es el ancla del backtest). Luego F4b (modelos y valor justo) y F4c (creación de valor + Estrellas de la BVC).
+
+## F2b — Poda del universo + separación emisor/instrumento: qué se construyó (01-sep-2026)
+
+Código completo en esta sesión, probado con `python -c` (universo, validación, agrupación
+de concentración, rebalanceo, monte carlo), con boot real de `app.main` (42 rutas cargan
+sin error), **y verificado contra Supabase real** (`db/test_f2b_bvc.py`, 12/12 checks OK,
+usuario de prueba creado y borrado en la misma corrida) tras aplicar la migración y sembrar
+emisores/instrumentos/precios.
+
+**Verificación previa (yfinance, contra el listado vigente de la BVC, ninguna asumida):**
+de los 15 emisores en `SIMEV_BVC`, tienen preferencial con ticker propio y líquido en
+Yahoo: Cibest/Bancolombia (`PFCIBEST.CL`), Grupo Sura (`PFGRUPSURA.CL`), Grupo Argos
+(`PFGRUPOARG.CL`) y Cementos Argos (`PFCEMARGOS.CL`); Grupo Aval y Davivienda Group solo
+tienen líquida su preferencial (`PFAVAL.CL`, `PFDAVVNDA.CL` — la ordinaria no resuelve en
+Yahoo). El resto son de clase única. 15 emisores → 19 instrumentos.
+
+Piezas nuevas/modificadas:
+- `apps/api/app/services/datos/universo.py` — reescrito: `DefinicionActivo` gana el campo
+  `cajon` (`bvc`/`vehiculo_us`/`cripto`/`None`); universo BVC ampliado de 6 a 20 activos
+  (19 instrumentos + `ICOLCAP.CL` proxy); `EMISORES_BVC`/`INSTRUMENTOS_BVC` (fuente de
+  verdad en código, no en el admin); `TICKERS_BVC_VALIDOS`, `MAPA_TICKER_A_EMISOR_SLUG`,
+  `inferir_clase_ticker`.
+- `apps/api/app/services/reglas_portafolio.py` — `validar_clase_accion_bvc`: rechaza
+  clase='accion' para cualquier ticker fuera de la BVC.
+- `apps/api/app/routers/portafolio.py` — `crear_posicion` valida BVC-only antes de
+  insertar; `metricas` pasa `MAPA_TICKER_A_EMISOR_SLUG` para agrupar concentración.
+- `apps/api/app/routers/importar_broker.py` — ya NO fuerza `clase="accion"` a ciegas:
+  infiere la clase del universo conocido y aplica la misma validación BVC-only (si no,
+  un extracto de IBKR con AAPL se habría colado por esta puerta).
+- `apps/api/app/services/metricas_portafolio.py` — `calcular_metricas` acepta
+  `mapa_emisor` opcional: ordinaria+preferencial del mismo emisor se agrupan como una sola
+  entrada en `concentracion_pct_por_grupo` (renombrado desde `_por_ticker`) — "misma
+  empresa" para la alerta de concentración (§3.4).
+- `apps/api/app/services/rebalanceo.py` + `routers/objetivos.py` +
+  `services/monte_carlo_metas.py` — grupo `acciones` renombrado a `acciones_bvc` en
+  `ASIGNACION_POR_PERFIL`, `MAPA_CLASE_A_GRUPO`, `ASIGNACION_CORTO_PLAZO` y
+  `SUPUESTOS_CLASE`.
+- `apps/web/src/pages/Portafolio.jsx` — label del selector actualizado a "Acción (solo BVC)".
+- `db/migrate_f2b_bvc_emisores_instrumentos.sql` — DDL: `activos.cajon`, tablas
+  `emisores`/`instrumentos` (RLS lectura-autenticados/escritura-service_role, mismo
+  patrón que el resto), rename `asignacion_objetivo.pct_acciones` → `pct_acciones_bvc`.
+- `jobs/seed_emisores_instrumentos.py` — siembra idempotente de emisores/instrumentos
+  (y de los activos BVC nuevos) desde `universo.py`, vía supabase-py (no DDL).
+- `jobs/refresco_diario.py` — el upsert de `activos` ahora escribe `cajon`.
+- `db/test_f2b_bvc.py` — verificación end-to-end (FastAPI TestClient + Supabase real,
+  usuario de prueba creado/borrado): AAPL clase=accion → 422; VOO/BTC-USD/ECOPETROL.CL →
+  200; `emisores`/`instrumentos` poblados; CIBEST.CL+PFCIBEST.CL comparten emisor_id y se
+  agrupan en la alerta de concentración (este último check se salta si aún no hay precios
+  cargados para los tickers nuevos).
+
+## F2b cerrado (01-sep-2026)
+
+1. Alex aplicó `db/migrate_f2b_bvc_emisores_instrumentos.sql` en el SQL editor de Supabase.
+2. `python jobs/seed_emisores_instrumentos.py` → 20 activos BVC, 15 emisores, 19
+   instrumentos sembrados. `python jobs/refresco_diario.py --anios 3` → 32/32 activos OK
+   (universo completo, US + BVC + cripto + FX), sin fallos.
+3. `python db/test_f2b_bvc.py` → 12/12 verificaciones OK contra Supabase real.
+4. **Pendiente:** commit local ya hecho (ver git log) → falta subtree split + push (pedir
+   permiso a Alex) → confirmar Render/Vercel redesplegados con el universo nuevo.
+
+**Después de F2b:** seguir con **F4a** (ingesta de PDF) según §11 del plan — ya no hay
+trabajo de F3 pendiente de código, solo su propia verificación (ver arriba, sigue abierta
+en paralelo).

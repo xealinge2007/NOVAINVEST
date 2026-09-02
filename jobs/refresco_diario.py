@@ -65,6 +65,7 @@ def _upsert_supabase(activo: DefinicionActivo, precios, fuente_usada: str):
                 "moneda": activo.moneda,
                 "fuente_principal": activo.fuente_principal,
                 "fuente_respaldo": activo.fuente_respaldo,
+                "cajon": activo.cajon,
             },
             on_conflict="ticker",
         )

@@ -12,7 +12,7 @@ import numpy as np
 SUPUESTOS_CLASE = {
     "renta_fija": {"retorno_anual": 0.06, "vol_anual": 0.04},
     "etf_global": {"retorno_anual": 0.09, "vol_anual": 0.15},
-    "acciones": {"retorno_anual": 0.11, "vol_anual": 0.25},
+    "acciones_bvc": {"retorno_anual": 0.11, "vol_anual": 0.25},
     "cripto": {"retorno_anual": 0.25, "vol_anual": 0.65},
     "efectivo": {"retorno_anual": 0.03, "vol_anual": 0.01},
 }

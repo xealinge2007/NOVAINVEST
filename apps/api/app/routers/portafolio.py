@@ -7,20 +7,22 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import UsuarioActual, cliente_supabase_de, get_current_usuario
 from app.schemas.portafolio import OptimizadorRequest, PosicionNueva
+from app.services.datos import MAPA_TICKER_A_EMISOR_SLUG, TICKERS_BVC_VALIDOS
 from app.services.metricas_portafolio import calcular_metricas
 from app.services.optimizador import optimizar
-from app.services.reglas_portafolio import validar_horizonte_corto
+from app.services.reglas_portafolio import validar_clase_accion_bvc, validar_horizonte_corto
 
 router = APIRouter(prefix="/portafolio", tags=["portafolio"])
 
 
 @router.post("/posiciones")
 async def crear_posicion(body: PosicionNueva, usuario: UsuarioActual = Depends(get_current_usuario)):
-    if body.horizonte == "corto":
-        try:
+    try:
+        validar_clase_accion_bvc(body.ticker, body.clase, TICKERS_BVC_VALIDOS)
+        if body.horizonte == "corto":
             validar_horizonte_corto(body.ticker, body.clase)
-        except ValueError as e:
-            raise HTTPException(422, str(e))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
     cliente = cliente_supabase_de(usuario)
     fila = {"user_id": usuario.id, **body.model_dump()}
     resp = cliente.table("posiciones").upsert(fila, on_conflict="user_id,ticker,cuenta").execute()
@@ -72,7 +74,7 @@ async def metricas(usuario: UsuarioActual = Depends(get_current_usuario)):
     if not posiciones:
         raise HTTPException(400, "No tienes posiciones registradas")
     historial = _historial_precios(cliente, [p["ticker"] for p in posiciones])
-    return calcular_metricas(posiciones, historial)
+    return calcular_metricas(posiciones, historial, mapa_emisor=MAPA_TICKER_A_EMISOR_SLUG)
 
 
 @router.post("/optimizador")

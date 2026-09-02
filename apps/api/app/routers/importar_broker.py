@@ -3,7 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from app.auth import UsuarioActual, cliente_supabase_de, get_current_usuario
+from app.services.datos import TICKERS_BVC_VALIDOS, inferir_clase_ticker
 from app.services.importar_broker import parse_csv_generico, parse_ibkr_flex_xml, reconciliar_contra_posiciones
+from app.services.reglas_portafolio import validar_clase_accion_bvc
 
 router = APIRouter(prefix="/portafolio/importar-broker", tags=["portafolio"])
 
@@ -31,8 +33,12 @@ async def importar(archivo: UploadFile, usuario: UsuarioActual = Depends(get_cur
     aplicadas = []
     rechazadas = []
     for pos in importadas:
-        clase = "accion"  # el extracto no trae la clase -- se asume accion/etf listado; el usuario la ajusta luego
+        # el extracto no trae la clase -- se infiere del universo conocido
+        # (§8B.1); F2b: una acción individual fuera de la BVC se rechaza
+        # (§0B), el usuario la maneja como ETF si quiere ese vehículo.
+        clase = inferir_clase_ticker(pos["ticker"])
         try:
+            validar_clase_accion_bvc(pos["ticker"], clase, TICKERS_BVC_VALIDOS)
             fila = {
                 "user_id": usuario.id,
                 "ticker": pos["ticker"],

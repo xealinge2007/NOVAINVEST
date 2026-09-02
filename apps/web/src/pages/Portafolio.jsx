@@ -92,11 +92,11 @@ function SeccionPosiciones() {
       </ul>
 
       <form onSubmit={agregar} className="flex flex-col gap-2 max-w-sm">
-        <input placeholder="Ticker (ej. VOO)" className="border rounded px-3 py-2" value={form.ticker}
+        <input placeholder="Ticker (ej. VOO, ECOPETROL.CL)" className="border rounded px-3 py-2" value={form.ticker}
           onChange={(e) => setForm((f) => ({ ...f, ticker: e.target.value.toUpperCase() }))} required />
         <select className="border rounded px-3 py-2" value={form.clase}
           onChange={(e) => setForm((f) => ({ ...f, clase: e.target.value }))}>
-          <option value="accion">Acción</option>
+          <option value="accion">Acción (solo BVC)</option>
           <option value="etf">ETF</option>
           <option value="indice_proxy">Índice (proxy)</option>
           <option value="cripto">Cripto</option>
