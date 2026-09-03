@@ -43,7 +43,7 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F0 | Infraestructura + pipeline de datos | ✅ desplegado, verificado |
 | F1 | Auth multi-usuario, perfil de riesgo, finanzas personales | ✅ desplegado, verificado |
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
-| F3 | Señales de trading 4h/1D + backtesting | 🟡 código completo y probado localmente (unit tests + venv limpio + boot real) — **falta verificar contra Supabase real y desplegar, ver abajo** |
+| F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real (falta push) — **1 punto abierto para Alex, ver abajo** |
 | F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado (falta push), verificado contra Supabase real |
 | F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | ⬜ pendiente — necesita los PDF de Alex |
 | F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
@@ -266,3 +266,75 @@ Piezas nuevas/modificadas:
 **Después de F2b:** seguir con **F4a** (ingesta de PDF) según §11 del plan — ya no hay
 trabajo de F3 pendiente de código, solo su propia verificación (ver arriba, sigue abierta
 en paralelo).
+
+## F3 — cierre completo (03-sep-2026): qué se ajustó y qué quedó verificado
+
+Migración `db/migrate_f3_senales.sql` aplicada por Alex. A partir de ahí, se ajustó el
+código ya escrito (commit `080edce`, nunca antes verificado) a §3.5 del plan v3, que el
+snapshot original no cumplía:
+
+- **BVC solo diario (regla dura).** `refresco_4h.py`, `generar_senales.py` y
+  `backtest_reglas.py` ahora usan `timeframes_validos(activo)` (nuevo en
+  `services/datos/universo.py`, deriva de `cajon`): un activo `cajon='bvc'` solo corre en
+  `1d`, nunca `4h`. Antes, el snapshot de F3 generaba velas y señales 4h para todo el
+  universo BVC — bug real, corregido antes de tocar producción.
+- **Semáforo de liquidez simplificado (`services/liquidez.py`).** Gate binario: una señal
+  BVC en 1d se descarta si el monto promedio negociado de 20 sesiones no supera 500M
+  COP/día (piso a criterio, documentado, ajustable). Verificado en vivo: `PFCEMARGOS.CL`,
+  `PFCORFICOL.CL`, `CONCONCRET.CL` y `PROMIGAS.CL` quedaron bloqueados por
+  `VOLUMEN_INSUFICIENTE` en la corrida real del 03-sep-2026.
+- **Finnhub reemplazado por yfinance** (`services/datos/yfinance_earnings_conector.py`):
+  usa `Ticker.calendar["Earnings Date"]` en vez de `get_earnings_dates()` porque el
+  segundo mezcla huecos de cobertura reales (probado con ISA.CL: salta de 2026-11-02 a
+  2011 sin nada entre medio). Con un filtro de cordura de ventana (±2 días pasado, +400
+  días futuro) como segunda barrera. `generar_senales.py` ya no importa `FinnhubConector`
+  (el archivo queda para F6, titulares de noticias, no para el filtro de cuarentena).
+- **Auditoría de volumen `.CL`**: `db/AUDITORIA_VOLUMEN_BVC.md` — 35 puntos de dato (19 +
+  16 instrumentos, dos sesiones reales cruzadas contra bvc.com.co), **coincidencia exacta
+  0,00% en el 100%**. Decisión: no hace falta conector propio a bvc.com.co. La auditoría
+  encontró dos correcciones reales al universo de F2b (no relacionadas con volumen en sí):
+  Corficolombiana sí tiene preferencial (`PFCORFICOL.CL`, se había omitido), y
+  `PFDAVVNDA.CL` no es Davivienda Group sino una entidad distinta ("Banco Davivienda
+  S.A.") — el ticker correcto es `PFDAVIGRP.CL`. Ambas corregidas en `universo.py` y
+  resembradas.
+- **Bug de dependencias encontrado y corregido**: `jobs/requirements_backtest.txt` sin
+  techo de versión instalaba Plotly 7.x, que eliminó la propiedad `scattermapbox` que
+  vectorbt 1.1.0 usa al importarse — **cualquier** llamada a vectorbt reventaba con
+  `ValueError` en el import, no en la lógica de la regla. Fijado `plotly<5.24`. Mismo
+  patrón de gotcha que FastAPI en F2 — requirements sin techo + librería vieja sin
+  mantenimiento.
+- **Backfill corrido de verdad** (venv aislado `.venv_backtest/` para no tocar el entorno
+  global, ver el pin de plotly arriba): `refresco_4h.py` (11 activos vehiculo_us/cripto,
+  ya no BVC) → `backtest_reglas.py` (32 activos × timeframes válidos × 2 reglas, 86 filas
+  en `backtests`) → `generar_senales.py`.
+
+### Punto abierto para Alex: tasa de rechazo del backtest
+
+**82 de 86 combinaciones (95%) quedaron `DESHABILITADA`**, que técnicamente cruza el
+umbral de escalado del §12.5 ("F3 con >60% de reglas rechazadas"). Diagnóstico antes de
+decidir: **82 de esas 82 fueron por `muestra insuficiente: N trades (mínimo 30)`**, no por
+mala expectativa — la ventana gratuita de datos (2 años en 4h por el límite de yfinance,
+~3 años en 1d) combinada con el filtro de confluencia (EMA200 + score≥60) deja la mayoría
+de combinaciones ticker/timeframe en 7–29 trades, justo debajo del piso. **Solo 4
+combinaciones alcanzaron los 30 trades reales**: 1 habilitada (`VT` 4h confluencia_largo,
+30 trades, 40% win rate, retorno neto +6,86%, expectativa +22.874,70/trade) y 3 con
+expectativa genuinamente negativa neta de fricción (`CIBEST.CL` 1d largo, `BIL` 1d largo,
+`SGOV` 1d largo). Mi lectura: esto no es la señal de alarma que el §12.5 busca (una estrategia
+probadamente mala o un backtest con bug) — es una limitación de tamaño de muestra ya
+documentada en NOTAS_F0/F3 (ventana de yfinance), y **~93% (4 de 4) de lo que sí tuvo
+muestra suficiente se decidió por expectativa real, no por default**. No lo cerré por mi
+cuenta: **queda pendiente que Alex decida si esto amerita escalar a Opus** (§12.5) o si el
+diagnóstico de tamaño de muestra es aceptable para dejar F3 funcionalmente cerrado. Con
+más historial acumulado (los jobs corren solos cada 4h/semanalmente en producción), este
+número baja solo con el tiempo.
+
+### Pendiente para cerrar F3 del todo
+
+1. Decisión de Alex sobre el punto abierto de arriba.
+2. Commit local (pedir permiso primero) → push → confirmar Render/Vercel redesplegados
+   con el motor de señales ajustado.
+3. (Opcional, no bloqueante) Ampliar el universo BVC con los tickers nuevos que aparecieron
+   en la auditoría de volumen y que Alex no está cargando en PDF todavía: `MINEROS`,
+   `BHI` (BAC Holding International), `ETB`, `NUTRESA`, `EXITO`, `TERPEL`,
+   `GRUBOLIVAR`, `OCCIDENTE`, `FABRICATO`, `TIN` — fuera de alcance de F2b/F3 (solo se
+   amplía el universo cuando Alex cargue sus PDF, §5.1.1).

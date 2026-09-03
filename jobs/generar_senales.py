@@ -1,11 +1,19 @@
 """Job de generación de señales (§3.5, F3): corre el motor de confluencia
-sobre la última vela de cada activo tradeable en 4h y 1D, y si hay señal la
-inserta en `senales` — solo si (a) supera el umbral, (b) el timeframe
-superior no la contradice, (c) la regla está `habilitada` según el último
-backtest en `backtests` (si no hay backtest todavía, la regla no genera
-señales — F3 no habilita nada sin backtest previo, por diseño), y (d) se
-puede armar con stop/objetivos/RR≥1.5 (si no, se descarta, nunca se fuerza).
-Después evalúa cuarentena por earnings/eventos macro.
+sobre la última vela de cada activo tradeable, y si hay señal la inserta en
+`senales` — solo si (a) supera el umbral, (b) el timeframe superior no la
+contradice, (c) la regla está `habilitada` según el último backtest en
+`backtests` (si no hay backtest todavía, la regla no genera señales — F3 no
+habilita nada sin backtest previo, por diseño), (d) se puede armar con
+stop/objetivos/RR≥1.5 (si no, se descarta, nunca se fuerza), y (e) para BVC
+en 1d, el volumen promedio de 20 sesiones supera el piso de liquidez
+(`app.services.liquidez`) — un descuento sobre una especie ilíquida no es
+una señal, es ruido de spread. Después evalúa cuarentena por earnings
+(yfinance, ver `yfinance_earnings_conector.py` — ya no depende de Finnhub)
+y eventos macro.
+
+**BVC solo diario/semanal** (§3.5, regla dura): cada activo solo corre en
+los timeframes de `timeframes_validos()` — para `cajon == 'bvc'` eso es
+únicamente '1d', nunca '4h', sin importar qué se pida por `--timeframe`.
 
 No requiere vectorbt (solo `backtest_reglas.py` lo necesita, y solo para
 *correr* backtests) — corre con `apps/api/requirements.txt` normal.
@@ -14,7 +22,6 @@ Uso: python jobs/generar_senales.py [--timeframe 4h|1d|todos]
 """
 
 import argparse
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,11 +31,13 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
 import pandas as pd  # noqa: E402
 
-from app.services.datos import UNIVERSO_F0, FinnhubConector  # noqa: E402
+from app.services.datos import UNIVERSO_F0, YfinanceEarningsConector, timeframes_validos  # noqa: E402
+from app.services.datos.yfinance_earnings_conector import ventana_busqueda_earnings  # noqa: E402
 from app.services.estructura_mercado import detectar_estructura, swing_para_direccion  # noqa: E402
 from app.services.filtro_noticias import evaluar_cuarentena  # noqa: E402
 from app.services.generador_senales import generar_señal  # noqa: E402
 from app.services.indicadores import calcular_indicadores  # noqa: E402
+from app.services.liquidez import volumen_suficiente  # noqa: E402
 from app.services.score_confluencia import calcular_score, timeframe_superior_confirma  # noqa: E402
 
 UNIVERSO_TRADEABLE = [a for a in UNIVERSO_F0 if a.clase in ("accion", "etf", "indice_proxy", "cripto")]
@@ -87,27 +96,35 @@ def main():
     from app.database import cliente_servicio
 
     cliente = cliente_servicio()
-    finnhub = FinnhubConector(os.environ.get("FINNHUB_API_KEY", ""))
-    if not finnhub.disponible():
-        print("AVISO: FINNHUB_API_KEY no configurada — el filtro de earnings queda inactivo (no protege esas señales).")
+    fuente_earnings = YfinanceEarningsConector()
     eventos_macro = _eventos_macro_proximos(cliente)
 
     ahora = datetime.now(timezone.utc)
     resumen = []
 
     for activo in UNIVERSO_TRADEABLE:
+        tfs_activo = [tf for tf in timeframes if tf in timeframes_validos(activo)]
+        if not tfs_activo:
+            resumen.append((activo.ticker, "-", "SIN_TIMEFRAME_VALIDO_PARA_ESTE_MERCADO"))
+            continue
+
         activo_resp = cliente.table("activos").select("id").eq("ticker", activo.ticker).execute()
         if not activo_resp.data:
             continue
         activo_id = activo_resp.data[0]["id"]
 
-        score_1d = _score_actual(cliente, activo_id, activo.ticker, "1d") if "4h" in timeframes else None
+        score_1d = _score_actual(cliente, activo_id, activo.ticker, "1d") if "4h" in tfs_activo else None
 
-        for timeframe in timeframes:
+        for timeframe in tfs_activo:
             info = score_1d if timeframe == "1d" and score_1d is not None else _score_actual(cliente, activo_id, activo.ticker, timeframe)
             if info is None:
                 resumen.append((activo.ticker, timeframe, "SIN_DATOS_SUFICIENTES"))
                 continue
+
+            if activo.cajon == "bvc" and timeframe == "1d" and not volumen_suficiente(info["r"]):
+                resumen.append((activo.ticker, timeframe, "VOLUMEN_INSUFICIENTE"))
+                continue
+
             resultado = info["resultado"]
             if not resultado["cumple_umbral"]:
                 resumen.append((activo.ticker, timeframe, "SIN_SEÑAL"))
@@ -131,11 +148,9 @@ def main():
                 continue
 
             earnings = []
-            if activo.clase == "accion" and finnhub.disponible():
-                from app.services.datos.finnhub_conector import ventana_busqueda_earnings
-
+            if activo.clase == "accion":
                 desde, hasta = ventana_busqueda_earnings(ahora.date())
-                earnings = finnhub.proximos_earnings(activo.ticker, desde, hasta)
+                earnings = fuente_earnings.proximos_earnings(activo.ticker, desde, hasta)
 
             cuarentena = evaluar_cuarentena(ahora, earnings, eventos_macro)
             estado = "cuarentena" if cuarentena["en_cuarentena"] else "activa"

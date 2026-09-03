@@ -2,6 +2,12 @@
 universo F0 (solo los activos cuya fuente principal es yfinance — TRM no
 aplica, es EOD de datos.gov.co) y las deja en `velas_4h`.
 
+§3.5 (regla dura, F2b/F3): la BVC opera solo diario — no hay dato intradía
+gratuito confiable y la liquidez local no soporta 4h — así que los activos
+con `cajon == 'bvc'` se excluyen aquí (`timeframes_validos`), no solo en el
+motor de señales; no tiene sentido gastar cuota de la API en velas 4h que
+ninguna regla va a poder usar.
+
 yfinance topa el histórico intradía en ~730 días (~2 años), no 3 como el EOD
 de `precios` — límite documentado de la API gratuita, no del código.
 
@@ -20,11 +26,11 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
-from app.services.datos import UNIVERSO_F0, YfinanceConector  # noqa: E402
+from app.services.datos import UNIVERSO_F0, YfinanceConector, timeframes_validos  # noqa: E402
 
 CONECTOR = YfinanceConector()
 CACHE_LOCAL = Path(__file__).parent / "_cache_local"
-UNIVERSO_4H = [a for a in UNIVERSO_F0 if a.fuente_principal == "yfinance"]
+UNIVERSO_4H = [a for a in UNIVERSO_F0 if a.fuente_principal == "yfinance" and "4h" in timeframes_validos(a)]
 
 
 def _supabase_configurado() -> bool:

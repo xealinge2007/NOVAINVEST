@@ -10,13 +10,20 @@ Grupo Bancolombia a Grupo Cibest (2025) — se reemplazó por CIBEST.CL.
 
 Verificación F2b (01-sep-2026, contra yfinance): de los 15 emisores con PDF
 en C:\\Proyectos\\BVC\\SIMEV_BVC, tienen preferencial con ticker propio y
-líquido en Yahoo: Cibest/Bancolombia, Grupo Sura, Grupo Argos y Cementos
-Argos (ordinaria + preferencial ambas negociadas); Grupo Aval y Davivienda
-Group solo tienen líquida su preferencial (la ordinaria no resuelve en
-Yahoo, se registra solo la preferencial). El resto (Ecopetrol, ISA, Celsia,
-Corficolombiana, GEB, PEI, Constructora Conconcreto, Banco de Bogotá,
-Promigas) son de clase única. No se asumió nada del plan: cada ticker de
-esta lista se probó uno por uno.
+líquido en Yahoo: Cibest/Bancolombia, Grupo Sura, Grupo Argos, Cementos
+Argos y Corficolombiana (ordinaria + preferencial ambas negociadas); Grupo
+Aval y Davivienda Group solo tienen líquida su preferencial (la ordinaria no
+resuelve en Yahoo, se registra solo la preferencial). El resto (Ecopetrol,
+ISA, Celsia, GEB, PEI, Constructora Conconcreto, Banco de Bogotá, Promigas)
+son de clase única. No se asumió nada del plan: cada ticker de esta lista se
+probó uno por uno.
+
+Corrección al cerrar F3 (03-sep-2026): la primera pasada de F2b se saltó
+`PFCORFICOL.CL` (Corficolombiana sí tiene preferencial propia, distinta en
+precio de `CORFICOLCF.CL`) — se encontró auditando el volumen `.CL` contra
+el "Más Negociadas" en vivo de bvc.com.co, que la mostraba entre las 5
+especies más negociadas del día y reveló el hueco. Ver
+`db/AUDITORIA_VOLUMEN_BVC.md`.
 """
 
 from dataclasses import dataclass
@@ -78,10 +85,11 @@ TICKERS_BVC = [
     DefinicionActivo("CEMARGOS.CL", "Cementos Argos — ordinaria", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("PFCEMARGOS.CL", "Cementos Argos — preferencial", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("CELSIA.CL", "Celsia", "accion", "BVC", "COP", "yfinance", None, "bvc"),
-    DefinicionActivo("CORFICOLCF.CL", "Corficolombiana", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("CORFICOLCF.CL", "Corficolombiana — ordinaria", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("PFCORFICOL.CL", "Corficolombiana — preferencial", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("GEB.CL", "Grupo Energía Bogotá (GEB)", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("PEI.CL", "PEI (vehículo inmobiliario, se maneja como acción)", "accion", "BVC", "COP", "yfinance", None, "bvc"),
-    DefinicionActivo("PFDAVVNDA.CL", "Davivienda Group — preferencial (sin ordinaria líquida en Yahoo)", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("PFDAVIGRP.CL", "Davivienda Group — preferencial (sin ordinaria líquida en Yahoo)", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("CONCONCRET.CL", "Constructora Conconcreto", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("BOGOTA.CL", "Banco de Bogotá", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("PROMIGAS.CL", "Promigas", "accion", "BVC", "COP", "yfinance", None, "bvc"),
@@ -137,9 +145,10 @@ INSTRUMENTOS_BVC = [
     DefinicionInstrumentoBVC("PFCEMARGOS.CL", "CEMENTOS_ARGOS", "preferencial"),
     DefinicionInstrumentoBVC("CELSIA.CL", "CELSIA", "ordinaria"),
     DefinicionInstrumentoBVC("CORFICOLCF.CL", "CORFICOLOMBIANA", "ordinaria"),
+    DefinicionInstrumentoBVC("PFCORFICOL.CL", "CORFICOLOMBIANA", "preferencial"),
     DefinicionInstrumentoBVC("GEB.CL", "GEB", "ordinaria"),
     DefinicionInstrumentoBVC("PEI.CL", "PEI", "titulo_participativo"),
-    DefinicionInstrumentoBVC("PFDAVVNDA.CL", "DAVIVIENDA_GROUP", "preferencial"),
+    DefinicionInstrumentoBVC("PFDAVIGRP.CL", "DAVIVIENDA_GROUP", "preferencial"),
     DefinicionInstrumentoBVC("CONCONCRET.CL", "CONSTRUCTORA_CONCONCRETO", "ordinaria"),
     DefinicionInstrumentoBVC("BOGOTA.CL", "BANCO_DE_BOGOTA", "ordinaria"),
     DefinicionInstrumentoBVC("PROMIGAS.CL", "PROMIGAS", "ordinaria"),
@@ -166,3 +175,12 @@ def inferir_clase_ticker(ticker: str) -> str:
     validar_clase_accion_bvc — un ticker desconocido importado de un broker
     casi siempre es una acción individual fuera de la BVC."""
     return MAPA_TICKER_CLASE.get(ticker, "accion")
+
+
+def timeframes_validos(activo: DefinicionActivo) -> list[str]:
+    """§3.5 (F3, regla dura): la BVC opera solo diario/semanal — no hay dato
+    intradía gratuito confiable y la liquidez local no soporta 4h. NY y
+    cripto (cajón vehiculo_us/cripto) sí operan en 4h y 1D."""
+    if activo.cajon == "bvc":
+        return ["1d"]
+    return ["4h", "1d"]

@@ -14,8 +14,10 @@ from .universo import (
     DefinicionEmisorBVC,
     DefinicionInstrumentoBVC,
     inferir_clase_ticker,
+    timeframes_validos,
 )
 from .yfinance_conector import YfinanceConector
+from .yfinance_earnings_conector import YfinanceEarningsConector
 
 __all__ = [
     "FuenteDatos",
@@ -35,4 +37,6 @@ __all__ = [
     "MAPA_TICKER_A_EMISOR_SLUG",
     "MAPA_TICKER_CLASE",
     "inferir_clase_ticker",
+    "timeframes_validos",
+    "YfinanceEarningsConector",
 ]

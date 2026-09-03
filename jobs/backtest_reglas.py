@@ -24,7 +24,7 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 import pandas as pd  # noqa: E402
 
 from app.services.backtest_regla import correr_backtest  # noqa: E402
-from app.services.datos import UNIVERSO_F0  # noqa: E402
+from app.services.datos import UNIVERSO_F0, timeframes_validos  # noqa: E402
 
 CACHE_LOCAL = Path(__file__).parent / "_cache_local"
 UNIVERSO_TRADEABLE = [a for a in UNIVERSO_F0 if a.clase in ("accion", "etf", "indice_proxy", "cripto")]
@@ -85,7 +85,9 @@ def main():
 
     resumen = []
     for activo in UNIVERSO_TRADEABLE:
-        for timeframe in timeframes:
+        # §3.5: backtest separado por mercado — la BVC solo se backtestea en
+        # 1d (timeframes_validos), nunca en 4h, aunque se haya pedido "todos".
+        for timeframe in [tf for tf in timeframes if tf in timeframes_validos(activo)]:
             df = _historial_supabase(activo.ticker, timeframe) if en_supabase else _historial_cache_local(activo.ticker, timeframe)
             if df.empty or len(df) < 60:
                 resumen.append((activo.ticker, timeframe, "-", "SIN_DATOS", 0))

@@ -4,3 +4,10 @@
 # Actions, nunca en el dyno web.
 -r ../apps/api/requirements.txt
 vectorbt>=1.1.0
+# vectorbt 1.1.0 (sin mantenimiento desde ~2022) registra su tema de Plotly
+# al importarse usando la propiedad 'scattermapbox', renombrada a
+# 'scattermap' y luego eliminada en Plotly 5.24+/6+ — sin este techo, un
+# venv limpio instala Plotly 7.x y CUALQUIER llamada a vectorbt revienta con
+# ValueError en el import (encontrado y verificado 03-sep-2026 al cerrar F3).
+# No es un bug de la regla de confluencia: es la versión de Plotly.
+plotly<5.24
