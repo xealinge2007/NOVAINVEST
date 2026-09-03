@@ -186,7 +186,7 @@ def main():
         cliente = cliente_servicio()
 
     cache_emisores: dict[str, int] = {}
-    nuevos, ya_existian, protegidos, sin_patron, errores = 0, 0, 0, [], []
+    nuevos, ya_existian, cambiados, protegidos, sin_patron, errores = 0, 0, 0, 0, [], []
 
     for carpeta_emisor in carpetas_emisor:
         slug = carpeta_emisor.name
@@ -210,17 +210,51 @@ def main():
 
             existente = (
                 cliente.table("reportes_archivo")
-                .select("id,estado")
+                .select("id,estado,hash_sha256")
                 .eq("emisor_id", emisor_id)
                 .eq("nombre_archivo", pdf.name)
                 .execute()
             )
+            hash_archivo = _hash_archivo(pdf)
+
             if existente.data:
-                ya_existian += 1
+                fila_existente = existente.data[0]
+                if fila_existente["hash_sha256"] == hash_archivo:
+                    ya_existian += 1
+                    continue
+                # Mismo emisor + mismo nombre de archivo, pero contenido distinto -- Alex
+                # reemplazó el PDF sin avisar (ya pasó una vez, ver ESTADO_PROYECTO.md).
+                # Sin este chequeo el archivo se saltaría en silencio como "ya existía" y
+                # una validación vieja se quedaría contaminando la serie para siempre.
+                try:
+                    motivo_protegido = detectar_pdf_protegido(pdf)
+                    cliente.table("reportes_archivo").update(
+                        {
+                            "hash_sha256": hash_archivo,
+                            "ruta_local": str(pdf),
+                            "estado": "irrecuperable" if motivo_protegido else "encolado",
+                            "error_detalle": motivo_protegido,
+                            "procesado_en": None,
+                        }
+                    ).eq("id", fila_existente["id"]).execute()
+                    if not motivo_protegido:
+                        cliente.table("ingesta_cola").upsert(
+                            {
+                                "reporte_archivo_id": fila_existente["id"],
+                                "prioridad": prioridad_emisor(slug),
+                                "estado": "pendiente",
+                                "intentos": 0,
+                                "ultimo_error": None,
+                                "procesado_en": None,
+                            },
+                            on_conflict="reporte_archivo_id",
+                        ).execute()
+                    cambiados += 1
+                except Exception as e:
+                    errores.append((str(pdf.relative_to(args.carpeta)), str(e)))
                 continue
 
             try:
-                hash_archivo = _hash_archivo(pdf)
                 motivo_protegido = detectar_pdf_protegido(pdf)
                 fila = {
                     "emisor_id": emisor_id,
@@ -253,6 +287,8 @@ def main():
 
     print(f"\nNuevos encolados: {nuevos}")
     print(f"Ya existían (omitidos, no se tocó su estado): {ya_existian}")
+    if cambiados:
+        print(f"Contenido reemplazado bajo el mismo nombre (re-encolados para reprocesar): {cambiados}")
     if protegidos:
         print(f"Protegidos (IRM/Rights Management, marcados 'irrecuperable', no encolados): {protegidos}")
     if sin_patron:
