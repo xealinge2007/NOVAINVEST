@@ -45,7 +45,7 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
 | F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real (falta push) — **1 punto abierto para Alex, ver abajo** |
 | F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado (falta push), verificado contra Supabase real |
-| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista y verificada (409 PDF encolados); **falta el motor de extracción/doble validación, ver abajo** |
+| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista (409 PDF); primera plantilla real (ECOPETROL, 2/20 reportes) probada contra Supabase; **falta ampliar plantillas + doble extracción, ver abajo** |
 | F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
 | F4c | Creación de valor (ROIC/WACC/EVA) + **Estrellas de la BVC** (top 10 a 12 meses) con backtest walk-forward | ⬜ pendiente |
 | F5 | Analizador BVC en la PWA (Estrellas de la BVC de portada, ficha con márgenes, screener, comparador, dividendos, panel COLCAP) + dashboard | ⬜ pendiente |
@@ -393,8 +393,63 @@ Reconocimiento hecho sobre los 3 pilotos para calibrar el diseño antes de const
   falta normalizar (concatenar celdas de texto, mapear índice de columna → periodo) por
   cada plantilla. Confirma lo que dice el plan: cada emisor necesita su propia
   configuración, no hay una plantilla genérica.
-- **Todavía no construido**: el parser real por emisor (plantillas de los 3 pilotos), la
-  doble extracción con el subagente `analista-fundamental`, la comparación/tolerancia
-  ±0,5%, la normalización (estanco vs acumulado, individual vs consolidado, splits), el
-  auto-aprobación por plantilla probada, y el muestreo de control del 5%. Es la pieza más
-  grande de F4a — sigue en la próxima sesión.
+- **Todavía no construido**: la doble extracción con el subagente `analista-fundamental`,
+  la comparación/tolerancia ±0,5%, la normalización completa (estanco vs acumulado,
+  individual vs consolidado, splits), el auto-aprobación por plantilla probada, y el
+  muestreo de control del 5%. Sigue en la próxima sesión.
+
+## F4a — parser real: primera plantilla (ECOPETROL) construida y probada (03-sep-2026)
+
+**Motor genérico** en `apps/api/app/services/extraccion/pdf_utils.py`: `pdfplumber` con
+`extract_table({'vertical_strategy':'text','horizontal_strategy':'text'})` — el detector
+de líneas por defecto falla mal en estos PDF (capturaba fragmentos de 1 fila). Localiza
+tablas por texto ancla (no por número de página fijo, que varía entre trimestres), y
+reconstruye etiqueta+números de una fila fragmentada en varias celdas con una heurística
+de "número bien formado" (una celda numérica que termina en coma/paréntesis/guion sigue
+acumulando con la siguiente hasta que el resultado matchea un número completo — así
+distingue un número partido en dos celdas de dos números distintos y adyacentes). El
+match de fila es por **igualdad exacta de etiqueta normalizada**, no por "contiene" — así
+un párrafo que solo menciona "EBITDA" de pasada no se confunde con la fila real de la
+tabla, y "Total activos" no se confunde con el subtotal "Total activos corrientes".
+
+**Plantilla ECOPETROL** (`plantilla_ecopetrol.py`), probada contra 3 trimestres reales:
+- **2025-T1**: 9/11 campos extraídos y verificados a mano contra el PDF (ingresos 31.365,
+  utilidad operacional 8.380, utilidad neta 3.127, EBITDA 13.258 — coincide con la
+  conciliación de EBITDA de la Tabla 4, cross-check independiente dentro del mismo
+  documento —, activos 300.321, pasivos 197.023, patrimonio 103.298, deuda financiera
+  118.661 —coincide con "COP 118.6 billones" que el texto dice en prosa—, flujo de caja
+  operativo 6.122). Faltan `acciones_en_circulacion` y `dividendos_decretados` — no están
+  en esta plantilla, quedan `None` a propósito (no se inventan).
+- **2026-T1**: **Ecopetrol cambió el formato de su Tabla 1** frente a 2025 (tabla nueva
+  "Principales Indicadores": `Ingresos`/`EBITDA`/`Utilidad Neta`, ya no
+  `Utilidad operacional`, y "Ventas Totales" pasó a ser una fila de **volumen** en Kbped,
+  no de ingresos en COP — una trampa real que el match exacto de etiqueta evitó).
+  8/11 campos extraídos correctamente; `utilidad_operacional` queda `None` porque
+  genuinamente ya no está en el reporte, no por un fallo del parser.
+- **2024-T2**: **formato completamente distinto** — informe narrativo por secciones
+  numeradas (1. Mensaje del Presidente, 2. Grupo Ecopetrol... 5. Resultados Financieros),
+  sin ninguna tabla "Tabla 1/2/3" reconocible.
+
+`jobs/extraer_fundamentales.py` corrido contra las **20 combinaciones reales** disponibles
+de ECOPETROL (informe_periodico + estados_financieros encolados): **resultado real, no
+hipotético — 2 OK (2025-T1, 2026-T1, verificados a mano), 3 `SIN_TABLAS_RECONOCIDAS`,
+15 `SIN_PLANTILLA`** (años <2025, o EEFF-Consolidados que esta plantilla no cubre).
+**Hallazgo que corrige la hipótesis inicial**: el formato NO cambia limpio por año —
+**2025-T2, 2025-T3, 2025-ANUAL y 2026-T2 usan el mismo formato narrativo por secciones
+que 2024**, coexistiendo con el formato "Tabla 1: Resumen Financiero" de 2025-T1/2026-T1
+**dentro del mismo año**. La columna `vigente_desde` de `plantillas_extraccion` es un
+filtro barato, no una garantía — cada reporte que cae en el rango pero no trae la tabla
+ancla queda `requiere_revision`, nunca se fuerza ni se descarta en silencio. Esto ya está
+verificado con datos reales en `fundamentales_reportados` (2 filas, `metodo_validacion =
+'provisional'`, coinciden con lo verificado a mano contra el PDF).
+
+**Conclusión honesta para dimensionar lo que falta:** ECOPETROL solo necesita, como
+mínimo, **una plantilla más** (el formato narrativo por secciones, que cubre la mayoría
+de sus reportes — 15+ de 20) para estar completo. Ese mismo patrón — "no asumir vigencia
+por fecha, confirmar tabla por tabla" — aplica igual a CIBEST y SURA cuando se construyan.
+
+**Siguiente sesión**: (1) plantilla ECOPETROL ≤2024, (2) plantillas CIBEST y SURA
+(reconocimiento ya hecho — formatos confirmados distintos, ver notas de la sesión), (3) el
+subagente `analista-fundamental` para la doble extracción real, (4) normalización
+(estanco/acumulado, T4 derivado, individual/consolidado), (5) auto-aprobación + muestreo
+de control.
