@@ -48,8 +48,8 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F0 | Infraestructura + pipeline de datos | ✅ desplegado, verificado |
 | F1 | Auth multi-usuario, perfil de riesgo, finanzas personales | ✅ desplegado, verificado |
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
-| F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real (falta push) — **1 punto abierto para Alex, ver abajo** |
-| F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado (falta push), verificado contra Supabase real |
+| F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real; **pusheado y desplegado** (verificado 03-sep-2026: `/senales` responde en produccion) — **1 punto abierto para Alex, ver abajo** |
+| F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado y **pusheado**, verificado contra Supabase real |
 | F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista (409 PDF); ECOPETROL con 2 plantillas reales (4 periodos consolidados verificados en Supabase); **faltan CIBEST/SURA + doble extracción, ver abajo** |
 | F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
 | F4c | Creación de valor (ROIC/WACC/EVA) + **Estrellas de la BVC** (top 10 a 12 meses) con backtest walk-forward | ⬜ pendiente |
