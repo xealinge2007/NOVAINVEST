@@ -559,5 +559,31 @@ el parser viejo) y escribir el flujo real que compara los dos canales y marca
 `doble_extraccion` cuando coinciden, en vez de dejarlo como verificación manual de esta
 sesión.
 
-**Siguiente paso concreto**: paso 4 del orden — CIBEST y SURA con esta misma vía (triage +
-lectura), sin plantilla de parser.
+**Paso 4 — CIBEST y SURA sin plantilla, hecho y verificado:** ambos procesados por la
+misma vía (triage + lectura del subagente), sin escribir código específico por emisor.
+- **SURA (2025-T2): el triage acotó las 4 anclas limpio al primer intento** (rango de 6
+  páginas, 8-13) — activos totales 96.282.952, pasivos 67.559.722, patrimonio total
+  28.723.230, ingresos operacionales (6 meses) 14.660.454, utilidad neta atribuible
+  1.220.762, flujo de caja operativo 2.076.520 (todo en millones COP, verificado leyendo
+  las páginas reales).
+- **CIBEST (2025-T2): el triage falló** (rango de 119 páginas, `situacion_financiera`
+  ancló en la página 6 -- prosa de "Comentarios y análisis de la administración" que
+  discute el balance narrativamente ANTES del balance real, usando el mismo título
+  literal). Confirma lo que el plan ya anticipaba: "el formato más alejado del estándar".
+  **Pero el subagente no necesitó plantilla para resolverlo**: el propio documento trae
+  tabla de contenido con números de página reales (página 3), que apuntó directo a la
+  página 13 (balance real) y 10 (resultados real) -- verificado leyendo esas páginas:
+  total activo 375.250.726, total pasivo 332.866.440, patrimonio total 42.384.286.
+  **Lección para el triage**: cuando la búsqueda por ancla+posición falla en un formato
+  nuevo, leer la propia tabla de contenido del documento es más barato y más confiable
+  que ajustar la heurística — el subagente puede hacerlo sin cambiar código.
+
+**La inversión queda demostrada** (criterio del plan para el paso 4): el universo de
+20-30 emisores deja de ser un problema de mantenimiento de plantillas.
+
+**No escrito en Supabase todavía** (mismo pendiente que Ecopetrol): falta decidir la
+unidad canónica y el flujo real de comparación de canales antes de insertar estas cifras
+en `fundamentales_reportados`.
+
+**Siguiente paso concreto**: paso 5 del orden — agregar `fuente_origen` y `url_descarga`
+a `reportes_archivo` (§5.1.4).
