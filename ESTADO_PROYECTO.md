@@ -45,7 +45,7 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
 | F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real (falta push) — **1 punto abierto para Alex, ver abajo** |
 | F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado (falta push), verificado contra Supabase real |
-| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | ⬜ pendiente — necesita los PDF de Alex |
+| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista y verificada (409 PDF encolados); **falta el motor de extracción/doble validación, ver abajo** |
 | F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
 | F4c | Creación de valor (ROIC/WACC/EVA) + **Estrellas de la BVC** (top 10 a 12 meses) con backtest walk-forward | ⬜ pendiente |
 | F5 | Analizador BVC en la PWA (Estrellas de la BVC de portada, ficha con márgenes, screener, comparador, dividendos, panel COLCAP) + dashboard | ⬜ pendiente |
@@ -338,3 +338,63 @@ número baja solo con el tiempo.
    `BHI` (BAC Holding International), `ETB`, `NUTRESA`, `EXITO`, `TERPEL`,
    `GRUBOLIVAR`, `OCCIDENTE`, `FABRICATO`, `TIN` — fuera de alcance de F2b/F3 (solo se
    amplía el universo cuando Alex cargue sus PDF, §5.1.1).
+
+## F4a — motor de ingesta: cola lista y verificada, extracción es el siguiente tramo (03-sep-2026)
+
+**El universo de `SIMEV_BVC` ya creció a 20 carpetas de emisor** (409 PDF al momento de
+correr esto) — Alex agregó `BVC`, `ETB`, `GRUPO_NUTRESA`, `MINEROS` y `TERPEL` desde que
+se cerró F2b, en paralelo a esta sesión. El pipeline los absorbió solos: `ingesta_simev.py`
+crea el emisor nuevo sobre la marcha (slug = carpeta, sector `sin_clasificar` hasta que se
+cure a mano) sin que hiciera falta tocar código.
+
+**Hecho y verificado:**
+- `db/migrate_f4a_fundamentales.sql` — `reportes_archivo`, `ingesta_cola`,
+  `plantillas_extraccion`, `fundamentales_reportados`, `excepciones_validacion` (RLS mismo
+  patrón que `emisores`).
+- `jobs/ingesta_simev.py` — recorre las carpetas, infiere periodo/tipo del nombre
+  (`AAAA-PERIODO_Tipo.pdf`) y clasifica el tipo en `estados_financieros` /
+  `informe_periodico` / `comunicado_prensa` / `aviso` / `otro`. **El patrón del nombre no
+  es 100% uniforme como decía el plan original** — se probó contra los 409 archivos reales
+  y sí parsea el 100%, pero el fragmento "Tipo" a veces trae el nombre del emisor de
+  regalo (`2023-T1_BANCOLOMBIA_Informe-Periodico-Trimestral.pdf`) o usa sinónimos
+  (`Informe-Fin-Ejercicio` vs `Informe-Periodico-Fin-Ejercicio`, `Reporte-Integrado-Gestion`
+  vs `Informe-...`) — el clasificador es por palabras clave, no por posición exacta.
+  Verificado: **corrida real (409 encolados, 0 errores) + segunda corrida idéntica
+  confirma idempotencia (0 nuevos, 409 "ya existían", ningún estado pisado)**.
+- **Hallazgo real, no del plan**: `ECOPETROL/2026-T1_Informe-Periodico-Trimestral.pdf`
+  llegó protegido con Microsoft Information Protection/Azure Rights Management —
+  imposible de leer con cualquier herramienta sin permisos de esa organización. Era el
+  único de los 409 (se escaneó el corpus completo). Alex lo volvió a descargar del SIMEV
+  público y quedó legible.
+- `jobs/matriz_huecos_fundamentales.py` — la matriz emisor × trimestre que pide el
+  criterio de aceptación, calculada en segundos desde `reportes_archivo` (no necesita el
+  motor de extracción). Resultado actual: **16 de 20 emisores ya elegibles (≥12
+  trimestres)** para el ranking del §3.8 — casi el doble de los 9 que medía el plan el
+  01-sep-2026. Quedan cerca de elegibles `CEMENTOS_ARGOS` (le falta 1: 2025-T3 o T4).
+  `GEB` y `GRUPO_AVAL` siguen en 0 porque solo tienen reportes ANUAL/comunicados — sin
+  T1-T3 ningún trimestre, ni siquiera el T4, se puede derivar (regla estricta: el T4 solo
+  se deriva si los tres trimestres del año están presentes).
+
+**Lo que sigue (el tramo grande, todavía no empezado): el motor de extracción.**
+Reconocimiento hecho sobre los 3 pilotos para calibrar el diseño antes de construirlo:
+
+- **ECOPETROL**: formato más simple — una sola tabla limpia por trimestre
+  ("Tabla 1: Resumen Financiero Estado de Resultados"), texto nativo (no escaneado).
+- **GRUPO_CIBEST_BANCOLOMBIA**: estados financieros formales de banco en páginas fijas
+  del índice (Estado de Situación Financiera, Estado de Resultados, Consolidado vs
+  Separado) — el formato más alejado del estándar, como anticipaba el plan.
+- **GRUPO_SURA**: infografía narrativa con cifras clave + sección "Estados Financieros
+  Consolidados/Separados" aparte (60+ páginas el reporte completo) — holding,
+  consolidado vs individual real.
+- **Técnica confirmada viable**: `pdfplumber` con `extract_table({'vertical_strategy':
+  'text', 'horizontal_strategy': 'text'})` (el detector de líneas por defecto falla mal en
+  estos PDF, capturaba fragmentos de 1 fila) extrae las tablas reales de Cibest en ~96
+  filas reconocibles, con las etiquetas de fila fragmentadas en varias celdas — hace
+  falta normalizar (concatenar celdas de texto, mapear índice de columna → periodo) por
+  cada plantilla. Confirma lo que dice el plan: cada emisor necesita su propia
+  configuración, no hay una plantilla genérica.
+- **Todavía no construido**: el parser real por emisor (plantillas de los 3 pilotos), la
+  doble extracción con el subagente `analista-fundamental`, la comparación/tolerancia
+  ±0,5%, la normalización (estanco vs acumulado, individual vs consolidado, splits), el
+  auto-aprobación por plantilla probada, y el muestreo de control del 5%. Es la pieza más
+  grande de F4a — sigue en la próxima sesión.
