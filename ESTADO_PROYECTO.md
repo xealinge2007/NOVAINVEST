@@ -45,7 +45,7 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
 | F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real (falta push) — **1 punto abierto para Alex, ver abajo** |
 | F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado (falta push), verificado contra Supabase real |
-| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista (409 PDF); primera plantilla real (ECOPETROL, 2/20 reportes) probada contra Supabase; **falta ampliar plantillas + doble extracción, ver abajo** |
+| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista (409 PDF); ECOPETROL con 2 plantillas reales (4 periodos consolidados verificados en Supabase); **faltan CIBEST/SURA + doble extracción, ver abajo** |
 | F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
 | F4c | Creación de valor (ROIC/WACC/EVA) + **Estrellas de la BVC** (top 10 a 12 meses) con backtest walk-forward | ⬜ pendiente |
 | F5 | Analizador BVC en la PWA (Estrellas de la BVC de portada, ficha con márgenes, screener, comparador, dividendos, panel COLCAP) + dashboard | ⬜ pendiente |
@@ -443,13 +443,45 @@ ancla queda `requiere_revision`, nunca se fuerza ni se descarta en silencio. Est
 verificado con datos reales en `fundamentales_reportados` (2 filas, `metodo_validacion =
 'provisional'`, coinciden con lo verificado a mano contra el PDF).
 
-**Conclusión honesta para dimensionar lo que falta:** ECOPETROL solo necesita, como
-mínimo, **una plantilla más** (el formato narrativo por secciones, que cubre la mayoría
-de sus reportes — 15+ de 20) para estar completo. Ese mismo patrón — "no asumir vigencia
-por fecha, confirmar tabla por tabla" — aplica igual a CIBEST y SURA cuando se construyan.
+**Segunda plantilla ECOPETROL — EEFF-Consolidados anuales** (`plantilla_ecopetrol_eeff_anual.py`,
+misma sesión): el "formato narrativo por secciones" (2022-2025-T2/T3) resultó **no traer
+cifras en absoluto** — remite explícitamente a SIMEV/la web de Ecopetrol
+("los resultados... fueron reportados en... SIMEV"). Las cifras reales de esos años SÍ
+están disponibles, pero en un documento distinto: `EEFF-Consolidados`
+(`tipo_documento = 'estados_financieros'`, texto plano, sin necesidad de reconstrucción de
+tabla). Nueva utilidad genérica en `pdf_utils.py` (`buscar_valor_en_texto`,
+`separar_etiqueta_y_valores_linea`) para este tipo de documento "clásico" (etiqueta +
+cifras en la misma línea). **Filtro explícito de Alex (03-sep-2026): el análisis usa solo
+resultados consolidados, nunca separados/individuales** — el job excluye cualquier reporte
+cuyo `tipo_documento_crudo` contenga "separado"/"individual" antes de intentar ninguna
+plantilla (`_es_separado()`), y la plantilla misma solo busca páginas tituladas "...
+consolidados" (nunca "...separados"), con una nota aclarando que el encabezado de página
+dice "Ecopetrol S.A." incluso en el documento consolidado — eso no es una señal de
+separado, es la razón social bajo la que el grupo emite sus EEFF.
 
-**Siguiente sesión**: (1) plantilla ECOPETROL ≤2024, (2) plantillas CIBEST y SURA
-(reconocimiento ya hecho — formatos confirmados distintos, ver notas de la sesión), (3) el
-subagente `analista-fundamental` para la doble extracción real, (4) normalización
-(estanco/acumulado, T4 derivado, individual/consolidado), (5) auto-aprobación + muestreo
-de control.
+Probada contra 2022-ANUAL y 2023-ANUAL (verificados a mano campo por campo): **9/11 campos
+cada uno** — ingresos, utilidad operacional ("Resultado de la operación"), utilidad neta
+(atribuible a accionistas), activos/pasivos/patrimonio totales, deuda financiera (suma de
+préstamos corriente + no corriente), flujo de caja operativo. EBITDA se deriva
+(`utilidad_operacional + depreciación`, ya que no es una métrica NIIF y no aparece como
+línea propia) — funciona, aunque no se guarda con `origen=derivado` todavía (pendiente
+ajuste menor). **2024-ANUAL falló** (`SIN_TABLAS_RECONOCIDAS`): el único EEFF-Consolidados
+descargado para ese año es la versión "Firmados" y resultó ser **un PDF escaneado/firmado
+en papel a partir de la página ~11** (texto vacío) — no es un bug de la plantilla, hace
+falta OCR, fuera de alcance de esta sesión; queda marcado explícito, no forzado.
+
+**Estado real de ECOPETROL en `fundamentales_reportados` al cierre de esta sesión: 4
+periodos, todos consolidados y verificados a mano — 2022-ANUAL, 2023-ANUAL, 2025-T1,
+2026-T1.** Quedan sin cubrir: 2023-T1/T2/T3, 2024-T1/T2/T3/T4, 2025-T2/T3, 2026-T2 (formato
+narrativo trimestral sin cifras propias — estos trimestres solo se resuelven si Alex
+descarga el `EEFF-Consolidados` trimestral correspondiente, si existe, o con una plantilla
+que lea con cuidado la prosa del `Comunicado-Resultados`, que el plan marca como
+precedencia baja) y 2024-ANUAL (necesita OCR).
+
+**Siguiente sesión**: (1) evaluar si vale la pena una plantilla de prosa para los
+`Comunicado-Resultados` trimestrales de 2023 con supervisión reforzada (precedencia baja,
+nunca automático sin doble extracción), (2) OCR para el EEFF 2024 "Firmados" — o pedirle a
+Alex la versión no escaneada si existe en SIMEV, (3) plantillas CIBEST y SURA
+(reconocimiento ya hecho — formatos confirmados distintos, ver notas de la sesión), (4) el
+subagente `analista-fundamental` para la doble extracción real, (5) normalización completa
+(estanco/acumulado, T4 derivado), (6) auto-aprobación + muestreo de control.

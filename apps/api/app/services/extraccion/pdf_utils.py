@@ -34,14 +34,23 @@ def normalizar(texto: str) -> str:
     return re.sub(r"\s+", "", sin_acentos.lower())
 
 
-def localizar_pagina(pdf: pdfplumber.PDF, patrones: list[str], desde: int = 0) -> int | None:
+def localizar_pagina(pdf: pdfplumber.PDF, patrones: list[str], desde: int = 0, posicion_maxima: int | None = None) -> int | None:
     """Índice (0-based) de la primera página cuyo texto contiene alguno de
-    `patrones` (comparación normalizada). None si no aparece ninguno."""
+    `patrones` (comparación normalizada). None si no aparece ninguno.
+
+    `posicion_maxima`: si se da, el patrón debe aparecer dentro de los
+    primeros N caracteres del texto normalizado de la página — evita que un
+    índice/tabla de contenido (que menciona el título de la sección de
+    pasada, después de "Contenido" y otras entradas) gane sobre la página
+    real donde el título es lo primero que aparece tras el encabezado fijo.
+    """
     objetivos = [normalizar(p) for p in patrones]
     for i in range(desde, len(pdf.pages)):
         texto = normalizar(pdf.pages[i].extract_text() or "")
-        if any(obj in texto for obj in objetivos):
-            return i
+        for obj in objetivos:
+            pos = texto.find(obj)
+            if pos != -1 and (posicion_maxima is None or pos <= posicion_maxima):
+                return i
     return None
 
 
@@ -121,3 +130,41 @@ def valor_de_fila(fila: list[str] | None, indice: int = 0) -> float | None:
     if indice >= len(numeros):
         return None
     return parsear_numero_cop(numeros[indice])
+
+
+# ---------------------------------------------------------------------------
+# Extracción por LÍNEA DE TEXTO PLANO (para estados financieros "clásicos":
+# una etiqueta seguida de sus cifras en la misma línea, sin necesidad de
+# reconstrucción de tabla — ej. los EEFF-Consolidados auditados, mucho más
+# limpios que los informes narrativos o las infografías).
+# ---------------------------------------------------------------------------
+
+PATRON_NUMERO_FINANCIERO = re.compile(r"\(?-?\d{1,3}(?:,\d{3})+(?:\.\d+)?\)?")
+
+
+def separar_etiqueta_y_valores_linea(linea: str) -> tuple[str, list[float]]:
+    """'Efectivo y equivalentes de efectivo 6 12,336,115 15,401,058' ->
+    ('Efectivo y equivalentes de efectivo', [12336115.0, 15401058.0]).
+    Exige separador de miles (mínimo 4 dígitos) para no confundir un número
+    de nota al pie (ej. la "6" antes de la primera cifra) con un valor real."""
+    m = PATRON_NUMERO_FINANCIERO.search(linea)
+    if not m:
+        return linea.strip(), []
+    etiqueta = linea[: m.start()].strip()
+    # nota(s) al pie pegada(s) al final de la etiqueta -- una sola ("...neto 28")
+    # o varias separadas por guion ("...amortización 13-14-15-16").
+    etiqueta = re.sub(r"\s+[\d]{1,3}(-\d{1,3})*$", "", etiqueta)
+    numeros_crudos = PATRON_NUMERO_FINANCIERO.findall(linea[m.start():])
+    valores = [v for v in (parsear_numero_cop(n) for n in numeros_crudos) if v is not None]
+    return etiqueta, valores
+
+
+def buscar_valor_en_texto(texto: str, alternativas: list[str], indice: int = 0) -> float | None:
+    """Primera línea cuya etiqueta (normalizada) coincide EXACTO con alguna
+    de `alternativas`. Igual que `buscar_fila`, a propósito no es "contiene"."""
+    objetivos = {normalizar(a) for a in alternativas}
+    for linea in texto.split("\n"):
+        etiqueta, valores = separar_etiqueta_y_valores_linea(linea)
+        if normalizar(etiqueta) in objetivos and indice < len(valores):
+            return valores[indice]
+    return None

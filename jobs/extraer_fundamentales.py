@@ -20,20 +20,33 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
-from app.services.extraccion import plantilla_ecopetrol  # noqa: E402
+from app.services.extraccion import plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
 
-# Un emisor puede tener más de una plantilla vigente por rango de fechas
-# (§5.1.2). "vigente_desde" es un filtro barato para no ni intentarlo en
-# años claramente anteriores, NO una garantía de formato estable dentro del
-# rango: Ecopetrol coexiste con dos formatos incluso dentro del mismo año
-# (2025-T1/2026-T1 traen "Tabla 1: Resumen Financiero"; 2025-T2/T3/ANUAL NO
-# la traen, son el formato narrativo por secciones) -- confirmado corriendo
-# esta plantilla contra las 20 combinaciones reales disponibles. Un reporte
-# que cae en el rango de fechas pero no trae la tabla ancla queda
+# Un emisor puede tener más de una plantilla, cada una atada a un
+# `tipo_documento` (§5.1: precedencia -- estados financieros e informe
+# periódico mandan, nunca comunicado de prensa) y opcionalmente acotada por
+# fecha. "vigente_desde" es un filtro barato para no ni intentarlo en años
+# claramente anteriores, NO una garantía de formato estable dentro del
+# rango: Ecopetrol coexiste con dos formatos de informe periódico incluso
+# dentro del mismo año (2025-T1/2026-T1 traen "Tabla 1: Resumen
+# Financiero"; 2025-T2/T3/ANUAL NO la traen, son el formato narrativo por
+# secciones, que a su vez NO trae cifras -- remite a SIMEV/la web). Un
+# reporte que cae en el rango de fechas pero no trae la tabla ancla queda
 # `requiere_revision`, nunca se fuerza.
 PLANTILLAS_DISPONIBLES = {
     "ECOPETROL": [
-        {"modulo": plantilla_ecopetrol, "vigente_desde": "2025-01-01", "version": "resumen_tabla1_2025_2026"},
+        {
+            "modulo": plantilla_ecopetrol,
+            "tipos_documento": ["informe_periodico"],
+            "vigente_desde": "2025-01-01",
+            "version": "resumen_tabla1_2025_2026",
+        },
+        {
+            "modulo": plantilla_ecopetrol_eeff_anual,
+            "tipos_documento": ["estados_financieros"],
+            "vigente_desde": "2000-01-01",
+            "version": "eeff_consolidados_auditados",
+        },
     ],
 }
 
@@ -44,12 +57,20 @@ CAMPOS_NUMERICOS = [
 ]
 
 
-def _plantilla_para(slug_emisor: str, anio: int):
+def _plantilla_para(slug_emisor: str, tipo_documento: str, anio: int):
     candidatas = PLANTILLAS_DISPONIBLES.get(slug_emisor, [])
     for c in candidatas:
-        if anio >= int(c["vigente_desde"][:4]):
+        if tipo_documento in c["tipos_documento"] and anio >= int(c["vigente_desde"][:4]):
             return c
     return None
+
+
+def _es_separado(tipo_documento_crudo: str) -> bool:
+    """§5.1 + instrucción explícita de Alex (03-sep-2026): el análisis usa
+    SOLO resultados consolidados -- un 'EEFF-Separados'/'Estados-Financieros-
+    Individuales' nunca entra, aunque tenga plantilla técnicamente aplicable."""
+    t = tipo_documento_crudo.lower()
+    return "separad" in t or "individual" in t
 
 
 def main():
@@ -74,7 +95,7 @@ def main():
         .select("*")
         .in_("emisor_id", ids_cubiertos)
         .in_("tipo_documento", ["informe_periodico", "estados_financieros"])
-        .eq("estado", "encolado")
+        .in_("estado", ["encolado", "requiere_revision"])
         .order("anio")
         .order("periodo")
     )
@@ -87,10 +108,18 @@ def main():
     resumen = []
     for r in reportes:
         slug = id_a_slug[r["emisor_id"]]
-        plantilla = _plantilla_para(slug, r["anio"])
+
+        if _es_separado(r["tipo_documento_crudo"]):
+            cliente.table("reportes_archivo").update(
+                {"estado": "requiere_revision", "error_detalle": "separado/individual, no consolidado -- excluido por criterio explícito (solo consolidado)"}
+            ).eq("id", r["id"]).execute()
+            resumen.append((slug, r["anio"], r["periodo"], "EXCLUIDO_SEPARADO"))
+            continue
+
+        plantilla = _plantilla_para(slug, r["tipo_documento"], r["anio"])
         if plantilla is None:
             cliente.table("reportes_archivo").update(
-                {"estado": "requiere_revision", "error_detalle": f"sin plantilla vigente para {slug} {r['anio']}"}
+                {"estado": "requiere_revision", "error_detalle": f"sin plantilla vigente para {slug} / {r['tipo_documento']} / {r['anio']}"}
             ).eq("id", r["id"]).execute()
             resumen.append((slug, r["anio"], r["periodo"], "SIN_PLANTILLA"))
             continue
