@@ -12,6 +12,11 @@ verificación contra Supabase real — ver §"Pendiente para cerrar F3" abajo).
 > BVC + valor justo + Estrellas de la BVC) → **F5** (analizador BVC en la PWA) → F6 macro →
 > F7 opciones → F8 stress test + IDI → F9 ocio.
 
+> ⚠️ **Corrección de arquitectura de extracción (03-sep-2026): el subagente lee, el
+> parser verifica.** Antes de tocar F4a lee `db/DECISION_ARQUITECTURA_EXTRACCION.md` —
+> deroga la precedencia asumida en `db/INFORME_OBSTACULOS_EXTRACCION_F4A.md`. No construyas
+> plantillas de parser como prerrequisito; el PDF escaneado ya no necesita OCR (verificado).
+
 **PDF de emisores BVC ya descargados: `C:\Proyectos\BVC\SIMEV_BVC`** — 270 archivos
 de 13 emisores, patrón `AAAA-PERIODO_Tipo.pdf` (medido 01-sep-2026; Alex sigue
 descargando tandas — **ya son 15 emisores** al ejecutar F2b, con BANCO_DE_BOGOTA y
