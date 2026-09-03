@@ -227,6 +227,7 @@ def main():
                     "nombre_archivo": pdf.name,
                     "ruta_local": str(pdf),
                     "hash_sha256": hash_archivo,
+                    "fuente_origen": "simev",  # §5.1.4: este script solo lee C:\Proyectos\BVC\SIMEV_BVC
                     "anio": meta["anio"],
                     "periodo": meta["periodo"],
                     "tipo_documento": meta["tipo_documento"],
