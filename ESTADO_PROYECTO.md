@@ -490,3 +490,74 @@ Alex la versión no escaneada si existe en SIMEV, (3) plantillas CIBEST y SURA
 (reconocimiento ya hecho — formatos confirmados distintos, ver notas de la sesión), (4) el
 subagente `analista-fundamental` para la doble extracción real, (5) normalización completa
 (estanco/acumulado, T4 derivado), (6) auto-aprobación + muestreo de control.
+
+## F4a — corrección de arquitectura (03-sep-2026): el subagente lee, el parser verifica
+
+**Decisión de Opus + Alex, documentada en `db/DECISION_ARQUITECTURA_EXTRACCION.md`** (rige
+sobre lo anterior): el subagente que lee el PDF es el extractor primario; el parser con
+plantilla queda como canal de verificación barato donde ya exista, nunca como
+prerrequisito. Ya no se construyen más plantillas de parser por emisor como paso previo, ni
+OCR (verificado: el PDF escaneado se lee por canal imagen). Orden de trabajo (§ plan,
+`MENSAJE-PARA-SONNET.md`): (1) detección IRM, (2) triage, (3) reprocesar Ecopetrol y
+comparar contra lo ya verificado, (4) CIBEST/SURA sin plantilla, (5) `fuente_origen` +
+`url_descarga`, (6) lote histórico nocturno.
+
+**Paso 1 — detección automática de PDF protegido (IRM), hecho y verificado:**
+`detectar_pdf_protegido()` en `jobs/ingesta_simev.py` abre la página 1 con pdfplumber y
+busca la firma `MSIP_Label_*` en metadata (más barata y estable que el texto, que llega con
+acentos rotos) o "Information Protection"/"Rights Management" en el texto. Un archivo
+detectado entra a `reportes_archivo` con `estado='irrecuperable'` y el motivo en
+`error_detalle`, sin encolarse. **Verificado contra Supabase real, no en teoría**: al correr
+`ingesta_simev.py` apareció un archivo genuinamente nuevo en el corpus
+(`ECOPETROL/2026-T1_Informe-Resultados-Resumen.pdf`, protegido) que la detección marcó
+correctamente sin intervención — no fue necesario ni buscar la muestra vieja.
+
+**Paso 2 — triage barato, hecho y verificado:** `apps/api/app/services/extraccion/triage.py`
+(`triage_documento(ruta_pdf)`) responde "¿este documento trae los estados financieros, y en
+qué páginas?" sobre la capa de texto. Dos rondas de corrección real (documentadas en el
+docstring del módulo, con el archivo y la página exactos que las motivaron):
+1. Exigir que la frase ancla aparezca dentro de los primeros ~150 caracteres normalizados de
+   la página (no en cualquier parte) — si no, la opinión del revisor fiscal (que nombra los
+   4 estados en prosa) y una nota al pie 45 páginas después ganaban sobre la página real.
+2. Excluir toda página cuyo inicio sea un índice ("Contenido"/"Índice") ANTES de buscar
+   cualquier ancla — la tabla de contenido cae dentro de esa misma ventana de posición en
+   documentos con membrete corto.
+Con eso: `2022-ANUAL` y `2023-ANUAL` (EEFF-Consolidados, ~120 páginas) se acotan a un rango
+de 5 páginas exacto. `2024-ANUAL` (el escaneado) no tiene ninguna ancla por texto pero cae en
+el fallback de "bloque de páginas consecutivas sin capa de texto" (acota a 9 páginas,
+incluye las 7 escaneadas + margen). Un documento sin estados financieros devuelve
+`contiene_cifras=False` con el motivo.
+
+**Paso 3 — reprocesar Ecopetrol y comparar, hecho y verificado contra los 4 periodos que la
+sesión anterior validó a mano:** usando el rango del triage, se leyeron las páginas reales
+(Read tool, canal texto — el subagente) y se compararon contra lo guardado en
+`fundamentales_reportados` (canal parser, `metodo_validacion='provisional'`):
+- **2022-ANUAL y 2023-ANUAL: 9/9 campos coinciden exacto** (incluida la deuda financiera
+  como suma de préstamos corriente+no corriente, y el EBITDA derivado).
+- **2025-T1: 8/9 coinciden** una vez normalizada una diferencia real de unidades ×1000
+  (el parser viejo leyó la infografía "Tabla 1", en miles de millones; el triage nuevo
+  encontró el `Estado...intermedio condensado consolidado` completo, en millones —
+  31.365.246 millones ÷ 1000 = 31.365, calza exacto contra lo guardado). Solo difiere el
+  EBITDA derivado (tolerancia propia, ya aceptada como limitación conocida).
+- **2026-T1: 7/8 coinciden exacto, y se recuperó `utilidad_operacional`=8.564** (miles de
+  millones) que el parser viejo había dejado en `None` por creer que ya no estaba en el
+  reporte — sí está, solo que no en el resumen ejecutivo que leía la plantilla vieja. **La
+  arquitectura nueva no perdió calidad: ganó un campo.**
+- **Hallazgo colateral, no hipotético**: `2024-T2_Informe-Periodico-Trimestral.pdf`, que la
+  sesión anterior había marcado "narrativo, sin cifras, remite a SIMEV", **sí trae un
+  `Estados...intermedios condensados consolidados` completo con cifras reales** (verificado
+  leyendo la página: efectivo 13.236.875 vs 12.336.115). El archivo cambió entre sesiones
+  (Alex sigue descargando en paralelo) — probable que varios de los trimestres 2023-2024
+  marcados como "sin cifras" ya no lo estén. **Pendiente**: correr el triage sobre el resto
+  del histórico de Ecopetrol (y del universo) antes de asumir que el hueco declarado de
+  2023-T1/T2/T3 sigue vigente.
+
+**Todavía no actualizado en Supabase**: los 4 registros siguen con
+`metodo_validacion='provisional'` — falta decidir la unidad canónica de
+`fundamentales_reportados` (miles de millones, ya que es la nativa de 2026-T1 y la que usaba
+el parser viejo) y escribir el flujo real que compara los dos canales y marca
+`doble_extraccion` cuando coinciden, en vez de dejarlo como verificación manual de esta
+sesión.
+
+**Siguiente paso concreto**: paso 4 del orden — CIBEST y SURA con esta misma vía (triage +
+lectura), sin plantilla de parser.

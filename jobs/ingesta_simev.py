@@ -27,6 +27,8 @@ import re
 import sys
 from pathlib import Path
 
+import pdfplumber
+
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
@@ -111,6 +113,25 @@ def parsear_nombre_archivo(nombre_archivo: str) -> dict | None:
     }
 
 
+def detectar_pdf_protegido(ruta: Path) -> str | None:
+    """Firma de un PDF cifrado con Microsoft Information Protection / Azure
+    Rights Management (F4a, paso 1 del orden de trabajo). pdfplumber lo abre
+    sin lanzar excepción -- no es un PDF corrupto -- pero entrega una sola
+    página-aviso ("no tiene autorización para ver su contenido") en vez del
+    documento real. Verificado el 03-sep-2026 contra una muestra real
+    (`ECOPETROL/2026-T1_..._PROTEGIDO-IRM.pdf`, la única de 409 encontrada):
+    el metadato `MSIP_Label_*` es la señal más barata y estable -- sobrevive
+    aunque `extract_text()` llegue con acentos rotos por el encoding del
+    stub. Devuelve el motivo si detecta la firma, None si el PDF es legible."""
+    with pdfplumber.open(ruta) as pdf:
+        if any(str(k).startswith("MSIP_Label") for k in (pdf.metadata or {})):
+            return "PDF protegido (Microsoft Information Protection / Azure Rights Management) -- pedir a Alex que lo re-descargue sin cifrado"
+        texto_p1 = (pdf.pages[0].extract_text() or "") if pdf.pages else ""
+        if "Information Protection" in texto_p1 or "Rights Management" in texto_p1:
+            return "PDF protegido (Microsoft Information Protection / Azure Rights Management) -- pedir a Alex que lo re-descargue sin cifrado"
+    return None
+
+
 def _hash_archivo(ruta: Path) -> str:
     h = hashlib.sha256()
     with open(ruta, "rb") as f:
@@ -165,7 +186,7 @@ def main():
         cliente = cliente_servicio()
 
     cache_emisores: dict[str, int] = {}
-    nuevos, ya_existian, sin_patron, errores = 0, 0, [], []
+    nuevos, ya_existian, protegidos, sin_patron, errores = 0, 0, 0, [], []
 
     for carpeta_emisor in carpetas_emisor:
         slug = carpeta_emisor.name
@@ -200,6 +221,7 @@ def main():
 
             try:
                 hash_archivo = _hash_archivo(pdf)
+                motivo_protegido = detectar_pdf_protegido(pdf)
                 fila = {
                     "emisor_id": emisor_id,
                     "nombre_archivo": pdf.name,
@@ -209,22 +231,29 @@ def main():
                     "periodo": meta["periodo"],
                     "tipo_documento": meta["tipo_documento"],
                     "tipo_documento_crudo": meta["tipo_documento_crudo"],
-                    "estado": "encolado",
+                    "estado": "irrecuperable" if motivo_protegido else "encolado",
                 }
+                if motivo_protegido:
+                    fila["error_detalle"] = motivo_protegido
                 resp = cliente.table("reportes_archivo").insert(fila).execute()
                 reporte_id = resp.data[0]["id"]
-                cliente.table("ingesta_cola").insert(
-                    {
-                        "reporte_archivo_id": reporte_id,
-                        "prioridad": prioridad_emisor(slug),
-                    }
-                ).execute()
+                if motivo_protegido:
+                    protegidos += 1
+                else:
+                    cliente.table("ingesta_cola").insert(
+                        {
+                            "reporte_archivo_id": reporte_id,
+                            "prioridad": prioridad_emisor(slug),
+                        }
+                    ).execute()
                 nuevos += 1
             except Exception as e:  # un archivo fallido no debe tumbar la corrida completa
                 errores.append((str(pdf.relative_to(args.carpeta)), str(e)))
 
     print(f"\nNuevos encolados: {nuevos}")
     print(f"Ya existían (omitidos, no se tocó su estado): {ya_existian}")
+    if protegidos:
+        print(f"Protegidos (IRM/Rights Management, marcados 'irrecuperable', no encolados): {protegidos}")
     if sin_patron:
         print(f"\nSin patrón reconocible ({len(sin_patron)}) — no se encolan, requieren mirada manual:")
         for s in sin_patron:
