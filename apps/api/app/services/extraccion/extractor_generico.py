@@ -110,6 +110,9 @@ SINONIMOS_DEPRECIACION = [
 
 MARCADOR_MILES_DE_MILLONES = "miles de millones de pesos"
 MARCADOR_MILLONES = "millones de pesos"
+MARCADOR_MILES = "miles de pesos"  # verificado real: PEI (patrimonio autónomo
+# inmobiliario) reporta en miles, no millones -- "milesdepesos" no es substring de
+# "milesdemillonesdepesos" ni de "millonesdepesos", así que no colisiona con los otros dos.
 
 
 def _detectar_factor_unidad(texto_pagina: str) -> tuple[float, str] | None:
@@ -125,6 +128,8 @@ def _detectar_factor_unidad(texto_pagina: str) -> tuple[float, str] | None:
         return 1.0, "miles_de_millones"
     if normalizar(MARCADOR_MILLONES) in t:
         return 0.001, "miles_de_millones"
+    if normalizar(MARCADOR_MILES) in t:
+        return 0.000001, "miles_de_millones"
     return None
 
 

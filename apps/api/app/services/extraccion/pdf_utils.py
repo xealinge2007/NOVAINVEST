@@ -151,6 +151,10 @@ def separar_etiqueta_y_valores_linea(linea: str) -> tuple[str, list[float]]:
     if not m:
         return linea.strip(), []
     etiqueta = linea[: m.start()].strip()
+    # signo de moneda pegado al final de la etiqueta -- verificado real, PEI:
+    # "Total activos $ 7,605,743,284 $ 6,929,937,332" deja la etiqueta como
+    # "Total activos $", que nunca iguala "total activos" en el match exacto.
+    etiqueta = etiqueta.rstrip("$").strip()
     # nota(s) al pie pegada(s) al final de la etiqueta -- una sola ("...neto 28")
     # o varias separadas por guion ("...amortización 13-14-15-16").
     etiqueta = re.sub(r"\s+[\d]{1,3}(-\d{1,3})*$", "", etiqueta)

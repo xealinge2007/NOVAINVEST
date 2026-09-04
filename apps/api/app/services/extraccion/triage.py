@@ -43,6 +43,14 @@ rondas de corrección, ambas confirmadas con `pdfplumber` sobre el PDF real):
    página cita 6 números con separador de miles; la tabla real, 30. El
    umbral `MINIMO_NUMEROS_TABLA` (antes 5, insuficiente) subió a 20,
    calibrado contra ambos números reales, no adivinado.
+4. `GEB/2023-ANUAL_EEFF-Consolidados.pdf` (F4a, corrida sobre el resto del
+   histórico) reveló que "consolidados" no siempre va DESPUÉS de la frase
+   -- GEB titula "Estados **consolidados** de situación financiera" (el
+   calificativo en medio), no "Estados de situación financiera
+   consolidados" como Ecopetrol. Ninguna de las dos frases es substring de
+   la otra, así que hacía falta la variante explícita, no solo el patrón
+   suelto -- se agregó "estados consolidados de X" además de "estados de X
+   consolidados" (implícito, ya que el patrón suelto no exige el sufijo).
 """
 
 import pdfplumber
@@ -58,14 +66,22 @@ from .pdf_utils import PATRON_NUMERO_FINANCIERO, normalizar
 # páginas índice -- ver docstring del módulo.
 ANCLAS_ESTADOS: dict[str, list[str]] = {
     "situacion_financiera": [
-        "estados de situacion financiera", "estado de situacion financiera", "balance general",
+        "estados de situacion financiera", "estado de situacion financiera",
+        "estados consolidados de situacion financiera", "estado consolidado de situacion financiera",
+        "balance general",
     ],
     "resultados": [
         "estados de resultados", "estado de resultados",
+        "estados consolidados de resultados", "estado consolidado de resultados",
         "estados de resultado integral", "estado de resultado integral",
+        "estados consolidados de resultado integral", "estado consolidado de resultado integral",
         "estados de ganancias y perdidas", "estado de ganancias y perdidas",
+        "estados consolidados de ganancias y perdidas", "estado consolidado de ganancias y perdidas",
     ],
-    "flujos_efectivo": ["estados de flujos de efectivo", "estado de flujos de efectivo"],
+    "flujos_efectivo": [
+        "estados de flujos de efectivo", "estado de flujos de efectivo",
+        "estados consolidados de flujos de efectivo", "estado consolidado de flujos de efectivo",
+    ],
     "cambios_patrimonio": ["estados de cambios en el patrimonio", "estado de cambios en el patrimonio"],
 }
 
