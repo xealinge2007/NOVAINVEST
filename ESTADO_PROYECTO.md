@@ -552,12 +552,8 @@ sesión anterior validó a mano:** usando el rango del triage, se leyeron las p�
   del histórico de Ecopetrol (y del universo) antes de asumir que el hueco declarado de
   2023-T1/T2/T3 sigue vigente.
 
-**Todavía no actualizado en Supabase**: los 4 registros siguen con
-`metodo_validacion='provisional'` — falta decidir la unidad canónica de
-`fundamentales_reportados` (miles de millones, ya que es la nativa de 2026-T1 y la que usaba
-el parser viejo) y escribir el flujo real que compara los dos canales y marca
-`doble_extraccion` cuando coinciden, en vez de dejarlo como verificación manual de esta
-sesión.
+**Actualizado en Supabase (ver sección "Unidad canónica" más abajo, mismo día)**: los 4
+registros ya quedaron en `metodo_validacion='doble_extraccion'` con la unidad unificada.
 
 **Paso 4 — CIBEST y SURA sin plantilla, hecho y verificado:** ambos procesados por la
 misma vía (triage + lectura del subagente), sin escribir código específico por emisor.
@@ -581,9 +577,47 @@ misma vía (triage + lectura del subagente), sin escribir código específico po
 **La inversión queda demostrada** (criterio del plan para el paso 4): el universo de
 20-30 emisores deja de ser un problema de mantenimiento de plantillas.
 
-**No escrito en Supabase todavía** (mismo pendiente que Ecopetrol): falta decidir la
-unidad canónica y el flujo real de comparación de canales antes de insertar estas cifras
-en `fundamentales_reportados`.
+**No escrito en Supabase todavía para CIBEST/SURA** (a propósito, no es un olvido): el
+paso 4 fue prueba de concepto, no extracción completa — para CIBEST solo se leyó a fondo
+el balance (activos/pasivos/patrimonio), y "utilidad neta" salió de una mención en prosa,
+no de la tabla misma; además "ingresos" no es un concepto directamente comparable para un
+banco (interés + comisiones netas, no una línea única) sin decidir antes cómo mapearlo al
+esquema genérico. Escribir eso a medias contaminaría la base — queda pendiente una pasada
+completa, no una corrección de unidad como Ecopetrol.
 
-**Siguiente paso concreto**: paso 5 del orden — agregar `fuente_origen` y `url_descarga`
-a `reportes_archivo` (§5.1.4).
+**Paso 5 (procedencia) aplicado y verificado**: Alex aplicó
+`db/migrate_f4a2_procedencia_archivos.sql` en Supabase (confirmado leyendo la columna real:
+`fuente_origen='simev'` en filas existentes). Corrida real de `ingesta_simev.py` sobre los
+20 emisores tras aplicarla: 2 archivos nuevos, 393 sin cambios, **17 detectados con
+contenido reemplazado bajo el mismo nombre** (el chequeo de hash nuevo, ver abajo) —
+verificado que ninguno de los 4 periodos de Ecopetrol ya validados estaba entre los 17.
+
+**Hallazgo + arreglo importante (mismo hilo que el hallazgo de 2024-T2): `ingesta_simev.py`
+ahora detecta un PDF reemplazado bajo el mismo nombre.** Antes solo comparaba
+emisor+nombre_archivo para decidir "ya existe" — un reemplazo real (como pasó 17 veces en
+la corrida real) quedaba invisible y una validación vieja se hubiera quedado contaminando
+la serie para siempre. Ahora compara también `hash_sha256`: si difiere, actualiza la fila
+(nuevo hash, `estado` vuelve a `encolado`/`irrecuperable`) y la reencola en `ingesta_cola`
+vía upsert (la tabla tiene `unique(reporte_archivo_id)`). Verificado end-to-end con un
+emisor de prueba creado y borrado en la misma verificación. Imprime cada archivo
+reemplazado por nombre, con aviso aparte si el estado previo era `procesado`.
+
+**Unidad canónica decidida por Alex: miles de millones de COP.** Los 4 registros de
+Ecopetrol tenían un bug latente no detectado antes — 2022/2023-ANUAL estaban en millones
+(sin convertir) mientras 2025/2026-T1 estaban en miles de millones (nativo de la
+infografía Tabla 1), mezclados en la misma columna sin que `unidad` lo reflejara. **Ya
+corregido**: 2022/2023-ANUAL convertidos (÷1000), los 4 registros con `unidad =
+'miles_de_millones'` y `metodo_validacion` subido a `'doble_extraccion'` (la comparación
+del paso 3 ya demostró la coincidencia de canales) — verificado que activos = pasivos +
+patrimonio se sigue cumpliendo en los 4 tras la conversión. `2026-T1.utilidad_operacional`
+quedó en 8.564 (recuperado, antes `None`). El EBITDA de 2025-T1/2026-T1 se dejó como
+estaba (13.258 / 13.458, de la conciliación propia de Ecopetrol en la Tabla 4 del reporte)
+en vez de sobreescribirlo con mi derivación cruda (12.270 / 12.275) — la conciliación de
+la compañía es una fuente mejor que `resultado_operacion + depreciación` a secas.
+
+**Siguiente paso concreto**: construir el job real de extracción automática (triage +
+lectura genérica por etiqueta, sin plantilla por emisor) para el resto del histórico —
+`buscar_valor_en_texto`/`separar_etiqueta_y_valores_linea` de `pdf_utils.py` ya son
+genéricos, falta decidir el diccionario de sinónimos por concepto (cuidado con bancos:
+"ingresos" no es un concepto directamente trasladable) y el chequeo de plausibilidad antes
+de escribir sin supervisión.
