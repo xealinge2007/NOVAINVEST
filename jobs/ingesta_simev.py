@@ -187,6 +187,7 @@ def main():
 
     cache_emisores: dict[str, int] = {}
     nuevos, ya_existian, cambiados, protegidos, sin_patron, errores = 0, 0, 0, 0, [], []
+    lista_cambiados: list[tuple[str, str, str]] = []  # (slug, nombre_archivo, estado_previo)
 
     for carpeta_emisor in carpetas_emisor:
         slug = carpeta_emisor.name
@@ -250,6 +251,7 @@ def main():
                             on_conflict="reporte_archivo_id",
                         ).execute()
                     cambiados += 1
+                    lista_cambiados.append((slug, pdf.name, fila_existente["estado"]))
                 except Exception as e:
                     errores.append((str(pdf.relative_to(args.carpeta)), str(e)))
                 continue
@@ -288,7 +290,10 @@ def main():
     print(f"\nNuevos encolados: {nuevos}")
     print(f"Ya existían (omitidos, no se tocó su estado): {ya_existian}")
     if cambiados:
-        print(f"Contenido reemplazado bajo el mismo nombre (re-encolados para reprocesar): {cambiados}")
+        print(f"\nContenido reemplazado bajo el mismo nombre (re-encolados para reprocesar): {cambiados}")
+        for slug, nombre, estado_previo in lista_cambiados:
+            aviso = "  <- OJO: tenía datos ya validados" if estado_previo == "procesado" else ""
+            print(f"  - {slug}/{nombre} (estaba en '{estado_previo}'){aviso}")
     if protegidos:
         print(f"Protegidos (IRM/Rights Management, marcados 'irrecuperable', no encolados): {protegidos}")
     if sin_patron:
