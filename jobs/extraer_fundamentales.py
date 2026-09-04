@@ -17,33 +17,56 @@ Uso: python jobs/extraer_fundamentales.py [--emisor SLUG] [--limite N]
 """
 
 import argparse
+import multiprocessing as mp
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturoTimeoutError
 from pathlib import Path
+
+
+class TimeoutExtraccion(Exception):
+    pass
+
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
 from app.services.extraccion import extractor_generico, plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
 
-TIMEOUT_SEGUNDOS = 120  # un solo PDF no debe poder bloquear el lote entero (verificado
-# real: un archivo dejó el proceso 20+ min sin avanzar, quemando CPU sin terminar --
-# signal.alarm no sirve en Windows, así que el límite corre en un hilo aparte.
+TIMEOUT_SEGUNDOS = 120  # un solo PDF no debe poder bloquear el lote entero.
+
+# Verificado real, dos rondas: un primer intento con ThreadPoolExecutor.result(timeout=...)
+# evitaba el bloqueo del proceso principal, pero el hilo colgado NO se puede matar en
+# Python (no hay señal portable para eso) -- quedaba corriendo de fondo para siempre,
+# compitiendo por CPU/GIL con cada archivo siguiente. El síntoma real en la corrida:
+# los timeouts se fueron alargando solos, 122s -> 132s -> 209s -> 246s -> 281s, cada
+# hilo zombi nuevo hacía más lento a todos los que venían después. Un PROCESO sí se
+# puede matar de verdad (terminate()), liberando la CPU al expirar el límite -- por
+# eso corre en un proceso aparte, no en un hilo.
+
+
+def _ejecutar_en_proceso(func, args, cola):
+    try:
+        cola.put(("ok", func(*args)))
+    except Exception as e:
+        cola.put(("error", f"{type(e).__name__}: {e}"))
 
 
 def _con_limite_de_tiempo(func, *args):
-    """Corre func(*args) con timeout. Lanza TimeoutError si se pasa -- el hilo colgado
-    queda huérfano (no hay forma portable de matarlo en Windows), pero el proceso
-    principal sigue con el siguiente reporte en vez de quedar bloqueado para siempre.
-    OJO: sin context manager a propósito -- `with ThreadPoolExecutor()` espera a que
-    el hilo termine al salir (shutdown(wait=True)), lo que anularía el timeout."""
-    ejecutor = ThreadPoolExecutor(max_workers=1)
-    futuro = ejecutor.submit(func, *args)
-    try:
-        return futuro.result(timeout=TIMEOUT_SEGUNDOS)
-    finally:
-        ejecutor.shutdown(wait=False)
+    """Corre func(*args) en un proceso aparte con timeout real. Si se pasa, mata el
+    proceso (terminate + join) para no dejar nada compitiendo por CPU de fondo, y
+    lanza TimeoutExtraccion."""
+    cola = mp.Queue()
+    proceso = mp.Process(target=_ejecutar_en_proceso, args=(func, args, cola))
+    proceso.start()
+    proceso.join(timeout=TIMEOUT_SEGUNDOS)
+    if proceso.is_alive():
+        proceso.terminate()
+        proceso.join()
+        raise TimeoutExtraccion(f"timeout tras {TIMEOUT_SEGUNDOS}s")
+    tipo, valor = cola.get()
+    if tipo == "error":
+        raise RuntimeError(valor)
+    return valor
 
 # Un emisor puede tener más de una plantilla, cada una atada a un
 # `tipo_documento` (§5.1: precedencia -- estados financieros e informe
@@ -175,7 +198,7 @@ def main():
         if plantilla is not None:
             try:
                 extraido = _con_limite_de_tiempo(plantilla["modulo"].extraer, Path(r["ruta_local"]))
-            except FuturoTimeoutError:
+            except TimeoutExtraccion:
                 cliente.table("reportes_archivo").update(
                     {"estado": "error", "error_detalle": f"timeout ({TIMEOUT_SEGUNDOS}s) -- PDF anormalmente lento o pesado"}
                 ).eq("id", r["id"]).execute()
@@ -220,7 +243,7 @@ def main():
                 extractor_generico.extraer,
                 Path(r["ruta_local"]), id_a_sector.get(r["emisor_id"], "sin_clasificar"), r["anio"], r["periodo"],
             )
-        except FuturoTimeoutError:
+        except TimeoutExtraccion:
             cliente.table("reportes_archivo").update(
                 {"estado": "error", "error_detalle": f"timeout ({TIMEOUT_SEGUNDOS}s) -- PDF anormalmente lento o pesado"}
             ).eq("id", r["id"]).execute()
