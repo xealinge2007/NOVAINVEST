@@ -1,14 +1,17 @@
-"""Corre las plantillas de extracción disponibles sobre lo que
-`ingesta_simev.py` dejó en `reportes_archivo` (§5.1, F4a). Todavía es SOLO
-el parser — no hay doble extracción con el subagente `analista-fundamental`
-todavía, así que todo lo que logra extraer entra a `fundamentales_reportados`
-con `metodo_validacion = 'provisional'` (§5.1.2: "el dato queda provisional
-hasta que el admin o un segundo usuario lo confirme").
+"""Corre las plantillas de extracción disponibles, y donde no haya
+plantilla, el extractor genérico (triage + etiqueta, sin plantilla por
+emisor -- §5.1.3, F4a paso 6), sobre lo que `ingesta_simev.py` dejó en
+`reportes_archivo`. Todavía es SOLO el parser — no hay doble extracción con
+el subagente `analista-fundamental` todavía, así que todo lo que logra
+extraer entra a `fundamentales_reportados` con `metodo_validacion =
+'provisional'` (§5.1.2: "el dato queda provisional hasta que el admin o un
+segundo usuario lo confirme").
 
-Un emisor sin plantilla registrada, o un reporte donde la plantilla no
-encuentra ninguna de sus tablas ancla (formato distinto — ver
-PLANTILLAS_DISPONIBLES), se marca `requiere_revision` en `reportes_archivo`
-con el motivo — nunca se descarta en silencio ni se rellena con nada.
+Un reporte donde ni la plantilla ni el extractor genérico encuentran
+ninguna tabla ancla (formato distinto o informe narrativo sin cifras), o
+donde el balance no cuadra (activos ≠ pasivos + patrimonio ±1%), se marca
+`requiere_revision` en `reportes_archivo` con el motivo — nunca se descarta
+en silencio ni se rellena con nada.
 
 Uso: python jobs/extraer_fundamentales.py [--emisor SLUG] [--limite N]
 """
@@ -20,7 +23,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
-from app.services.extraccion import plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
+from app.services.extraccion import extractor_generico, plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
 
 # Un emisor puede tener más de una plantilla, cada una atada a un
 # `tipo_documento` (§5.1: precedencia -- estados financieros e informe
@@ -65,6 +68,27 @@ def _plantilla_para(slug_emisor: str, tipo_documento: str, anio: int):
     return None
 
 
+def _activos_fuera_de_rango(cliente, emisor_id: int, activos_nuevo: float) -> bool:
+    """True si `activos_nuevo` difiere más de 3x (o menos de 1/3) del promedio
+    de lo ya guardado para este emisor. Verificado real: CIBEST 2025-ANUAL
+    "cuadraba" perfecto (activos=pasivos+patrimonio) con 42.187 miles de
+    millones -- una tabla internamente consistente pero equivocada (probable
+    subsidiaria o segmento, no el consolidado, cuyo activos real ronda
+    375.000-390.000 en los trimestres ya verificados). El chequeo contable
+    NO atrapa esto porque una tabla equivocada puede cuadrar perfecto sola;
+    hace falta comparar contra el propio historial del emisor. Sin historial
+    todavía, no hay con qué comparar -- no se objeta."""
+    existentes = cliente.table("fundamentales_reportados").select("activos_totales").eq("emisor_id", emisor_id).execute().data
+    valores = [e["activos_totales"] for e in existentes if e["activos_totales"] is not None]
+    if not valores or activos_nuevo <= 0:
+        return False
+    promedio = sum(valores) / len(valores)
+    if promedio <= 0:
+        return False
+    razon = activos_nuevo / promedio
+    return not (1 / 3 <= razon <= 3)
+
+
 def _es_separado(tipo_documento_crudo: str) -> bool:
     """§5.1 + instrucción explícita de Alex (03-sep-2026): el análisis usa
     SOLO resultados consolidados -- un 'EEFF-Separados'/'Estados-Financieros-
@@ -83,11 +107,15 @@ def main():
 
     cliente = cliente_servicio()
 
-    emisores_resp = cliente.table("emisores").select("id,slug").execute()
+    emisores_resp = cliente.table("emisores").select("id,slug,sector").execute()
     emisores = {e["slug"]: e["id"] for e in emisores_resp.data}
     id_a_slug = {v: k for k, v in emisores.items()}
+    id_a_sector = {e["id"]: e["sector"] for e in emisores_resp.data}
 
-    slugs_cubiertos = list(PLANTILLAS_DISPONIBLES.keys()) if args.emisor is None else [args.emisor]
+    # El extractor genérico no necesita plantilla -- cubre TODOS los emisores,
+    # no solo los de PLANTILLAS_DISPONIBLES (esa lista sigue existiendo por si
+    # una plantilla específica supera al genérico para un emisor puntual).
+    slugs_cubiertos = list(emisores.keys()) if args.emisor is None else [args.emisor]
     ids_cubiertos = [emisores[s] for s in slugs_cubiertos if s in emisores]
 
     query = (
@@ -117,37 +145,99 @@ def main():
             continue
 
         plantilla = _plantilla_para(slug, r["tipo_documento"], r["anio"])
-        if plantilla is None:
-            cliente.table("reportes_archivo").update(
-                {"estado": "requiere_revision", "error_detalle": f"sin plantilla vigente para {slug} / {r['tipo_documento']} / {r['anio']}"}
-            ).eq("id", r["id"]).execute()
-            resumen.append((slug, r["anio"], r["periodo"], "SIN_PLANTILLA"))
+        if plantilla is not None:
+            try:
+                extraido = plantilla["modulo"].extraer(Path(r["ruta_local"]))
+            except Exception as e:
+                cliente.table("reportes_archivo").update(
+                    {"estado": "error", "error_detalle": f"{type(e).__name__}: {e}"}
+                ).eq("id", r["id"]).execute()
+                resumen.append((slug, r["anio"], r["periodo"], f"ERROR: {type(e).__name__}"))
+                continue
+
+            campos_con_valor = {c: extraido[c]["valor"] for c in CAMPOS_NUMERICOS if c in extraido and extraido[c]["valor"] is not None}
+            if not campos_con_valor:
+                cliente.table("reportes_archivo").update(
+                    {"estado": "requiere_revision", "error_detalle": "la plantilla no encontró ninguna tabla ancla en este PDF"}
+                ).eq("id", r["id"]).execute()
+                resumen.append((slug, r["anio"], r["periodo"], "SIN_TABLAS_RECONOCIDAS"))
+                continue
+
+            pagina_ingresos = extraido.get("ingresos", {}).get("pagina")
+            fila = {
+                "emisor_id": r["emisor_id"],
+                "anio": r["anio"],
+                "periodo": r["periodo"],
+                "consolidado": True,
+                "origen": "reportado",
+                **campos_con_valor,
+                "metodo_validacion": "provisional",
+                "reporte_archivo_id": r["id"],
+                "pagina_fuente": pagina_ingresos,
+            }
+            cliente.table("fundamentales_reportados").upsert(fila, on_conflict="emisor_id,anio,periodo,consolidado").execute()
+            cliente.table("reportes_archivo").update({"estado": "procesado"}).eq("id", r["id"]).execute()
+            resumen.append((slug, r["anio"], r["periodo"], f"OK-PLANTILLA ({len(campos_con_valor)}/{len(CAMPOS_NUMERICOS)} campos)"))
             continue
 
+        # Sin plantilla específica -- el extractor genérico (triage + etiqueta,
+        # §5.1.3 paso 6) no necesita una por emisor.
         try:
-            extraido = plantilla["modulo"].extraer(Path(r["ruta_local"]))
+            resultado = extractor_generico.extraer(
+                Path(r["ruta_local"]), id_a_sector.get(r["emisor_id"], "sin_clasificar"), r["anio"], r["periodo"]
+            )
         except Exception as e:
             cliente.table("reportes_archivo").update(
                 {"estado": "error", "error_detalle": f"{type(e).__name__}: {e}"}
             ).eq("id", r["id"]).execute()
-            resumen.append((slug, r["anio"], r["periodo"], f"ERROR: {type(e).__name__}"))
+            resumen.append((slug, r["anio"], r["periodo"], f"ERROR-GENERICO: {type(e).__name__}"))
             continue
 
-        campos_con_valor = {c: extraido[c]["valor"] for c in CAMPOS_NUMERICOS if c in extraido and extraido[c]["valor"] is not None}
+        campos_generico = resultado["campos"]
+        campos_con_valor = {c: campos_generico[c]["valor"] for c in CAMPOS_NUMERICOS if c in campos_generico and campos_generico[c]["valor"] is not None}
+
         if not campos_con_valor:
             cliente.table("reportes_archivo").update(
-                {"estado": "requiere_revision", "error_detalle": "la plantilla no encontró ninguna tabla ancla en este PDF"}
+                {"estado": "requiere_revision", "error_detalle": "el extractor genérico no encontró ninguna tabla ancla en este PDF"}
             ).eq("id", r["id"]).execute()
             resumen.append((slug, r["anio"], r["periodo"], "SIN_TABLAS_RECONOCIDAS"))
             continue
 
-        pagina_ingresos = extraido.get("ingresos", {}).get("pagina")
+        if resultado["cuadra_balance"] is False:
+            cliente.table("reportes_archivo").update(
+                {"estado": "requiere_revision", "error_detalle": "el extractor genérico encontró activos/pasivos/patrimonio pero el balance no cuadra (±1%)"}
+            ).eq("id", r["id"]).execute()
+            resumen.append((slug, r["anio"], r["periodo"], "BALANCE_NO_CUADRA"))
+            continue
+
+        # Un solo campo sin el balance confirmado no basta para publicar -- verificado
+        # real: CIBEST 2023-ANUAL (informe de gestión de 300+ páginas, muchas tablas
+        # anexas que reusan títulos parecidos) escribió únicamente flujo_caja_operativo
+        # de una página que resultó ser la equivocada, sin nada que lo corrobore.
+        # activos_totales presente = el balance al menos se ubicó (aunque no cuadre
+        # verificablemente); sin eso, exigir 2+ campos como corroboración mínima.
+        if "activos_totales" not in campos_con_valor and len(campos_con_valor) < 2:
+            cliente.table("reportes_archivo").update(
+                {"estado": "requiere_revision", "error_detalle": f"solo 1 campo sin balance confirmado ({list(campos_con_valor)[0]}) -- insuficiente para publicar sin corroboración"}
+            ).eq("id", r["id"]).execute()
+            resumen.append((slug, r["anio"], r["periodo"], "CORROBORACION_INSUFICIENTE"))
+            continue
+
+        if "activos_totales" in campos_con_valor and _activos_fuera_de_rango(cliente, r["emisor_id"], campos_con_valor["activos_totales"]):
+            cliente.table("reportes_archivo").update(
+                {"estado": "requiere_revision", "error_detalle": f"activos_totales={campos_con_valor['activos_totales']} se sale de rango (>3x o <1/3) del historial del emisor -- probable tabla equivocada aunque el balance cuadre"}
+            ).eq("id", r["id"]).execute()
+            resumen.append((slug, r["anio"], r["periodo"], "FUERA_DE_RANGO"))
+            continue
+
+        pagina_ingresos = campos_generico.get("ingresos", {}).get("pagina") or campos_generico.get("activos_totales", {}).get("pagina")
         fila = {
             "emisor_id": r["emisor_id"],
             "anio": r["anio"],
             "periodo": r["periodo"],
             "consolidado": True,
             "origen": "reportado",
+            "unidad": resultado["unidad"] or "millones",
             **campos_con_valor,
             "metodo_validacion": "provisional",
             "reporte_archivo_id": r["id"],
@@ -155,7 +245,8 @@ def main():
         }
         cliente.table("fundamentales_reportados").upsert(fila, on_conflict="emisor_id,anio,periodo,consolidado").execute()
         cliente.table("reportes_archivo").update({"estado": "procesado"}).eq("id", r["id"]).execute()
-        resumen.append((slug, r["anio"], r["periodo"], f"OK ({len(campos_con_valor)}/{len(CAMPOS_NUMERICOS)} campos)"))
+        cuadra = "cuadra" if resultado["cuadra_balance"] else "sin verificar"
+        resumen.append((slug, r["anio"], r["periodo"], f"OK-GENERICO ({len(campos_con_valor)}/{len(CAMPOS_NUMERICOS)} campos, balance {cuadra})"))
 
     print(f"\n{'emisor':<28}{'periodo':<10}resultado")
     for slug, anio, periodo, estado in resumen:

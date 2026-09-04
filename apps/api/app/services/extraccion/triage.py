@@ -34,6 +34,15 @@ rondas de corrección, ambas confirmadas con `pdfplumber` sobre el PDF real):
    inicio sea un índice ("Contenido"/"Índice") ANTES de intentar cualquier
    ancla -- así no hace falta una frase exacta distinta por cada variante
    (anual vs. trimestral, consolidado vs. intermedio condensado).
+3. `GRUPO_CIBEST_BANCOLOMBIA/2025-T2_Informe-Periodico-Trimestral.pdf` (F4a
+   paso 4) reveló un tercer caso: una página de "Comentarios y análisis de
+   la administración" discute el balance en prosa usando el mismo título
+   exacto ("el estado de situación financiera...") y cae dentro de la
+   posición permitida -- ni es índice ni le falta la frase. La única
+   diferencia real con la tabla de verdad es la densidad de cifras: esa
+   página cita 6 números con separador de miles; la tabla real, 30. El
+   umbral `MINIMO_NUMEROS_TABLA` (antes 5, insuficiente) subió a 20,
+   calibrado contra ambos números reales, no adivinado.
 """
 
 import pdfplumber
@@ -78,7 +87,10 @@ MARCADOR_INDICE = ["contenido", "indice", "tabla de contenido"]
 
 POSICION_MAXIMA_ANCLA = 150  # caracteres normalizados desde el inicio de la página
 POSICION_MAXIMA_INDICE = 100  # el "Contenido"/"Índice" es lo primero tras el membrete, más cerca aún
-MINIMO_NUMEROS_TABLA = 5  # una mención de pasada no junta 5 cifras con separador de miles en una página
+MINIMO_NUMEROS_TABLA = 20  # calibrado contra CIBEST 2025-T2: la página de prosa que discute el
+# balance en el análisis de la administración cita 6 cifras de pasada; la tabla real de ese
+# mismo documento trae 30-105. 20 separa limpio ambos casos reales sin exigir tanto que rechace
+# una tabla real más chica.
 MARGEN_PAGINAS_DESPUES = 2  # una tabla puede seguir a la vuelta de la página
 MINIMO_PAGINAS_BLOQUE_ESCANEADO = 3  # una portada/firma escaneada aislada no son los estados financieros
 
@@ -155,9 +167,17 @@ def triage_documento(ruta_pdf) -> dict:
                 if es_indice[i]:
                     continue
                 pos = _primera_posicion(textos_normalizados[i], patrones)
-                if pos is not None and pos <= POSICION_MAXIMA_ANCLA and _tiene_tabla_real(textos_crudos[i]):
-                    anclas_encontradas[categoria] = i
-                    break
+                if pos is None or pos > POSICION_MAXIMA_ANCLA or not _tiene_tabla_real(textos_crudos[i]):
+                    continue
+                # Verificado real: CIBEST 2023-ANUAL (Informe-de-Gestión, 300+ páginas)
+                # trae un anexo "Estado de situación financiera PROMEDIO e ingresos por
+                # intereses..." -- misma frase inicial que el estado real, tabla
+                # distinta (promedios para análisis de tasa, no el balance). "Promedio"
+                # nunca aparece así de cerca del título de un estado financiero real.
+                if "promedio" in textos_normalizados[i][pos : pos + 60]:
+                    continue
+                anclas_encontradas[categoria] = i
+                break
 
         pagina_resumen_ejecutivo = None
         for i in range(limite_busqueda):
