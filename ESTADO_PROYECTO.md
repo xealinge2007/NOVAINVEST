@@ -621,3 +621,60 @@ lectura genérica por etiqueta, sin plantilla por emisor) para el resto del hist
 genéricos, falta decidir el diccionario de sinónimos por concepto (cuidado con bancos:
 "ingresos" no es un concepto directamente trasladable) y el chequeo de plausibilidad antes
 de escribir sin supervisión.
+
+## F4a paso 6 — extractor genérico construido, corrido dos veces sobre todo el histórico (04-sep-2026)
+
+`apps/api/app/services/extraccion/extractor_generico.py` construido y conectado como
+respaldo en `jobs/extraer_fundamentales.py` cuando no hay plantilla específica (cubre los
+20 emisores, no solo Ecopetrol). Dos redes de seguridad nuevas nacidas de casos reales:
+**CORROBORACION_INSUFICIENTE** (un solo campo sin el balance confirmado no basta —
+CIBEST 2023-ANUAL había escrito solo `flujo_caja_operativo` de una página equivocada) y
+**FUERA_DE_RANGO** (`activos_totales` que se sale de 3x/(1/3) del promedio ya guardado del
+mismo emisor no se publica — CIBEST 2025-ANUAL "cuadraba" perfecto con una cifra ~9x menor
+que sus propios trimestres, probable tabla de una subsidiaria en vez del consolidado: **una
+tabla equivocada puede cuadrar sola sin ser la correcta**, el chequeo contable no basta).
+
+**Timeout con proceso real, no hilo.** Un PDF dejó el proceso 20+ minutos sin avanzar,
+quemando CPU sin terminar. Un primer arreglo con `ThreadPoolExecutor.result(timeout=...)`
+evitaba el bloqueo del proceso principal, pero el hilo colgado sigue vivo para siempre
+(Python no tiene forma portable de matar un hilo) — verificado real que los timeouts se
+alargaban solos (122s→132s→209s→246s→281s), cada zombi nuevo competía por CPU/GIL con
+todo lo siguiente. Corregido con `multiprocessing.Process` + `.terminate()`, que sí libera
+la CPU de verdad — verificado con `Get-Process` (cero huérfanos tras varios timeouts).
+También se agregó registro en vivo por archivo (antes solo imprimía al final del lote
+completo, sin visibilidad de si seguía vivo o atascado).
+
+**Dos corridas completas sobre el histórico** (~580 archivos en total entre ambas):
+primera pasada 21 filas nuevas en 4 emisores; tras investigar 3 de los emisores en cero
+(PEI, GEB, ISA) se encontraron y corrigieron 3 bugs reales más (símbolo de moneda pegado a
+la etiqueta, unidad "miles de pesos" no cubierta, orden de palabras
+"estado(s)"/"consolidado(s)" con demasiadas combinaciones para enumerar como frase exacta
+— se simplificó al núcleo distintivo solo). Segunda pasada: 11 filas más en 5 emisores
+nuevos. **Total acumulado: 32 filas en 9 emisores** (Ecopetrol 10, Cibest 5, Sura 5, PEI 4,
+Banco de Bogotá 2, ETB 2, Grupo Aval 2, BVC 1, Corficolombiana 1).
+
+**Un intento de reforzar el match de título (exigir "consolidad" cerca del núcleo, para
+distinguir un encabezado real de una mención suelta) se probó y se revirtió**: rompió a
+PEI (un patrimonio autónomo, sin subsidiarias, nunca dice "consolidado") sin ayudar a los
+casos que se querían arreglar. La posición (≤150 caracteres) y la densidad de cifras ya
+hacían ese trabajo; una tercera capa no sumaba precisión.
+
+**Dos limitaciones conocidas, documentadas, no resueltas — no son bugs de frase:**
+- **GEB y PROMIGAS usan punto como separador de miles** ("2.289.704"), que el patrón de
+  número (exige coma) no cuenta — nunca pasan el umbral de densidad aunque el título se
+  encuentre perfecto. GEB además tiene el balance en 2 columnas lado a lado (activo | pasivo
+  en la misma línea de texto), un layout que el extractor por línea no separa.
+- **GRUPO_NUTRESA tiene una corrupción de renderizado más severa**: su texto llega con un
+  espacio insertado entre cada letra ("E fe c tiv o y e q u iv a le n te s..."), que ningún
+  match de texto normal puede leer sin un preprocesamiento dedicado para reconstruir las
+  palabras primero.
+- **ISA no es un bug**: verificado que ni su reporte anual ni sus trimestrales traen
+  cifras embebidas en ningún lado (confirmado leyendo el documento completo), y no tiene
+  ningún archivo `estados_financieros` descargado — es un hueco real declarado, como los
+  trimestres faltantes de Ecopetrol.
+
+**Siguiente paso concreto**: valorar si vale la pena construir soporte para separador de
+miles con punto (beneficiaría a GEB, PROMIGAS y probablemente otros) y/o un preprocesador
+de texto para la corrupción letra-por-letra de Nutresa, antes de seguir corriendo el lote
+contra el resto del histórico. Quedan **12 archivos en `error` (timeout)** para
+reintentar aparte.
