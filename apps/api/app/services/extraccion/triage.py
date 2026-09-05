@@ -47,42 +47,49 @@ rondas de corrección, ambas confirmadas con `pdfplumber` sobre el PDF real):
    histórico) reveló que "consolidados" no siempre va DESPUÉS de la frase
    -- GEB titula "Estados **consolidados** de situación financiera" (el
    calificativo en medio), no "Estados de situación financiera
-   consolidados" como Ecopetrol. Ninguna de las dos frases es substring de
-   la otra, así que hacía falta la variante explícita, no solo el patrón
-   suelto -- se agregó "estados consolidados de X" además de "estados de X
-   consolidados" (implícito, ya que el patrón suelto no exige el sufijo).
+   consolidados" como Ecopetrol.
+5. `PROMIGAS/2020-ANUAL_Estados-Financieros-Consolidados.pdf` (misma
+   corrida) reveló una TERCERA variante: "Estados **consolidado** de
+   situación financiera" -- plural "estados" con singular "consolidado",
+   mezclados. Enumerar cada combinación de género/posición como frase
+   exacta es una carrera perdida -- el núcleo se redujo a la frase
+   distintiva SIN "estado(s)" ni "consolidado(s)" (ej. solo "situacion
+   financiera"), cubriendo cualquier concordancia de una vez.
+   **Se probó además exigir "consolidad" cerca del núcleo** (para acercarse
+   más a un encabezado real y no a una mención suelta) y rompió un caso
+   real: `PEI` es un patrimonio autónomo (un fondo, no un grupo con
+   subsidiarias) y su título nunca dice "consolidado" -- ni falta le hace,
+   ya tenía plantilla comprobada sin ese requisito. La posición (≤150) y
+   la densidad de cifras (`MINIMO_NUMEROS_TABLA`) ya hacen ese trabajo;
+   exigir "consolidado" era una tercera capa que no sumaba precisión y sí
+   restaba cobertura. GEB/PROMIGAS/NUTRESA seguían sin coincidir incluso
+   SIN esa exigencia -- su causa real es otra, ver el punto 6.
+6. `GEB/2023-ANUAL_EEFF-Consolidados.pdf` tiene una causa más profunda,
+   no de frase: usa PUNTO como separador de miles ("2.289.704"), que
+   `PATRON_NUMERO_FINANCIERO` (exige coma) no cuenta -- la página nunca
+   pasa `MINIMO_NUMEROS_TABLA`, así encuentre el título perfecto. Además
+   su balance viene en 2 columnas lado a lado (activo | pasivo en la
+   misma línea de texto), un layout que el extractor por línea no separa
+   correctamente. Limitación conocida, documentada, no resuelta -- no se
+   fuerza ni se adivina un formato de número distinto solo para este caso.
 """
 
 import pdfplumber
 
 from .pdf_utils import PATRON_NUMERO_FINANCIERO, normalizar
 
-# Frase núcleo de cada estado -- singular y plural (Ecopetrol titula sus
-# tablas en plural, "Estados de..."; otros emisores pueden usar singular),
-# deliberadamente SIN el sufijo "consolidados" ni el calificativo
-# "intermedios condensados" (trimestral) para que un mismo patrón cubra
-# ambas variantes. Lo que evita las falsas alarmas no es la frase exacta, es
-# la posición (encabezado real vs. mención de pasada) y la exclusión de
-# páginas índice -- ver docstring del módulo.
-ANCLAS_ESTADOS: dict[str, list[str]] = {
-    "situacion_financiera": [
-        "estados de situacion financiera", "estado de situacion financiera",
-        "estados consolidados de situacion financiera", "estado consolidado de situacion financiera",
-        "balance general",
-    ],
-    "resultados": [
-        "estados de resultados", "estado de resultados",
-        "estados consolidados de resultados", "estado consolidado de resultados",
-        "estados de resultado integral", "estado de resultado integral",
-        "estados consolidados de resultado integral", "estado consolidado de resultado integral",
-        "estados de ganancias y perdidas", "estado de ganancias y perdidas",
-        "estados consolidados de ganancias y perdidas", "estado consolidado de ganancias y perdidas",
-    ],
-    "flujos_efectivo": [
-        "estados de flujos de efectivo", "estado de flujos de efectivo",
-        "estados consolidados de flujos de efectivo", "estado consolidado de flujos de efectivo",
-    ],
-    "cambios_patrimonio": ["estados de cambios en el patrimonio", "estado de cambios en el patrimonio"],
+# Núcleo distintivo de cada estado -- SIN "estado(s)" ni "consolidado(s)":
+# la concordancia de género/posición entre esas dos palabras varía por
+# emisor de formas que no vale la pena enumerar como frases exactas (ver
+# puntos 4 y 5 del docstring). La posición (`POSICION_MAXIMA_ANCLA`) y la
+# densidad de cifras (`MINIMO_NUMEROS_TABLA`) son las que evitan las falsas
+# alarmas -- verificado real que exigir además "consolidado" cerca no
+# ganaba precisión y sí rompía emisores sin subsidiarias (PEI).
+NUCLEOS_ESTADOS: dict[str, list[str]] = {
+    "situacion_financiera": ["situacion financiera", "balance general"],
+    "resultados": ["de resultados", "resultado integral", "ganancias y perdidas"],
+    "flujos_efectivo": ["flujos de efectivo"],
+    "cambios_patrimonio": ["cambios en el patrimonio"],
 }
 
 # Formato "resumen ejecutivo" que usan algunos informes periódicos (ej.
@@ -178,11 +185,11 @@ def triage_documento(ruta_pdf) -> dict:
         limite_busqueda = pagina_notas if pagina_notas is not None else total_paginas
 
         anclas_encontradas: dict[str, int] = {}
-        for categoria, patrones in ANCLAS_ESTADOS.items():
+        for categoria, nucleos in NUCLEOS_ESTADOS.items():
             for i in range(limite_busqueda):
                 if es_indice[i]:
                     continue
-                pos = _primera_posicion(textos_normalizados[i], patrones)
+                pos = _primera_posicion(textos_normalizados[i], nucleos)
                 if pos is None or pos > POSICION_MAXIMA_ANCLA or not _tiene_tabla_real(textos_crudos[i]):
                     continue
                 # Verificado real: CIBEST 2023-ANUAL (Informe-de-Gestión, 300+ páginas)
