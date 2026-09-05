@@ -141,13 +141,59 @@ def valor_de_fila(fila: list[str] | None, indice: int = 0) -> float | None:
 
 PATRON_NUMERO_FINANCIERO = re.compile(r"\(?-?\d{1,3}(?:,\d{3})+(?:\.\d+)?\)?")
 
+# Verificado real: GEB y PROMIGAS usan punto como separador de miles
+# ("2.289.704"), no coma -- convención europea/latina, con coma decimal
+# opcional ("2.289.704,50"). El patrón de coma nunca cuenta estos números
+# (no hay ni una coma en "2.289.704"), así que esas páginas nunca pasaban
+# el umbral de densidad de `triage.py` aunque el título se encontrara
+# perfecto. Sin ambigüedad entre los dos patrones: uno exige coma, el otro
+# punto, y ninguno matchea un número sin separador de miles (mínimo 4
+# dígitos), así que no hay doble conteo posible sobre el mismo texto.
+PATRON_NUMERO_FINANCIERO_PUNTO = re.compile(r"\(?-?\d{1,3}(?:\.\d{3})+(?:,\d+)?\)?")
 
-def separar_etiqueta_y_valores_linea(linea: str) -> tuple[str, list[float]]:
+
+def parsear_numero_cop_punto(token: str | None) -> float | None:
+    """Como `parsear_numero_cop`, pero para separador de miles con punto y
+    decimal con coma: '1.105' -> 1105.0; '(1.579)' -> -1579.0;
+    '2.289.704,50' -> 2289704.5."""
+    if token is None:
+        return None
+    t = token.strip()
+    if not t or t in ("-", "–", "—"):
+        return None
+    negativo = t.startswith("(") and t.endswith(")")
+    t = t.strip("()%")
+    t = t.replace(".", "").replace(",", ".")
+    try:
+        valor = float(t)
+    except ValueError:
+        return None
+    return -valor if negativo else valor
+
+
+def detectar_formato_numero(texto: str) -> tuple["re.Pattern[str]", "Callable[[str | None], float | None]"]:
+    """(patrón, parser) según cuál separador de miles predomina en `texto`
+    -- coma (por defecto, EEUU/Ecopetrol/SURA/CIBEST/PEI) o punto (GEB,
+    PROMIGAS). Cuenta ambos patrones y se queda con el que aparece más;
+    con empate o ninguno, coma por defecto (el formato más común en el
+    corpus verificado)."""
+    n_coma = len(PATRON_NUMERO_FINANCIERO.findall(texto))
+    n_punto = len(PATRON_NUMERO_FINANCIERO_PUNTO.findall(texto))
+    if n_punto > n_coma:
+        return PATRON_NUMERO_FINANCIERO_PUNTO, parsear_numero_cop_punto
+    return PATRON_NUMERO_FINANCIERO, parsear_numero_cop
+
+
+def separar_etiqueta_y_valores_linea(
+    linea: str, patron: "re.Pattern[str]" = PATRON_NUMERO_FINANCIERO, parser=parsear_numero_cop
+) -> tuple[str, list[float]]:
     """'Efectivo y equivalentes de efectivo 6 12,336,115 15,401,058' ->
     ('Efectivo y equivalentes de efectivo', [12336115.0, 15401058.0]).
     Exige separador de miles (mínimo 4 dígitos) para no confundir un número
-    de nota al pie (ej. la "6" antes de la primera cifra) con un valor real."""
-    m = PATRON_NUMERO_FINANCIERO.search(linea)
+    de nota al pie (ej. la "6" antes de la primera cifra) con un valor real.
+    `patron`/`parser` -- ver `detectar_formato_numero` -- para el formato
+    con punto como separador de miles en vez de coma."""
+    m = patron.search(linea)
     if not m:
         return linea.strip(), []
     etiqueta = linea[: m.start()].strip()
@@ -158,8 +204,8 @@ def separar_etiqueta_y_valores_linea(linea: str) -> tuple[str, list[float]]:
     # nota(s) al pie pegada(s) al final de la etiqueta -- una sola ("...neto 28")
     # o varias separadas por guion ("...amortización 13-14-15-16").
     etiqueta = re.sub(r"\s+[\d]{1,3}(-\d{1,3})*$", "", etiqueta)
-    numeros_crudos = PATRON_NUMERO_FINANCIERO.findall(linea[m.start():])
-    valores = [v for v in (parsear_numero_cop(n) for n in numeros_crudos) if v is not None]
+    numeros_crudos = patron.findall(linea[m.start():])
+    valores = [v for v in (parser(n) for n in numeros_crudos) if v is not None]
     return etiqueta, valores
 
 

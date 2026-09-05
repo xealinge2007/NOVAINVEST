@@ -62,7 +62,7 @@ from pathlib import Path
 
 import pdfplumber
 
-from .pdf_utils import normalizar, separar_etiqueta_y_valores_linea
+from .pdf_utils import detectar_formato_numero, normalizar, separar_etiqueta_y_valores_linea
 from .triage import triage_documento
 
 PERIODO_A_MES_TRIMESTRE = {"T1": 1, "T2": 2, "T3": 3, "T4": 4}
@@ -185,18 +185,21 @@ def _indice_columna_actual(texto_pagina: str, anio: int, periodo: str) -> int | 
     return None
 
 
-def _valor_en_columna(texto: str, alternativas: list[str], indice_columna: int) -> float | None:
+def _valor_en_columna(texto: str, alternativas: list[str], indice_columna: int, patron, parser) -> float | None:
     """Como `buscar_valor_en_texto` de pdf_utils, pero con la columna ya
-    resuelta por fecha (`_indice_columna_actual`) en vez de un índice fijo."""
+    resuelta por fecha (`_indice_columna_actual`) en vez de un índice fijo.
+    `patron`/`parser` -- de `detectar_formato_numero`, ver docstring del
+    módulo -- para separador de miles con punto (GEB, PROMIGAS) en vez de
+    coma."""
     objetivos = {normalizar(a) for a in alternativas}
     for linea in texto.split("\n"):
-        etiqueta, valores = separar_etiqueta_y_valores_linea(linea)
+        etiqueta, valores = separar_etiqueta_y_valores_linea(linea, patron, parser)
         if normalizar(etiqueta) in objetivos and indice_columna < len(valores):
             return valores[indice_columna]
     return None
 
 
-def _suma_todas_ocurrencias(texto: str, alternativas: list[str], indice_columna: int) -> float | None:
+def _suma_todas_ocurrencias(texto: str, alternativas: list[str], indice_columna: int, patron, parser) -> float | None:
     """A diferencia de `_valor_en_columna` (primera ocurrencia), sirve para
     'préstamos y financiaciones', que aparece dos veces (corriente y no
     corriente) y hay que sumar ambas -- ver plantilla_ecopetrol_eeff_anual.py,
@@ -204,7 +207,7 @@ def _suma_todas_ocurrencias(texto: str, alternativas: list[str], indice_columna:
     objetivo = {normalizar(a) for a in alternativas}
     valores = []
     for linea in texto.split("\n"):
-        etiqueta, nums = separar_etiqueta_y_valores_linea(linea)
+        etiqueta, nums = separar_etiqueta_y_valores_linea(linea, patron, parser)
         if normalizar(etiqueta) in objetivo and indice_columna < len(nums):
             valores.append(nums[indice_columna])
     return sum(valores) if valores else None
@@ -231,13 +234,14 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             texto = pdf.pages[pagina_balance].extract_text() or ""
             indice_col = _indice_columna_actual(texto, anio, periodo)
             deteccion = _detectar_factor_unidad(texto)
+            patron, parser = detectar_formato_numero(texto)
             if deteccion is not None and indice_col is not None:
                 factor_documento, unidad = deteccion
 
-                activos = _valor_en_columna(texto, SINONIMOS_ACTIVOS, indice_col)
-                pasivos = _valor_en_columna(texto, SINONIMOS_PASIVOS, indice_col)
-                patrimonio = _valor_en_columna(texto, SINONIMOS_PATRIMONIO, indice_col)
-                deuda = _suma_todas_ocurrencias(texto, SINONIMOS_DEUDA, indice_col)
+                activos = _valor_en_columna(texto, SINONIMOS_ACTIVOS, indice_col, patron, parser)
+                pasivos = _valor_en_columna(texto, SINONIMOS_PASIVOS, indice_col, patron, parser)
+                patrimonio = _valor_en_columna(texto, SINONIMOS_PATRIMONIO, indice_col, patron, parser)
+                deuda = _suma_todas_ocurrencias(texto, SINONIMOS_DEUDA, indice_col, patron, parser)
 
                 # El balance a veces se parte en 2 páginas físicas (verificado real:
                 # CIBEST 2025-T2 -- activo en una página, "Total pasivo"/patrimonio
@@ -249,10 +253,11 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                     indice_siguiente = _indice_columna_actual(texto_siguiente, anio, periodo)
                     if indice_siguiente is None:
                         indice_siguiente = indice_col
+                    patron_sig, parser_sig = detectar_formato_numero(texto_siguiente)
                     if pasivos is None:
-                        pasivos = _valor_en_columna(texto_siguiente, SINONIMOS_PASIVOS, indice_siguiente)
+                        pasivos = _valor_en_columna(texto_siguiente, SINONIMOS_PASIVOS, indice_siguiente, patron_sig, parser_sig)
                     if patrimonio is None:
-                        patrimonio = _valor_en_columna(texto_siguiente, SINONIMOS_PATRIMONIO, indice_siguiente)
+                        patrimonio = _valor_en_columna(texto_siguiente, SINONIMOS_PATRIMONIO, indice_siguiente, patron_sig, parser_sig)
 
                 # Respaldo: patrimonio = activos - pasivos. Verificado real, CIBEST no
                 # trae una fila "Total patrimonio" -- solo "Patrimonio atribuible a los
@@ -299,7 +304,8 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             resuelto = _factor_y_columna(texto)
             if resuelto is not None:
                 factor, indice_col = resuelto
-                utilidad_neta = _valor_en_columna(texto, SINONIMOS_UTILIDAD_NETA, indice_col)
+                patron, parser = detectar_formato_numero(texto)
+                utilidad_neta = _valor_en_columna(texto, SINONIMOS_UTILIDAD_NETA, indice_col, patron, parser)
                 campos["utilidad_neta"] = {
                     "valor": round(utilidad_neta * factor, 3) if utilidad_neta is not None else None,
                     "pagina": pagina_resultados + 1,
@@ -309,8 +315,8 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                     campos["ingresos"] = {"valor": None, "pagina": None, "tabla": "no aplicable (sector financiero)"}
                     campos["utilidad_operacional"] = {"valor": None, "pagina": None, "tabla": "no aplicable (sector financiero)"}
                 else:
-                    ingresos = _valor_en_columna(texto, SINONIMOS_INGRESOS, indice_col)
-                    utilidad_operacional = _valor_en_columna(texto, SINONIMOS_UTILIDAD_OPERACIONAL, indice_col)
+                    ingresos = _valor_en_columna(texto, SINONIMOS_INGRESOS, indice_col, patron, parser)
+                    utilidad_operacional = _valor_en_columna(texto, SINONIMOS_UTILIDAD_OPERACIONAL, indice_col, patron, parser)
                     campos["ingresos"] = {
                         "valor": round(ingresos * factor, 3) if ingresos is not None else None,
                         "pagina": pagina_resultados + 1, "tabla": "resultados (generico)",
@@ -327,12 +333,13 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             resuelto = _factor_y_columna(texto)
             if resuelto is not None:
                 factor, indice_col = resuelto
-                flujo_op = _valor_en_columna(texto, SINONIMOS_FLUJO_OPERATIVO, indice_col)
+                patron, parser = detectar_formato_numero(texto)
+                flujo_op = _valor_en_columna(texto, SINONIMOS_FLUJO_OPERATIVO, indice_col, patron, parser)
                 campos["flujo_caja_operativo"] = {
                     "valor": round(flujo_op * factor, 3) if flujo_op is not None else None,
                     "pagina": pagina_flujo + 1, "tabla": "flujos_efectivo (generico)",
                 }
-                dep_cruda = _valor_en_columna(texto, SINONIMOS_DEPRECIACION, indice_col)
+                dep_cruda = _valor_en_columna(texto, SINONIMOS_DEPRECIACION, indice_col, patron, parser)
                 depreciacion = dep_cruda * factor if dep_cruda is not None else None
 
         if not es_financiero and depreciacion is not None and campos.get("utilidad_operacional", {}).get("valor") is not None:

@@ -64,19 +64,22 @@ rondas de corrección, ambas confirmadas con `pdfplumber` sobre el PDF real):
    exigir "consolidado" era una tercera capa que no sumaba precisión y sí
    restaba cobertura. GEB/PROMIGAS/NUTRESA seguían sin coincidir incluso
    SIN esa exigencia -- su causa real es otra, ver el punto 6.
-6. `GEB/2023-ANUAL_EEFF-Consolidados.pdf` tiene una causa más profunda,
-   no de frase: usa PUNTO como separador de miles ("2.289.704"), que
-   `PATRON_NUMERO_FINANCIERO` (exige coma) no cuenta -- la página nunca
-   pasa `MINIMO_NUMEROS_TABLA`, así encuentre el título perfecto. Además
-   su balance viene en 2 columnas lado a lado (activo | pasivo en la
-   misma línea de texto), un layout que el extractor por línea no separa
-   correctamente. Limitación conocida, documentada, no resuelta -- no se
-   fuerza ni se adivina un formato de número distinto solo para este caso.
+6. `GEB/2023-ANUAL_EEFF-Consolidados.pdf` y
+   `PROMIGAS/2020-ANUAL_Estados-Financieros-Consolidados.pdf` tenían una
+   causa más profunda, no de frase: usan PUNTO como separador de miles
+   ("2.289.704"), que `PATRON_NUMERO_FINANCIERO` (exige coma) no contaba --
+   la página nunca pasaba `MINIMO_NUMEROS_TABLA`, así encontrara el título
+   perfecto. Corregido: `_tiene_tabla_real` cuenta ambos separadores (ver
+   `pdf_utils.PATRON_NUMERO_FINANCIERO_PUNTO`) y usa el que más aparezca.
+   GEB además tiene el balance en 2 columnas lado a lado (activo | pasivo
+   en la misma línea de texto) -- eso sigue sin resolverse, el triage ya
+   encuentra la página pero `extractor_generico.py` necesitaría lógica
+   específica de ese layout para no mezclar los dos lados.
 """
 
 import pdfplumber
 
-from .pdf_utils import PATRON_NUMERO_FINANCIERO, normalizar
+from .pdf_utils import PATRON_NUMERO_FINANCIERO, PATRON_NUMERO_FINANCIERO_PUNTO, normalizar
 
 # Núcleo distintivo de cada estado -- SIN "estado(s)" ni "consolidado(s)":
 # la concordancia de género/posición entre esas dos palabras varía por
@@ -133,7 +136,13 @@ def _es_pagina_indice(texto_normalizado: str) -> bool:
 
 
 def _tiene_tabla_real(texto: str) -> bool:
-    return len(PATRON_NUMERO_FINANCIERO.findall(texto)) >= MINIMO_NUMEROS_TABLA
+    """Cuenta ambos separadores de miles (coma y punto -- ver
+    `pdf_utils.detectar_formato_numero`) y se queda con el que más aparezca,
+    para no rechazar una página real solo porque el emisor usa punto
+    (GEB, PROMIGAS) en vez de coma."""
+    n_coma = len(PATRON_NUMERO_FINANCIERO.findall(texto))
+    n_punto = len(PATRON_NUMERO_FINANCIERO_PUNTO.findall(texto))
+    return max(n_coma, n_punto) >= MINIMO_NUMEROS_TABLA
 
 
 def _bloques_contiguos(paginas: list[int]) -> list[list[int]]:
