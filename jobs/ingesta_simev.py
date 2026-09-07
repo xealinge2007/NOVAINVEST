@@ -21,6 +21,7 @@ Uso: python jobs/ingesta_simev.py [--carpeta RUTA] [--dry-run]
 """
 
 import argparse
+import csv
 import hashlib
 import os
 import re
@@ -71,6 +72,51 @@ REGLAS_TIPO_DOCUMENTO = [
         "comunicado_prensa",
     ),
 ]
+
+
+NOMBRE_MANIFIESTO = "MANIFIESTO.csv"
+
+FUENTES_VALIDAS = {"simev", "emisor_ir", "superfinanciera", "otro"}
+
+
+def cargar_manifiesto(carpeta_raiz: Path, ruta_explicita: Path | None = None) -> dict[tuple[str, str], dict]:
+    """{(emisor, nombre_archivo): {fuente_origen, url_descarga}} leido de
+    `MANIFIESTO.csv` en la raiz del corpus. Devuelve {} si no existe.
+
+    Por que existe (5.1.4): la regla dice que un numero sin procedencia
+    registrada no se publica, pero hasta hoy `fuente_origen` se escribia
+    hardcodeado como "simev" para los 412 archivos y `url_descarga` quedaba
+    vacio en TODOS -- o sea, la procedencia era una suposicion del script, no
+    un registro. Y la suposicion es falsa por diseno: el propio documento de
+    arquitectura acepta que varias cifras salen de la pagina de relacion con
+    inversionistas del emisor, no del SIMEV, y que ante una discrepancia gana
+    la version radicada ante el regulador. Sin saber de donde vino cada
+    archivo, esa regla de desempate no se puede aplicar.
+
+    El manifiesto lo llena quien descarga. Formato:
+        emisor,archivo,fuente_origen,url_descarga,fecha_descarga
+    `fuente_origen` tiene que ser uno de FUENTES_VALIDAS. Una fila con fuente
+    invalida se ignora y se reporta -- mejor sin procedencia declarada que con
+    una inventada."""
+    ruta = ruta_explicita or (carpeta_raiz / NOMBRE_MANIFIESTO)
+    if not ruta.is_file():
+        return {}
+    manifiesto: dict[tuple[str, str], dict] = {}
+    with open(ruta, encoding="utf-8-sig", newline="") as f:
+        for fila in csv.DictReader(f):
+            emisor = (fila.get("emisor") or "").strip()
+            archivo = (fila.get("archivo") or "").strip()
+            fuente = (fila.get("fuente_origen") or "").strip().lower()
+            if not emisor or not archivo:
+                continue
+            if fuente not in FUENTES_VALIDAS:
+                print(f"  [manifiesto] fuente_origen invalida en {emisor}/{archivo} -- fila ignorada")
+                continue
+            manifiesto[(emisor, archivo)] = {
+                "fuente_origen": fuente,
+                "url_descarga": (fila.get("url_descarga") or "").strip() or None,
+            }
+    return manifiesto
 
 
 def clasificar_tipo_documento(tipo_crudo: str) -> str:
@@ -166,10 +212,58 @@ def _asegurar_emisor(cliente, slug: str, cache: dict) -> int:
     return emisor_id
 
 
+
+def _validar(carpetas_emisor: list[Path], raiz: Path, manifiesto: dict) -> int:
+    """Compuerta que corre quien descarga, ANTES de entregar los archivos. No
+    toca Supabase. Devuelve el codigo de salida (0 si todo cumple).
+
+    Existe porque el contrato de nombre (AAAA-PERIODO_Tipo.pdf) hasta hoy se
+    verificaba recien dentro de la ingesta, cuando ya era tarde: un renombrado
+    masivo de ~180 archivos dejo 184 filas apuntando a rutas inexistentes y
+    costo un job de reconciliacion por hash entero (commit e3e8e24). Revisar el
+    contrato antes de entregar es mucho mas barato que reconciliarlo despues."""
+    malos: list[str] = []
+    sin_procedencia: list[str] = []
+    total = 0
+    for carpeta in carpetas_emisor:
+        for pdf in sorted(carpeta.glob("*.pdf")):
+            total += 1
+            if parsear_nombre_archivo(pdf.name) is None:
+                malos.append(str(pdf.relative_to(raiz)))
+            if (carpeta.name, pdf.name) not in manifiesto:
+                sin_procedencia.append(carpeta.name + "/" + pdf.name)
+
+    print(f"Validacion del corpus: {total} PDF en {len(carpetas_emisor)} carpetas de emisor")
+    print(f"  contrato de nombre AAAA-PERIODO_Tipo.pdf: {total - len(malos)}/{total} cumplen")
+    if malos:
+        print(f"  INCUMPLEN el contrato ({len(malos)}) -- renombrar antes de entregar:")
+        for m in malos:
+            print("    - " + m)
+    print(f"  procedencia declarada en el manifiesto: {total - len(sin_procedencia)}/{total}")
+    if sin_procedencia:
+        print(f"    faltan {len(sin_procedencia)} (se asumira fuente_origen='simev', url_descarga vacia)")
+        for m in sin_procedencia[:10]:
+            print("    - " + m)
+        if len(sin_procedencia) > 10:
+            print(f"    ... y {len(sin_procedencia) - 10} mas")
+    if malos:
+        print("RESULTADO: FALLA -- hay nombres fuera del contrato.")
+        return 1
+    print("RESULTADO: OK -- todos los nombres cumplen el contrato.")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--carpeta", type=Path, default=CARPETA_DEFAULT)
     parser.add_argument("--dry-run", action="store_true", help="solo reporta, no escribe en Supabase")
+    parser.add_argument("--manifiesto", type=Path, default=None, help="CSV de procedencia (por defecto MANIFIESTO.csv en la raiz del corpus)")
+    parser.add_argument(
+        "--validar", action="store_true",
+        help="compuerta previa a la ingesta: revisa el contrato de nombre y la cobertura del "
+             "manifiesto, no toca Supabase y sale con codigo 1 si algo incumple. Es lo que corre "
+             "quien descarga antes de entregar los archivos.",
+    )
     args = parser.parse_args()
 
     if not args.carpeta.is_dir():
@@ -177,6 +271,15 @@ def main():
         sys.exit(1)
 
     carpetas_emisor = sorted(p for p in args.carpeta.iterdir() if p.is_dir())
+    manifiesto = cargar_manifiesto(args.carpeta, args.manifiesto)
+
+    if args.validar:
+        sys.exit(_validar(carpetas_emisor, args.carpeta, manifiesto))
+
+    if manifiesto:
+        print(f"Manifiesto de procedencia: {len(manifiesto)} entradas")
+    else:
+        print("Sin manifiesto de procedencia -- se asume fuente_origen='simev' y url_descarga vacia")
     print(f"Ingesta SIMEV_BVC — {len(carpetas_emisor)} carpetas de emisor en {args.carpeta}")
 
     cliente = None
@@ -317,7 +420,11 @@ def main():
                     "nombre_archivo": pdf.name,
                     "ruta_local": str(pdf),
                     "hash_sha256": hash_archivo,
-                    "fuente_origen": "simev",  # §5.1.4: este script solo lee C:\Proyectos\BVC\SIMEV_BVC
+                    # 5.1.4: la procedencia sale del manifiesto si esta declarada.
+                    # Sin manifiesto se cae al supuesto historico ("simev"), de donde
+                    # viene la mayoria del corpus, y `--validar` reporta cuantos
+                    # archivos siguen sin procedencia declarada.
+                    **manifiesto.get((slug, pdf.name), {"fuente_origen": "simev"}),  # §5.1.4: este script solo lee C:\Proyectos\BVC\SIMEV_BVC
                     "anio": meta["anio"],
                     "periodo": meta["periodo"],
                     "tipo_documento": meta["tipo_documento"],
