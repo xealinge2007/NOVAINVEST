@@ -763,3 +763,83 @@ la pena un canal de imagen/OCR para casos como Banco de Bogotá (o dejarlo para 
 directa del subagente, consistente con la arquitectura). Los 178 `requiere_revision` y 54
 `error` quedan disponibles para reintento tras cualquiera de esos arreglos — el pipeline es
 incremental, no hace falta esperar a resolver todo antes de seguir.
+
+## F4a — destrabado: diagnóstico por causa y 53% de los archivos-fuente extraídos (07-sep-2026)
+
+Punto de partida: 102 procesados / 178 en revisión / 54 en error, y cuatro casos
+"trabados" (TERPEL, Banco de Bogotá escaneado, Nutresa, GEB). **Al abrir los PDF reales,
+tres de los cuatro diagnósticos estaban mal atribuidos** y la causa que sí bloqueaba el
+lote entero no estaba en la lista. El detalle está en
+`db/DECISION_ARQUITECTURA_EXTRACCION.md` (adenda 07-sep-2026); acá el resultado.
+
+### Estado medido, corpus completo (412 PDF → 297 archivos-fuente)
+
+"Archivos-fuente" = se descartan comunicados de prensa, conference calls, avisos,
+certificaciones y separados puros — la arquitectura ya declara que nunca son fuente de una
+cifra. Medido con `jobs/diagnostico_extraccion.py`, sin Supabase.
+
+| Clase | Archivos | % | Qué significa |
+|---|---:|---:|---|
+| **OK** | **158** | **53,2 %** | extraído, con balance verificado donde se pudo |
+| SIN_ANCLA | 46 | 15,5 % | de estos, **43 no contienen los estados** (ver abajo) |
+| SIN_ANCLA_ESCANEADO | 25 | 8,4 % | canal B: los lee el subagente, decisión ya tomada |
+| TIMEOUT | 25 | 8,4 % | artefacto del arnés paralelo, no del extractor (ver abajo) |
+| PARCIAL_SIN_BALANCE | 17 | 5,7 % | balance partido entre páginas: activos sin pasivos |
+| SIN_COLUMNA | 6 | 2,0 % | venía de 36 |
+| SIN_UNIDAD | 5 | 1,7 % | |
+| BALANCE_NO_CUADRA / SIN_ETIQUETAS | 4 | 1,4 % | |
+
+Progresión de la sesión: **43,1 % → 53,2 %** con el arreglo de columna, **sin una sola
+regresión** (comparación archivo por archivo, 0 casos OK → no-OK). TERPEL pasó de 0/16 a
+9/16.
+
+### El hallazgo que más cambia el plan
+
+De los 57 archivos SIN_ANCLA, se revisó **uno por uno** si el PDF contiene siquiera una
+fila de totales legible. **Solo 11 son bugs reales del triage. 46 no traen los estados
+financieros** — son informes periódicos narrativos que remiten a los EEFF radicados
+aparte, exactamente el "hueco declarado" que ya prevé la arquitectura:
+
+- **GRUPO_NUTRESA (14)** — verificado en el texto: *"Los Estados financieros intermedios
+  del segundo trimestre de 2025 [...] hacen parte del presente informe como anexo y pueden
+  ser consultados en la página web de la Compañía"*. No hay nada que parsear.
+- **ISA (11)**, **GRUPO_SURA (8)**, **PEI (5)**, **PROMIGAS (3)**, **ETB (3)**, GEB (1),
+  CEMENTOS_ARGOS (1) — mismo patrón.
+
+→ **Esto no es trabajo de código, es descarga.** Perseguir estos 46 con el parser era la
+trampa en la que iba la cola de `requiere_revision`.
+
+Salvedad honesta: 3 de esos 46 se llaman `Estados-Financieros*` (NUTRESA 2022-ANUAL,
+PEI 2022-T3 y 2025-T3). En esos el chequeo puede estar dando falso negativo porque su
+capa de texto no produce la fila de totales como línea — es el caso Nutresa descrito en
+la adenda. Merecen segunda revisión antes de pedir la descarga.
+
+### Los 25 TIMEOUT no son del extractor
+
+Medido a solas, sin contención: CIBEST 2023-T1 (185 páginas) **56 s** con balance que
+cuadra; ECOPETROL 2025-ANUAL (483 páginas) **96 s**. Ambos por debajo del límite de
+producción (300 s). Los 240 s que reporta el arnés son de correr 10 procesos en 12
+núcleos. Se confirma en la próxima corrida real de `extraer_fundamentales`.
+
+### Riesgo que ya estaba y no era visible
+
+`estanco vs acumulado`: TERPEL 2023-T2 devuelve ingresos 17.793 (semestre acumulado)
+contra 9.148 del T1. Con más trimestres entrando a la serie, la normalización pendiente
+(ya listada en F4b) deja de ser teórica — cualquier TTM o crecimiento trimestral
+calculado antes de normalizar sale mal.
+
+Segundo riesgo: `_activos_fuera_de_rango` solo vigila `activos_totales`. `ingresos` entra
+sin ningún chequeo de escala, y ahora hay más páginas candidatas por la ventana de ancla
+ampliada. Vale extender el chequeo.
+
+### Qué sigue, por valor
+
+1. **Pedir a Alex los EEFF de los 43 huecos de descarga** (Nutresa, ISA, SURA, PEI,
+   Promigas, ETB) — es lo que más cifras desbloquea y no cuesta código.
+2. **17 PARCIAL_SIN_BALANCE** — el respaldo de "mirar la página siguiente" no alcanza.
+3. **11 SIN_ANCLA con cifras adentro** — bugs reales del triage, ya identificados por
+   nombre.
+4. **25 escaneados** — canal B, el subagente los lee. Es trabajo por sesión, no
+   automatizable por decisión.
+5. **Nutresa 2022-ANUAL y similares** — reconstrucción de filas por coordenada
+   (`extract_words()`), descrita en la adenda. Desbloquea pocos archivos: baja prioridad.

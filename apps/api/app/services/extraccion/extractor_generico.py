@@ -328,6 +328,39 @@ def _indice_columna_actual(texto_pagina: str, anio: int, periodo: str) -> int | 
         if len(anios_encontrados) >= 2 and str(anio) in anios_encontrados:
             return anios_encontrados.index(str(anio))
 
+    # Ultimo recurso: el encabezado repartido en VARIAS lineas, una fecha por
+    # linea. Verificado real y frecuente en PEI (18 archivos en SIN_COLUMNA):
+    # su encabezado se parte asi --
+    #     Al 31
+    #     de marzo de        Al 31
+    #     2021               de diciembre de
+    #     Notas (No auditados)   2020
+    # -- de modo que NINGUNA linea suelta trae dos anios y la busqueda
+    # linea-por-linea no encuentra nada, aunque las dos columnas esten ahi.
+    # Se concatenan las lineas de la ventana en orden de lectura (la columna
+    # izquierda se imprime antes que la derecha, asi que el orden vertical
+    # respeta el orden de columnas) y se busca sobre el bloque.
+    #
+    # Solo corre si lo anterior fallo, y con dos exigencias que lo hacen
+    # seguro frente al caso que obligo a buscar linea por linea (CIBEST
+    # 2025-T2, donde una fila de variacion mencionaba "2T25" dos veces antes
+    # del encabezado real): las lineas con "%" o "/" siguen excluidas, y la
+    # fecha buscada tiene que aparecer UNA sola vez en el bloque -- si
+    # aparece repetida no se puede saber cual columna es y se prefiere no
+    # extraer antes que arriesgar la equivocada.
+    limpias = [l for l in ventana if "%" not in l and "/" not in l]
+    bloque = " ".join(limpias)
+
+    if periodo in PERIODO_A_MES_TRIMESTRE:
+        codigo_corto = f"{PERIODO_A_MES_TRIMESTRE[periodo]}T{str(anio)[2:]}"
+        codigos = [re.sub(r"\s", "", c) for c in re.findall(r"\d\s?T\s?\d\s?\d", bloque)]
+        if len(codigos) >= 2 and codigos.count(codigo_corto) == 1:
+            return codigos.index(codigo_corto)
+
+    anios_bloque = [re.sub(r"\s", "", a) for a in re.findall(r"2\s?0\s?\d\s?\d", bloque)]
+    if len(anios_bloque) >= 2 and anios_bloque.count(str(anio)) == 1:
+        return anios_bloque.index(str(anio))
+
     return None
 
 
