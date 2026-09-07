@@ -186,8 +186,9 @@ def main():
         cliente = cliente_servicio()
 
     cache_emisores: dict[str, int] = {}
-    nuevos, ya_existian, cambiados, protegidos, sin_patron, errores = 0, 0, 0, 0, [], []
+    nuevos, ya_existian, cambiados, renombrados, protegidos, sin_patron, errores = 0, 0, 0, 0, 0, [], []
     lista_cambiados: list[tuple[str, str, str]] = []  # (slug, nombre_archivo, estado_previo)
+    lista_renombrados: list[tuple[str, str, str]] = []  # (slug, nombre_viejo, nombre_nuevo)
 
     for carpeta_emisor in carpetas_emisor:
         slug = carpeta_emisor.name
@@ -217,6 +218,59 @@ def main():
                 .execute()
             )
             hash_archivo = _hash_archivo(pdf)
+
+            if not existente.data:
+                # ¿Es el mismo archivo, solo renombrado? Buscar por hash dentro del
+                # mismo emisor antes de asumir que es nuevo. Verificado real: un
+                # renombrado masivo de ~410 archivos (agregando el sufijo
+                # "-Estados-Financieros-..." que el clasificador necesita para
+                # reconocerlos) dejó 184 filas huérfanas apuntando a rutas que ya
+                # no existían -- sin este chequeo, esta misma corrida las habría
+                # tratado como 184 archivos "nuevos", duplicando cada fila en vez
+                # de actualizar la que ya tenía su historial de validación.
+                posible_renombrado = (
+                    cliente.table("reportes_archivo")
+                    .select("id,estado,nombre_archivo,tipo_documento")
+                    .eq("emisor_id", emisor_id)
+                    .eq("hash_sha256", hash_archivo)
+                    .execute()
+                )
+                if posible_renombrado.data:
+                    fila_vieja = posible_renombrado.data[0]
+                    try:
+                        actualizacion = {
+                            "nombre_archivo": pdf.name,
+                            "ruta_local": str(pdf),
+                            "tipo_documento": meta["tipo_documento"],
+                            "tipo_documento_crudo": meta["tipo_documento_crudo"],
+                        }
+                        # El renombrado casi siempre existe justo para corregir la
+                        # clasificación (ej. informe_periodico -> estados_financieros,
+                        # al agregar el sufijo "-Estados-Financieros-..."). Si cambia,
+                        # hay que reprocesar bajo la clasificación correcta -- renombrar
+                        # sola la fila no alcanza.
+                        reclasificado = fila_vieja["tipo_documento"] != meta["tipo_documento"]
+                        if reclasificado or fila_vieja["estado"] == "error":
+                            actualizacion["estado"] = "encolado"
+                            actualizacion["error_detalle"] = None
+                        cliente.table("reportes_archivo").update(actualizacion).eq("id", fila_vieja["id"]).execute()
+                        if actualizacion.get("estado") == "encolado":
+                            cliente.table("ingesta_cola").upsert(
+                                {
+                                    "reporte_archivo_id": fila_vieja["id"],
+                                    "prioridad": prioridad_emisor(slug),
+                                    "estado": "pendiente",
+                                    "intentos": 0,
+                                    "ultimo_error": None,
+                                    "procesado_en": None,
+                                },
+                                on_conflict="reporte_archivo_id",
+                            ).execute()
+                        renombrados += 1
+                        lista_renombrados.append((slug, fila_vieja["nombre_archivo"], pdf.name))
+                    except Exception as e:
+                        errores.append((str(pdf.relative_to(args.carpeta)), str(e)))
+                    continue
 
             if existente.data:
                 fila_existente = existente.data[0]
@@ -289,6 +343,10 @@ def main():
 
     print(f"\nNuevos encolados: {nuevos}")
     print(f"Ya existían (omitidos, no se tocó su estado): {ya_existian}")
+    if renombrados:
+        print(f"\nDetectados como renombrados por hash (fila reconciliada, no duplicada): {renombrados}")
+        for slug, nombre_viejo, nombre_nuevo in lista_renombrados:
+            print(f"  - {slug}: {nombre_viejo} -> {nombre_nuevo}")
     if cambiados:
         print(f"\nContenido reemplazado bajo el mismo nombre (re-encolados para reprocesar): {cambiados}")
         for slug, nombre, estado_previo in lista_cambiados:

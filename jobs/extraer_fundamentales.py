@@ -135,9 +135,18 @@ def _activos_fuera_de_rango(cliente, emisor_id: int, activos_nuevo: float) -> bo
 def _es_separado(tipo_documento_crudo: str) -> bool:
     """§5.1 + instrucción explícita de Alex (03-sep-2026): el análisis usa
     SOLO resultados consolidados -- un 'EEFF-Separados'/'Estados-Financieros-
-    Individuales' nunca entra, aunque tenga plantilla técnicamente aplicable."""
+    Individuales' nunca entra, aunque tenga plantilla técnicamente aplicable.
+
+    Solo excluye si es separado/individual Y NO menciona consolidado también --
+    verificado real: la auditoría de contenido de una sesión distinta renombró
+    ~180 archivos con sufijos combinados como
+    "-Estados-Financieros-Consolidados-y-Separados" (el documento trae AMBAS
+    secciones). Excluir el archivo entero por contener "separados" en el
+    nombre habría descartado el consolidado que sí está ahí. La página
+    correcta se resuelve en `triage.py` (que prefiere la sección con
+    "consolidad" cerca cuando el documento trae ambas), no aquí."""
     t = tipo_documento_crudo.lower()
-    return "separad" in t or "individual" in t
+    return ("separad" in t or "individual" in t) and "consolidad" not in t
 
 
 def main():

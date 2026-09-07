@@ -182,19 +182,41 @@ def triage_documento(ruta_pdf) -> dict:
 
         # Límite superior: donde empiezan las notas (si el documento las tiene).
         # Los estados financieros en sí siempre van antes.
+        #
+        # Verificado real: BANCO_DE_BOGOTA/2024-T1 (renombrado por la auditoría de la
+        # otra sesión a "...Consolidados-y-Separados") tiene el orden INVERTIDO al
+        # asumido aquí -- separado completo (estados + notas) primero, consolidado
+        # completo después ("Notas a los estados financieros separados" en la página
+        # 33, "...consolidados" recién en la 88). Cortar en la PRIMERA mención de
+        # "notas" truncaba la búsqueda antes de llegar siquiera a las páginas 82-87,
+        # que son las que traen el balance consolidado real (como imagen, sin capa de
+        # texto). Corrección: si esa primera mención de "notas" es específicamente de
+        # separados (sin mencionar consolidado cerca), se descarta y se sigue buscando
+        # la siguiente -- así el límite superior siempre cae en el borde de LAS NOTAS
+        # DEL CONSOLIDADO, no en el de separados. Si el documento nunca menciona notas
+        # de consolidado (p.ej. solo tiene separado), se usa la primera de todas modos
+        # -- ese caso no tiene consolidado que perder.
         pagina_notas = None
+        pagina_notas_cualquiera = None
         for i in range(total_paginas):
             if es_indice[i]:
                 continue
             pos = _primera_posicion(textos_normalizados[i], MARCADOR_NOTAS)
-            if pos is not None and pos <= POSICION_MAXIMA_ANCLA:
+            if pos is None or pos > POSICION_MAXIMA_ANCLA:
+                continue
+            if pagina_notas_cualquiera is None:
+                pagina_notas_cualquiera = i
+            ventana = textos_normalizados[i][pos : pos + 80]
+            es_notas_de_separado = "separad" in ventana and "consolidad" not in ventana
+            if not es_notas_de_separado:
                 pagina_notas = i
                 break
+        if pagina_notas is None:
+            pagina_notas = pagina_notas_cualquiera
 
         limite_busqueda = pagina_notas if pagina_notas is not None else total_paginas
 
-        anclas_encontradas: dict[str, int] = {}
-        for categoria, nucleos in NUCLEOS_ESTADOS.items():
+        def _buscar_ancla(nucleos: list[str], exigir_consolidado: bool) -> int | None:
             for i in range(limite_busqueda):
                 if es_indice[i]:
                     continue
@@ -208,8 +230,26 @@ def triage_documento(ruta_pdf) -> dict:
                 # nunca aparece así de cerca del título de un estado financiero real.
                 if "promedio" in textos_normalizados[i][pos : pos + 60]:
                     continue
-                anclas_encontradas[categoria] = i
-                break
+                if exigir_consolidado and "consolidad" not in textos_normalizados[i][max(0, pos - 60): pos + 60]:
+                    continue
+                return i
+            return None
+
+        anclas_encontradas: dict[str, int] = {}
+        for categoria, nucleos in NUCLEOS_ESTADOS.items():
+            # Primero exige "consolidad" cerca del título -- crítico cuando el
+            # documento trae Consolidado Y Separado en el mismo PDF (verificado
+            # real: la auditoría de otra sesión renombró ~180 archivos con
+            # sufijos combinados "-Estados-Financieros-Consolidados-y-Separados",
+            # y sin esta preferencia el primer match en orden de página podría
+            # caer en la sección separada -- Alex exige solo consolidado). Si no
+            # aparece en ningún lado (ej. PEI, un fondo sin distinción
+            # consolidado/separado), se cae al match suelto de antes.
+            pagina = _buscar_ancla(nucleos, exigir_consolidado=True)
+            if pagina is None:
+                pagina = _buscar_ancla(nucleos, exigir_consolidado=False)
+            if pagina is not None:
+                anclas_encontradas[categoria] = pagina
 
         pagina_resumen_ejecutivo = None
         for i in range(limite_busqueda):
@@ -255,10 +295,18 @@ def triage_documento(ruta_pdf) -> dict:
         # los estados financieros de verdad ocupan varias páginas.
         bloques = [b for b in _bloques_contiguos(paginas_sin_texto) if len(b) >= MINIMO_PAGINAS_BLOQUE_ESCANEADO]
         if bloques:
-            # el bloque más plausible es el que precede a las notas, si se encontraron;
-            # si no, el bloque más largo.
+            # El bloque más plausible es el que precede a las notas (del consolidado,
+            # ver arriba) Y termina más cerca de ellas -- no el más largo. Verificado
+            # real: BANCO_DE_BOGOTA/2024-T1 tiene DOS bloques escaneados de igual
+            # tamaño (páginas 27-32, el balance SEPARADO; páginas 82-87, el balance
+            # CONSOLIDADO), ambos antes de "notas" una vez corregido el límite (ver
+            # arriba). Desempatar por longitud habría elegido el primero -- el
+            # separado, por orden de aparición -- por ser Python `max` estable ante
+            # empates. El bloque correcto es el que queda pegado al borde de notas
+            # (82-87, a una página de la 88), porque las notas SIEMPRE describen el
+            # estado que las precede inmediatamente, no uno lejano en el documento.
             if pagina_notas is not None:
-                bloque = max(bloques, key=lambda b: (b[-1] < pagina_notas, len(b)))
+                bloque = max(bloques, key=lambda b: (b[-1] < pagina_notas, b[-1]))
             else:
                 bloque = max(bloques, key=len)
             primera = max(bloque[0] - 1, 0)
