@@ -112,6 +112,11 @@ MARCADOR_NOTAS = [
 MARCADOR_INDICE = ["contenido", "indice", "tabla de contenido"]
 
 POSICION_MAXIMA_ANCLA = 150  # caracteres normalizados desde el inicio de la página
+POSICION_MAXIMA_ANCLA_AMPLIA = 450  # segunda oportunidad, solo si no se encontró nada con 150:
+# cubre las páginas cuyo encabezado fijo es una barra de navegación larga (TERPEL 2023/2025-ANUAL,
+# informes de gestión de 400+ páginas). 450 se calibró contra el caso real (título en el carácter
+# 184) con margen, no al ojo. Sigue siendo un tope: una mención en medio de un párrafo largo cae
+# más allá, y la densidad de cifras filtra las páginas de prosa que sí caen dentro.
 POSICION_MAXIMA_INDICE = 100  # el "Contenido"/"Índice" es lo primero tras el membrete, más cerca aún
 MINIMO_NUMEROS_TABLA = 20  # calibrado contra CIBEST 2025-T2: la página de prosa que discute el
 # balance en el análisis de la administración cita 6 cifras de pasada; la tabla real de ese
@@ -157,28 +162,74 @@ def _bloques_contiguos(paginas: list[int]) -> list[list[int]]:
     return bloques
 
 
-def triage_documento(ruta_pdf) -> dict:
+class _NoCerrar:
+    """Envuelve un `pdfplumber.PDF` ya abierto para que el `with` de
+    `triage_documento` no lo cierre -- el dueño es el llamador."""
+
+    def __init__(self, pdf):
+        self._pdf = pdf
+
+    def __enter__(self):
+        return self._pdf
+
+    def __exit__(self, *_):
+        return False
+
+
+def _abrir(ruta_pdf, pdf_abierto):
+    return _NoCerrar(pdf_abierto) if pdf_abierto is not None else pdfplumber.open(ruta_pdf)
+
+
+def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
     """Devuelve:
     - contiene_cifras: bool
     - paginas_candidatas: list[int] (0-based) -- rango a extraer
     - paginas_sin_texto: list[int] (0-based) -- candidatas a canal B (imagen), dentro del rango
     - anclas_encontradas: {categoria: pagina} de los estados clásicos
+    - textos_paginas: list[str] -- el texto crudo ya extraído de cada página
     - motivo: presente siempre que el hallazgo necesite contexto (canal B, o por qué no hay cifras)
+
+    `pdf_abierto`: un `pdfplumber.PDF` ya abierto, para no volver a abrir y
+    releer el mismo documento. Causa raíz real de los 54 timeouts del lote:
+    `extraer_fundamentales` abría el PDF, el triage lo abría y extraía el
+    texto de TODAS las páginas, y `extractor_generico.extraer` lo volvía a
+    abrir para releer las páginas ancla -- dos pasadas completas de
+    `extract_text()` sobre documentos de 200-300 páginas. Con una sola
+    pasada (y `textos_paginas` devuelto para que el llamador no reextraiga)
+    el costo se reduce a la mitad sin cambiar ningún criterio.
     """
-    with pdfplumber.open(ruta_pdf) as pdf:
+    with _abrir(ruta_pdf, pdf_abierto) as pdf:
         total_paginas = len(pdf.pages)
-        textos_crudos: list[str] = []
-        textos_normalizados: list[str] = []
-        es_indice: list[bool] = []
+        # Lectura PEREZOSA, no de todo el documento por adelantado. Segunda
+        # mitad del arreglo de los 54 timeouts: `extract_text()` es la
+        # operacion cara y se estaba pagando sobre las 200-300 paginas de
+        # cada PDF, cuando los estados financieros y su limite superior (el
+        # borde de las notas) casi siempre caen en el primer tercio. La
+        # semantica no cambia -- cada busqueda de abajo pide exactamente las
+        # mismas paginas que antes, solo que se extraen cuando se piden y el
+        # bucle de notas ya cortaba al encontrarla. Si no se encuentra nada
+        # por texto, el respaldo de bloque escaneado lee el resto (abajo).
+        textos_crudos: list[str] = [None] * total_paginas
+        textos_normalizados: list[str] = [None] * total_paginas
+        es_indice: list[bool] = [False] * total_paginas
         paginas_sin_texto: list[int] = []
-        for i, pagina in enumerate(pdf.pages):
-            texto = pagina.extract_text() or ""
+        leidas: set[int] = set()
+
+        def _leer(i: int) -> None:
+            if i in leidas:
+                return
+            leidas.add(i)
+            texto = pdf.pages[i].extract_text() or ""
             if not texto.strip():
                 paginas_sin_texto.append(i)
-            textos_crudos.append(texto)
+            textos_crudos[i] = texto
             t_norm = normalizar(texto)
-            textos_normalizados.append(t_norm)
-            es_indice.append(_es_pagina_indice(t_norm))
+            textos_normalizados[i] = t_norm
+            es_indice[i] = _es_pagina_indice(t_norm)
+
+        def _leer_hasta(fin: int) -> None:
+            for i in range(0, min(fin, total_paginas)):
+                _leer(i)
 
         # Límite superior: donde empiezan las notas (si el documento las tiene).
         # Los estados financieros en sí siempre van antes.
@@ -199,6 +250,7 @@ def triage_documento(ruta_pdf) -> dict:
         pagina_notas = None
         pagina_notas_cualquiera = None
         for i in range(total_paginas):
+            _leer(i)
             if es_indice[i]:
                 continue
             pos = _primera_posicion(textos_normalizados[i], MARCADOR_NOTAS)
@@ -215,13 +267,14 @@ def triage_documento(ruta_pdf) -> dict:
             pagina_notas = pagina_notas_cualquiera
 
         limite_busqueda = pagina_notas if pagina_notas is not None else total_paginas
+        _leer_hasta(limite_busqueda)
 
-        def _buscar_ancla(nucleos: list[str], exigir_consolidado: bool) -> int | None:
+        def _buscar_ancla(nucleos: list[str], exigir_consolidado: bool, posicion_maxima: int = POSICION_MAXIMA_ANCLA) -> int | None:
             for i in range(limite_busqueda):
                 if es_indice[i]:
                     continue
                 pos = _primera_posicion(textos_normalizados[i], nucleos)
-                if pos is None or pos > POSICION_MAXIMA_ANCLA or not _tiene_tabla_real(textos_crudos[i]):
+                if pos is None or pos > posicion_maxima or not _tiene_tabla_real(textos_crudos[i]):
                     continue
                 # Verificado real: CIBEST 2023-ANUAL (Informe-de-Gestión, 300+ páginas)
                 # trae un anexo "Estado de situación financiera PROMEDIO e ingresos por
@@ -230,7 +283,21 @@ def triage_documento(ruta_pdf) -> dict:
                 # nunca aparece así de cerca del título de un estado financiero real.
                 if "promedio" in textos_normalizados[i][pos : pos + 60]:
                     continue
-                if exigir_consolidado and "consolidad" not in textos_normalizados[i][max(0, pos - 60): pos + 60]:
+                ventana_titulo = textos_normalizados[i][max(0, pos - 60): pos + 60]
+                # Regla dura de Alex: solo consolidado, nunca separado/individual.
+                # `extraer_fundamentales._es_separado` ya filtra por NOMBRE de
+                # archivo, pero no cubre el caso real que domina el corpus: un
+                # unico PDF "...Consolidados-y-Separados" que trae las dos
+                # secciones. La preferencia por "consolidad" (abajo) elige bien
+                # cuando la seccion consolidada es legible; este descarte cubre
+                # el reves -- si la consolidada esta escaneada o no se
+                # encuentra, sin esto la pasada suelta caeria en la SEPARADA y
+                # publicaria la cifra equivocada en silencio. Un documento que
+                # de verdad solo trae separado se queda sin ancla, que es el
+                # resultado correcto: va a `requiere_revision`, no a la serie.
+                if "separad" in ventana_titulo and "consolidad" not in ventana_titulo:
+                    continue
+                if exigir_consolidado and "consolidad" not in ventana_titulo:
                     continue
                 return i
             return None
@@ -248,6 +315,26 @@ def triage_documento(ruta_pdf) -> dict:
             pagina = _buscar_ancla(nucleos, exigir_consolidado=True)
             if pagina is None:
                 pagina = _buscar_ancla(nucleos, exigir_consolidado=False)
+            # Tercera y cuarta pasada, con la ventana de posicion ampliada.
+            # SOLO se ejecutan cuando las dos anteriores no encontraron nada,
+            # asi que no pueden mover ninguna ancla que ya funcionaba: son
+            # estrictamente aditivas. Verificado real y necesario: TERPEL
+            # 2023-ANUAL (475 paginas) trae el balance consolidado en la
+            # pagina 284 con la fila "Total activos 9.337.716.408
+            # 10.238.949.515" perfectamente legible, pero cada pagina
+            # arranca con una barra de navegacion larga ("Aspectos generales
+            # de la operacion Desempeno bursatil y financiero Practicas de
+            # sostenibilidad...") que empuja el titulo del estado al caracter
+            # 184 -- fuera de los 150 de POSICION_MAXIMA_ANCLA. El documento
+            # quedaba en SIN_ANCLA por el membrete, no por su contenido.
+            # Lo que evita el falso positivo aqui no es la posicion sino la
+            # densidad de cifras (`MINIMO_NUMEROS_TABLA`), el descarte de
+            # paginas de indice y el corte en el borde de las notas, que
+            # siguen aplicando igual en estas dos pasadas.
+            if pagina is None:
+                pagina = _buscar_ancla(nucleos, exigir_consolidado=True, posicion_maxima=POSICION_MAXIMA_ANCLA_AMPLIA)
+            if pagina is None:
+                pagina = _buscar_ancla(nucleos, exigir_consolidado=False, posicion_maxima=POSICION_MAXIMA_ANCLA_AMPLIA)
             if pagina is not None:
                 anclas_encontradas[categoria] = pagina
 
@@ -274,6 +361,7 @@ def triage_documento(ruta_pdf) -> dict:
             # páginas sin texto dentro o pegadas al rango candidato -- el rango completo de
             # estados financieros puede estar escaneado (ej. ECOPETROL 2024-ANUAL) aunque el
             # resto del documento tenga texto normal.
+            _leer_hasta(min(ultima + 2, total_paginas))
             paginas_sin_texto_en_rango = [p for p in paginas_sin_texto if primera - 1 <= p <= ultima + 1]
             for p in paginas_sin_texto_en_rango:
                 if p not in paginas_candidatas:
@@ -286,6 +374,7 @@ def triage_documento(ruta_pdf) -> dict:
                 "paginas_sin_texto": paginas_sin_texto_en_rango,
                 "anclas_encontradas": anclas_encontradas,
                 "pagina_resumen_ejecutivo": pagina_resumen_ejecutivo,
+                "textos_paginas": textos_crudos,
             }
 
         # Nada por texto -- antes de rendirse, ¿hay un bloque de varias páginas
@@ -293,6 +382,10 @@ def triage_documento(ruta_pdf) -> dict:
         # 8 de 146 páginas escaneadas resultaron ser justo los estados financieros
         # primarios). Un bloque de 1-2 páginas sueltas (portada, firma) no cuenta --
         # los estados financieros de verdad ocupan varias páginas.
+        # Sin ancla por texto: aqui si hace falta el documento entero, porque el
+        # bloque escaneado puede estar en cualquier parte.
+        _leer_hasta(total_paginas)
+        paginas_sin_texto.sort()
         bloques = [b for b in _bloques_contiguos(paginas_sin_texto) if len(b) >= MINIMO_PAGINAS_BLOQUE_ESCANEADO]
         if bloques:
             # El bloque más plausible es el que precede a las notas (del consolidado,
@@ -317,6 +410,7 @@ def triage_documento(ruta_pdf) -> dict:
                 "paginas_candidatas": paginas_candidatas,
                 "paginas_sin_texto": [p for p in paginas_sin_texto if primera <= p <= ultima],
                 "anclas_encontradas": {},
+                "textos_paginas": textos_crudos,
                 "motivo": (
                     f"sin ancla por texto, pero hay un bloque de {len(bloque)} páginas consecutivas "
                     "sin capa de texto (candidatas a canal B / imagen)"
@@ -326,8 +420,9 @@ def triage_documento(ruta_pdf) -> dict:
         return {
             "contiene_cifras": False,
             "paginas_candidatas": [],
-            "paginas_sin_texto": paginas_sin_texto,
+            "paginas_sin_texto": sorted(paginas_sin_texto),
             "anclas_encontradas": {},
+            "textos_paginas": textos_crudos,
             "motivo": (
                 "ninguna ancla de estado financiero ni de resumen ejecutivo encontrada "
                 "en la capa de texto, y ningún bloque de páginas escaneadas -- probable "

@@ -32,7 +32,14 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
 from app.services.extraccion import extractor_generico, plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
 
-TIMEOUT_SEGUNDOS = 120  # un solo PDF no debe poder bloquear el lote entero.
+TIMEOUT_SEGUNDOS = 300  # un solo PDF no debe poder bloquear el lote entero.
+# Subido de 120s a 300s junto con el arreglo de rendimiento del extractor (una
+# sola pasada de `extract_text()` en vez de dos, y triage perezoso). Los 54
+# archivos en `error` de la corrida anterior eran casi todos timeout, y su
+# causa real no era que el PDF fuera anormalmente pesado: era que un
+# documento de 200-475 paginas se leia entero DOS veces. Con el arreglo, los
+# documentos grandes bajaron de >120s a decenas de segundos; el limite mas
+# alto es el margen para los pocos que siguen siendo genuinamente enormes.
 
 # Verificado real, dos rondas: un primer intento con ThreadPoolExecutor.result(timeout=...)
 # evitaba el bloqueo del proceso principal, pero el hilo colgado NO se puede matar en
@@ -149,6 +156,22 @@ def _es_separado(tipo_documento_crudo: str) -> bool:
     return ("separad" in t or "individual" in t) and "consolidad" not in t
 
 
+def _detalle_generico(resultado: dict) -> str:
+    """El motivo CONCRETO del extractor, no un texto unico para todo. Antes,
+    los cuatro fallos distintos del extractor generico (el triage no ubico la
+    pagina / la unidad no esta declarada / no se pudo resolver la columna del
+    periodo / las etiquetas de fila no coinciden) se guardaban con la misma
+    frase, "no encontro ninguna tabla ancla". Esa frase hizo que TERPEL se
+    investigara sesiones enteras como si fuera un problema de etiquetas
+    cuando en realidad solo le faltaba la unidad, y deja la cola de
+    `requiere_revision` imposible de priorizar. Con el motivo real, la cola
+    se puede agrupar por causa y atacar la mas grande primero."""
+    motivos = resultado.get("motivos") or []
+    if not motivos:
+        return "el extractor genérico no encontró ninguna cifra en este PDF"
+    return "extractor genérico: " + " | ".join(motivos)
+
+
 def _procesar_reporte(cliente, r, slug, id_a_sector) -> str:
     """Procesa un reporte y devuelve el string de resultado (para el resumen y el
     log). Los errores DE EXTRACCIÓN (timeout, plantilla que no encuentra tabla,
@@ -225,7 +248,7 @@ def _procesar_reporte(cliente, r, slug, id_a_sector) -> str:
 
     if not campos_con_valor:
         cliente.table("reportes_archivo").update(
-            {"estado": "requiere_revision", "error_detalle": "el extractor genérico no encontró ninguna tabla ancla en este PDF"}
+            {"estado": "requiere_revision", "error_detalle": _detalle_generico(resultado)}
         ).eq("id", r["id"]).execute()
         return "SIN_TABLAS_RECONOCIDAS"
 

@@ -123,7 +123,19 @@ def _detectar_factor_unidad(texto_pagina: str) -> tuple[float, str] | None:
     extraído letra por línea no debe correr el membrete fuera de la
     ventana."""
     lineas_significativas = [l for l in texto_pagina.split("\n") if len(l.strip()) > 2]
-    t = normalizar(" ".join(lineas_significativas[:15]))
+    return _factor_de_texto(" ".join(lineas_significativas[:15]))
+
+
+def _factor_de_texto(texto: str) -> tuple[float, str] | None:
+    """Mismo criterio de siempre, extraido a su propia funcion para poder
+    aplicarlo tambien al texto completo de una pagina (no solo al membrete):
+    "miles de millones" ANTES que "millones" porque la primera frase
+    contiene a la segunda como substring. Los tres marcadores exigen "de
+    pesos", asi que una leyenda de cifras en dolares no los activa
+    (verificado real: la pagina de convenciones de TERPEL define "MUSD :
+    cifras expresadas en miles de dolares" en la misma linea que "M$ :
+    cifras expresadas en miles de pesos colombianos")."""
+    t = normalizar(texto)
     if normalizar(MARCADOR_MILES_DE_MILLONES) in t:
         return 1.0, "miles_de_millones"
     if normalizar(MARCADOR_MILLONES) in t:
@@ -132,6 +144,140 @@ def _detectar_factor_unidad(texto_pagina: str) -> tuple[float, str] | None:
         return 0.000001, "miles_de_millones"
     return None
 
+
+# Cuantas paginas hacia atras desde el balance se acepta buscar la
+# declaracion de unidad cuando la pagina del balance no la trae.
+PAGINAS_ATRAS_DECLARACION_UNIDAD = 12
+
+
+def _detectar_factor_unidad_documento(
+    textos_paginas: list[str], pagina_ancla: int
+) -> tuple[float, str] | None:
+    """Respaldo cuando el membrete de la pagina del balance no declara la
+    unidad. Causa raiz real de TERPEL (una docena larga de archivos, todos
+    marcados SIN_TABLAS_RECONOCIDAS). NO era un problema de etiquetas ni de
+    columna, como se supuso: verificado contra el PDF real que
+    `_indice_columna_actual` devuelve 0 correcto y que la fila "Total
+    activos 9.869.660.579 10.238.949.515" coincide exacto con el sinonimo.
+    Lo que fallaba: TERPEL encabeza las columnas con "M$" y nunca escribe la
+    frase de unidad en esa pagina, asi que el guard `deteccion is not None`
+    abortaba la extraccion entera antes de leer una sola cifra. La
+    declaracion si existe en el documento -- la portada del bloque de
+    estados dice "expresados en miles de pesos colombianos" y la pagina de
+    convenciones define "M$ : cifras expresadas en miles de pesos
+    colombianos".
+
+    Se busca en el texto COMPLETO de la pagina (no solo el membrete) y solo
+    HACIA ATRAS desde el balance, tomando la pagina mas cercana: la unidad
+    se declara antes de las tablas que la usan, nunca despues, y limitar el
+    alcance evita que una nota lejana con otra unidad gane. No adivina nada
+    -- si ninguna pagina la declara, sigue devolviendo None y el documento
+    se va a `requiere_revision` como antes."""
+    limite = max(-1, pagina_ancla - PAGINAS_ATRAS_DECLARACION_UNIDAD)
+    for i in range(pagina_ancla, limite, -1):
+        if not (0 <= i < len(textos_paginas)) or textos_paginas[i] is None:
+            continue
+        if _declara_mas_de_una_unidad(textos_paginas[i]):
+            continue
+        deteccion = _factor_de_texto(textos_paginas[i])
+        if deteccion is not None:
+            return deteccion
+    return None
+
+
+def _declara_mas_de_una_unidad(texto: str) -> bool:
+    """True si la pagina menciona DOS unidades de peso distintas -- señal de
+    que es una pagina de convenciones/glosario, no una declaracion sobre las
+    tablas. Verificado real y necesario: TERPEL 2023-T1 tiene en la pagina
+    11 una leyenda que define a la vez "MM$ : cifras expresadas en millones
+    de pesos" y "M$ : cifras expresadas en miles de pesos colombianos". Sin
+    este filtro, el orden de prioridad de `_factor_de_texto` (millones antes
+    que miles, correcto para el membrete de una tabla) elegia "millones" y
+    devolvia el activo total 1.000 veces mas grande. La pagina 5 del mismo
+    documento declara sin ambiguedad "expresados en miles de pesos
+    colombianos" -- esa es la buena, y saltando la ambigua se llega a ella.
+    Con ambiguedad no se adivina: se sigue buscando, y si no hay ninguna
+    pagina univoca el resultado es None (a `requiere_revision`)."""
+    t = normalizar(texto)
+    distintas = set()
+    if normalizar(MARCADOR_MILES_DE_MILLONES) in t:
+        distintas.add("miles_de_millones")
+    # "millones de pesos" tambien es substring de "miles de millones de
+    # pesos": solo cuenta como unidad propia si aparece fuera de esa frase.
+    if t.replace(normalizar(MARCADOR_MILES_DE_MILLONES), "").find(normalizar(MARCADOR_MILLONES)) != -1:
+        distintas.add("millones")
+    if normalizar(MARCADOR_MILES) in t:
+        distintas.add("miles")
+    return len(distintas) > 1
+
+
+# Simbolos de unidad que algunos emisores ponen como encabezado de columna en
+# vez de la frase completa, con una leyenda propia que los define.
+PATRON_SIMBOLO_UNIDAD = re.compile(r"(?<![A-Za-z0-9])(COP[$]|MM[$]|M[$]|MUSD|USD)(?![A-Za-z0-9])")
+SIMBOLOS_MONEDA_EXTRANJERA = {"USD", "MUSD"}
+
+
+def _factor_de_definicion(linea: str) -> tuple[float, str] | None:
+    """Factor de una LINEA DE LEYENDA del tipo
+    'M$ : Cifras expresadas en miles de pesos colombianos'. A diferencia de
+    `_factor_de_texto` acepta tambien 'expresadas en pesos' a secas (COP$)."""
+    t = normalizar(linea)
+    if normalizar(MARCADOR_MILES_DE_MILLONES) in t:
+        return 1.0, "miles_de_millones"
+    if normalizar(MARCADOR_MILLONES) in t:
+        return 0.001, "miles_de_millones"
+    if normalizar(MARCADOR_MILES) in t:
+        return 0.000001, "miles_de_millones"
+    if "expresadasenpesos" in t or "expresadosenpesos" in t:
+        return 0.000000001, "miles_de_millones"
+    return None
+
+
+def _detectar_factor_unidad_por_simbolo(
+    texto_balance: str, textos_paginas: list[str], pagina_ancla: int
+) -> tuple[float, str] | None:
+    """Resuelve la unidad cuando la tabla la declara con un SIMBOLO en el
+    encabezado de columna y define ese simbolo en una leyenda aparte.
+
+    Verificado real, TERPEL 2023-ANUAL (475 paginas): la pagina 284 encabeza
+    "Activos M$ M$" y nunca escribe la frase; la pagina 283, justo antes,
+    trae la leyenda completa --
+        COP$ : Cifras expresadas en pesos colombianos
+        M$   : Cifras expresadas en miles de pesos colombianos
+        MM$  : Cifras expresadas en millones de pesos colombianos
+        MUSD : Cifras expresadas en miles de dolares estadounidenses
+    Esa pagina declara TRES unidades de peso a la vez, asi que
+    `_detectar_factor_unidad_documento` la descarta por ambigua y con razon:
+    tomada como bloque no dice cual aplica. Resuelta POR SIMBOLO si dice cual
+    -- se lee el simbolo que la tabla realmente usa y se busca su renglon.
+
+    Si el simbolo del encabezado es de moneda extranjera (USD/MUSD) devuelve
+    None a proposito: mejor mandar a revision que publicar una tabla en
+    dolares como si fueran pesos."""
+    lineas_significativas = [l for l in texto_balance.split("\n") if len(l.strip()) > 2]
+    encabezado = " ".join(lineas_significativas[:15])
+    simbolos = PATRON_SIMBOLO_UNIDAD.findall(encabezado)
+    if not simbolos:
+        return None
+    # el simbolo que mas se repite en el encabezado es el de las columnas de
+    # cifras (aparece una vez por columna), no una mencion suelta.
+    simbolo = max(set(simbolos), key=simbolos.count)
+    if simbolo in SIMBOLOS_MONEDA_EXTRANJERA:
+        return None
+
+    limite = max(-1, pagina_ancla - PAGINAS_ATRAS_DECLARACION_UNIDAD)
+    for i in range(pagina_ancla, limite, -1):
+        if not (0 <= i < len(textos_paginas)) or textos_paginas[i] is None:
+            continue
+        for linea in textos_paginas[i].split("\n"):
+            marcados = PATRON_SIMBOLO_UNIDAD.findall(linea)
+            # un renglon de leyenda define UN simbolo; si la linea nombra
+            # varios no es una definicion sino prosa o una tabla.
+            if marcados == [simbolo] and ("expresad" in normalizar(linea) or ":" in linea):
+                factor = _factor_de_definicion(linea)
+                if factor is not None:
+                    return factor
+    return None
 
 def _indice_columna_actual(texto_pagina: str, anio: int, periodo: str) -> int | None:
     """Busca en las primeras ~12 líneas de la página (el encabezado, antes de
@@ -219,22 +365,47 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
     ({nombre: {"valor", "pagina", "tabla"}}) para que el llamador no distinga.
     `anio`/`periodo` -- los de `reportes_archivo` -- son los que deciden qué
     columna es "la actual" en cada tabla (ver docstring del módulo)."""
-    triage = triage_documento(ruta_pdf)
-    anclas = triage.get("anclas_encontradas", {})
     es_financiero = sector in SECTORES_FINANCIEROS
 
     campos: dict[str, dict] = {}
+    motivos: list[str] = []
     unidad = None
     factor_documento = None  # factor de la página del balance -- respaldo si otra página no declara la suya
     cuadra_balance = None
 
+    # Una sola apertura para triage + extraccion. Causa raiz real de los 54
+    # timeouts del lote: eran DOS pasadas completas de `extract_text()` sobre
+    # el mismo documento de 200-300 paginas (una del triage, otra de aqui).
+    # El triage ya devuelve el texto que extrajo en `textos_paginas`.
     with pdfplumber.open(ruta_pdf) as pdf:
+        triage = triage_documento(ruta_pdf, pdf_abierto=pdf)
+        anclas = triage.get("anclas_encontradas", {})
+        textos_paginas: list[str] = triage.get("textos_paginas") or []
+
+        def _texto(indice: int) -> str:
+            if 0 <= indice < len(textos_paginas) and textos_paginas[indice] is not None:
+                return textos_paginas[indice]
+            return pdf.pages[indice].extract_text() or ""
+
         pagina_balance = anclas.get("situacion_financiera")
+        if pagina_balance is None:
+            motivos.append(
+                "el triage no ubico la pagina del estado de situacion financiera"
+                + (" (hay paginas sin capa de texto: probable escaneo)" if triage.get("paginas_sin_texto") else "")
+            )
         if pagina_balance is not None:
-            texto = pdf.pages[pagina_balance].extract_text() or ""
+            texto = _texto(pagina_balance)
             indice_col = _indice_columna_actual(texto, anio, periodo)
             deteccion = _detectar_factor_unidad(texto)
+            if deteccion is None:
+                deteccion = _detectar_factor_unidad_por_simbolo(texto, textos_paginas, pagina_balance)
+            if deteccion is None:
+                deteccion = _detectar_factor_unidad_documento(textos_paginas, pagina_balance)
             patron, parser = detectar_formato_numero(texto)
+            if deteccion is None:
+                motivos.append(f"unidad no declarada en la pagina {pagina_balance + 1} ni en las 12 anteriores")
+            if indice_col is None:
+                motivos.append(f"no se pudo resolver la columna de {periodo} {anio} en la pagina {pagina_balance + 1}")
             if deteccion is not None and indice_col is not None:
                 factor_documento, unidad = deteccion
 
@@ -249,7 +420,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 # siguiente antes de rendirse -- misma columna resuelta, la
                 # continuación no suele repetir su propio encabezado de fechas.
                 if (pasivos is None or patrimonio is None) and pagina_balance + 1 < len(pdf.pages):
-                    texto_siguiente = pdf.pages[pagina_balance + 1].extract_text() or ""
+                    texto_siguiente = _texto(pagina_balance + 1)
                     indice_siguiente = _indice_columna_actual(texto_siguiente, anio, periodo)
                     if indice_siguiente is None:
                         indice_siguiente = indice_col
@@ -300,7 +471,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
 
         pagina_resultados = anclas.get("resultados")
         if pagina_resultados is not None and factor_documento is not None:
-            texto = pdf.pages[pagina_resultados].extract_text() or ""
+            texto = _texto(pagina_resultados)
             resuelto = _factor_y_columna(texto)
             if resuelto is not None:
                 factor, indice_col = resuelto
@@ -329,7 +500,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
         pagina_flujo = anclas.get("flujos_efectivo")
         depreciacion = None
         if pagina_flujo is not None and factor_documento is not None:
-            texto = pdf.pages[pagina_flujo].extract_text() or ""
+            texto = _texto(pagina_flujo)
             resuelto = _factor_y_columna(texto)
             if resuelto is not None:
                 factor, indice_col = resuelto
@@ -357,9 +528,23 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
         campos.setdefault("acciones_en_circulacion", {"valor": None, "pagina": None, "tabla": None})
         campos.setdefault("dividendos_decretados", {"valor": None, "pagina": None, "tabla": None})
 
+    if not motivos and not any(c.get("valor") is not None for c in campos.values()):
+        motivos.append(
+            f"pagina y columna resueltas, pero ninguna etiqueta de fila coincidio "
+            f"(pagina {(pagina_balance or 0) + 1}) -- layout o vocabulario no cubierto"
+        )
+
     return {
         "campos": campos,
         "unidad": unidad,
         "cuadra_balance": cuadra_balance,
         "paginas_usadas": anclas,
+        # Por que NO se extrajo, en las palabras del extractor. Antes el job
+        # solo podia decir "no encontro ninguna tabla ancla", que mezclaba
+        # cuatro causas distintas (sin ancla / sin unidad / sin columna /
+        # etiquetas que no coinciden) e hizo que TERPEL -- que fallaba solo
+        # por la unidad -- se investigara durante sesiones como si fuera un
+        # problema de etiquetas. Sin esto no se puede priorizar el resto de
+        # la cola de `requiere_revision`.
+        "motivos": motivos,
     }

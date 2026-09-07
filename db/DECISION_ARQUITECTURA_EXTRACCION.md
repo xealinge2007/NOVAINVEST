@@ -174,3 +174,87 @@ de bien de la página de relación con inversionistas del emisor. Se acepta, con
 - **Versión no firmada del `EEFF-Consolidados` 2024 de ECOPETROL**, si existe en SIMEV — ya
   no es bloqueante (el canal imagen lo resuelve), pero una versión con capa de texto es más
   barata de procesar.
+
+---
+
+# Adenda — 07-sep-2026: por qué el lote se trabó y qué se cambió
+
+Contexto: la corrida completa del extractor genérico sobre 334 archivos dejó
+**102 procesados / 178 en revisión / 54 en error**, y la sesión anterior
+identificó cuatro casos "trabados" (TERPEL, Banco de Bogotá escaneado, Nutresa,
+GEB). Al abrir los PDF reales, **tres de los cuatro diagnósticos estaban mal
+atribuidos**, y la causa que sí bloqueaba el lote entero no estaba en la lista.
+
+## Lo que realmente pasaba
+
+| Caso | Diagnóstico que traía | Causa real, verificada contra el PDF |
+|---|---|---|
+| **TERPEL** (12+ archivos) | "el extractor no encuentra las etiquetas en esas páginas" | Las etiquetas **sí** coinciden y la columna **sí** se resuelve (verificado: `_indice_columna_actual` devuelve 0, y la fila `Total activos 9.869.660.579 10.238.949.515` iguala exacto el sinónimo). Lo que fallaba era la **unidad**: TERPEL encabeza sus columnas con `M$` y no escribe la frase en esa página, así que `deteccion is not None` abortaba la extracción antes de leer una sola cifra. |
+| **GEB** | "balance en 2 columnas lado a lado, sin resolver" | Ya funcionaba. Las filas que importan salen limpias del aplanado (`Total pasivos 24.015.654 25.462.558`, `Total patrimonio 19.510.157 $ 21.277.906`), y `Total activo $ 43.525.811 46.740.464 Capital emitido 32 492.111 492.111` deja el valor correcto en el índice 0. El layout de 2 columnas solo haría daño si el periodo pedido cayera en el índice ≥ 2, que no ocurre en este corpus. |
+| **GRUPO_NUTRESA** | "texto corrupto, letra por letra — falta un preprocesador que colapse el espaciado" | El espaciado es real, pero **no es el problema principal**: `extract_text()` de esos PDF emite el bloque completo de **etiquetas** primero y el bloque completo de **cifras** después, en líneas distintas. Ningún preprocesador de texto plano puede reunirlas. Sí se reúnen por coordenada (`extract_words()` agrupado por `top`: etiqueta y cifras comparten fila), que es un canal distinto al actual. |
+| **BANCO_DE_BOGOTA** escaneado | "decisión pendiente: ¿OCR en el extractor?" | No hay decisión pendiente — **ya está tomada arriba, en este mismo documento**: canal B es el subagente leyendo la página renderizada, sin OCR ni dependencias nuevas (probado contra ECOPETROL 2024-ANUAL). El extractor automático nunca lleva OCR. |
+| **54 timeouts** | "PDF anormalmente pesados, no se investigó" | Ninguno era anormal. `extraer_fundamentales` abría el PDF, `triage_documento` lo abría **otra vez** y extraía el texto de **todas** las páginas, y `extractor_generico.extraer` lo abría una **tercera** vez para releer las páginas ancla. Dos pasadas completas de `extract_text()` sobre documentos de 200–475 páginas, con un límite de 120s. |
+
+## Qué se cambió
+
+1. **Una sola pasada de lectura.** `triage_documento` acepta un PDF ya abierto
+   y devuelve `textos_paginas`; `extraer` abre una vez y reutiliza. Además el
+   triage lee **perezosamente**: los estados y el borde de las notas casi
+   siempre caen en el primer tercio, y el bucle de notas ya cortaba ahí.
+   Mismos criterios, mismas páginas pedidas — solo que ya no se paga por las
+   que nadie mira. `TIMEOUT_SEGUNDOS` sube de 120 a 300.
+2. **La unidad se resuelve en tres niveles**, de más específico a más general,
+   y ninguno adivina: (a) el membrete de la página del balance, como siempre;
+   (b) **por símbolo** — si el encabezado de columna dice `M$`/`MM$`/`COP$`, se
+   busca el renglón de la leyenda que define *ese* símbolo (TERPEL 2023-ANUAL:
+   `M$ : Cifras expresadas en miles de pesos colombianos`); (c) la declaración
+   en prosa de las 12 páginas anteriores, **descartando** cualquier página que
+   declare dos unidades de peso distintas, porque es un glosario y no dice cuál
+   aplica. Si el símbolo es `USD`/`MUSD` se devuelve `None` a propósito: mejor
+   revisión que publicar una tabla en dólares como si fueran pesos.
+3. **Segunda oportunidad para el ancla, con la ventana de posición ampliada**
+   (150 → 450 caracteres), y **solo** cuando las dos pasadas actuales no
+   encontraron nada — estrictamente aditiva, no puede mover un ancla que ya
+   funcionaba. TERPEL 2023-ANUAL trae el balance consolidado perfectamente
+   legible en la página 284, pero cada página abre con una barra de navegación
+   larga que empuja el título al carácter 184. Lo que evita el falso positivo
+   sigue siendo la densidad de cifras, el descarte de índices y el corte en el
+   borde de las notas, no la posición.
+4. **El extractor dice POR QUÉ no extrajo** (`motivos` en el resultado, y de
+   ahí a `error_detalle`). Antes, cuatro fallos distintos —sin ancla / sin
+   unidad / sin columna / etiquetas que no coinciden— se guardaban con la misma
+   frase, "no encontró ninguna tabla ancla". Esa frase es la razón de que
+   TERPEL se investigara durante sesiones como si fuera un problema de
+   etiquetas, y de que los 178 en revisión no se pudieran priorizar.
+5. **`jobs/diagnostico_extraccion.py`** — corre el corpus entero en local, sin
+   Supabase, y clasifica cada archivo por causa (`OK`, `SIN_ANCLA`,
+   `SIN_UNIDAD`, `SIN_COLUMNA`, `SIN_ETIQUETAS`, `BALANCE_NO_CUADRA`,
+   `PARCIAL_SIN_BALANCE`, `TIMEOUT`). Deja un CSV para atacar la causa más
+   grande primero en vez de una muestra de 5 archivos por sesión.
+
+## Lo que queda decidido y NO se va a construir
+
+- **OCR en el extractor automático.** Se mantiene la decisión de arriba: las
+  secciones escaneadas las lee el subagente como imagen (canal B). Meterle OCR
+  al parser duplicaría el canal de texto con uno peor y rompería la
+  independencia de canales, que es de donde sale la validación.
+- **Lógica de layout de 2 columnas para GEB.** No hace falta: verificado que
+  las filas que se necesitan salen correctas del aplanado actual.
+
+## Lo que sigue abierto (en orden de valor)
+
+1. **Nutresa y cualquier PDF con etiquetas y cifras en bloques separados** —
+   necesita reconstruir las filas por coordenada (`extract_words()` agrupado
+   por `top`, uniendo fragmentos con separación < 0,6 pt; medido real: dentro
+   de una palabra los huecos son 0–0,2 pt y entre palabras 1,25–1,67 pt). El
+   mismo cambio arregla de paso números partidos como `1 .510.703.125`. Es un
+   canal de lectura nuevo, no un parche: conviene detectarlo (>50% de palabras
+   de 1–2 caracteres) y aplicarlo solo ahí, para no tocar lo ya calibrado.
+2. **Balances que se parten entre páginas** y dejan `activos` sin `pasivos`
+   (`PARCIAL_SIN_BALANCE`, p.ej. TERPEL 2024-ANUAL). Ya existe el respaldo de
+   "mirar la página siguiente"; hay que ver por qué no alcanza.
+3. **Documentos donde la unidad no está en las 12 páginas anteriores**
+   (TERPEL 2022-ANUAL). Ampliar la ventana es fácil, pero en un documento de
+   475 páginas que mezcla informe de gestión y EEFF el riesgo de tomar la
+   declaración de otra sección es real: conviene atarlo al símbolo de columna
+   (nivel b) antes que a la distancia.

@@ -678,3 +678,88 @@ miles con punto (beneficiaría a GEB, PROMIGAS y probablemente otros) y/o un pre
 de texto para la corrupción letra-por-letra de Nutresa, antes de seguir corriendo el lote
 contra el resto del histórico. Quedan **12 archivos en `error` (timeout)** para
 reintentar aparte.
+
+## F4a — reconciliación del renombrado masivo + reprocesamiento completo (06/07-sep-2026)
+
+Soporte de separador de miles con punto construido (`PATRON_NUMERO_FINANCIERO_PUNTO`,
+`detectar_formato_numero`) — resolvió GEB y PROMIGAS. Después llegó un evento externo
+grande: **la otra sesión de Claude (la que descarga/organiza los archivos) auditó el
+contenido real de los ~410 archivos existentes y renombró ~180 de ellos** agregando
+sufijos de clasificación como `-Estados-Financieros-Consolidados-y-Separados` (varios
+resultaron ser documentos reales mal etiquetados, ej. los "Anexos.pdf" de Promigas eran en
+realidad los EEFF). Esto expuso tres riesgos reales para la regla de Alex (solo
+consolidado, nunca separado) y un problema de infraestructura, los cuatro corregidos y
+commiteados (`e3e8e24`, `7c2208c`, sin push):
+
+1. **`ingesta_simev.py` trataba los 184 archivos renombrados como nuevos** — reconciliación
+   por hash antes de asumir "nuevo": si el hash coincide con una fila existente del mismo
+   emisor, se actualiza esa fila (nombre, ruta, tipo, reencolar si cambió de clasificación)
+   en vez de duplicar. **Corrido real: 150 filas reconciliadas, 0 duplicados, 0 errores.**
+2. **`_es_separado()` excluía el archivo completo con solo ver "separados" en el nombre**,
+   aunque también trajera el consolidado (el caso ahora común). Corregido: solo excluye
+   separado/individual **puro** (sin mención de consolidado en el mismo nombre).
+3. **`triage.py` no tenía preferencia por "consolidado"** al elegir qué sección de un PDF
+   con ambas leer — riesgoso con archivos combinados. Verificado real contra
+   `BANCO_DE_BOGOTA/2024-T1`: ese documento trae el separado **completo** (estados + notas)
+   primero y el consolidado después (como imagen escaneada); el corte de búsqueda por
+   "notas a los estados financieros" se detenía en las notas del separado antes de llegar
+   al consolidado. Arreglado en dos partes: preferencia por "consolidado" cercano al
+   título, y el límite de búsqueda ahora ubica específicamente las notas del consolidado
+   (no las primeras notas que aparezcan) — verificado que ahora sí ubica las páginas 81-88
+   (consolidado) en vez de 27-32 (separado).
+4. **Caída de infraestructura no relacionada con los datos**: el lote de reprocesamiento
+   completo murió dos veces con `httpx.ReadError` (Supabase cortó la conexión a mitad de
+   corrida) porque ninguna llamada `.execute()` fuera de la extracción misma tenía try
+   propio. Se extrajo el cuerpo del loop a `_procesar_reporte()` y se envolvió la llamada en
+   un try/except que no toca el estado de la fila en error de infraestructura (la siguiente
+   corrida la retoma sola) — corrida completa después de esto sin más caídas.
+
+**Reprocesamiento completo de los 294 reportes pendientes/reclasificados** (`--` sin
+filtro de emisor). Estado final real en Supabase (`reportes_archivo`, tipo
+informe_periodico/estados_financieros, 334 filas totales):
+
+| estado | filas |
+|---|---|
+| `procesado` (publicado en `fundamentales_reportados`) | 102 |
+| `requiere_revision` | 178 |
+| `error` | 54 |
+
+Desglose de motivos: 138 "extractor genérico sin tabla ancla", 54 timeout (120s), 20
+excluido separado/individual puro, 14 "plantilla sin tabla ancla", 4 corroboración
+insuficiente, 1 fuera de rango, 1 balance no cuadra. `fundamentales_reportados` tiene 116
+filas totales.
+
+**Investigación de los ceros (no se aceptaron a primera vista, per instrucción de Alex):**
+- **`BANCO_DE_BOGOTA/2024-T1` sigue en `SIN_TABLAS_RECONOCIDAS` pese al arreglo de
+  triage** — pero por una razón distinta y ya esperada: `triage_documento()` SÍ ubica
+  correctamente las páginas 81-88 (consolidado), pero 6 de esas 8 páginas
+  (`paginas_sin_texto: [82,83,84,85,86,87]`) son imágenes escaneadas sin capa de texto.
+  `extractor_generico.py` es puramente de texto (regex sobre `extract_text()`), no hace
+  OCR — así que no puede leer números de una imagen. **No es un bug, es el límite conocido
+  del canal de texto** (§5.1.3: "el subagente lee, el parser verifica" — este es
+  precisamente el caso donde el parser no puede verificar nada porque no hay texto que
+  leer; requeriría que un subagente lea la imagen directamente, o soporte de OCR).
+- **ISA, y el "Informe-Fin-Ejercicio" de Promigas (no el de "Estados-Financieros")**:
+  `triage_documento()` devuelve `contiene_cifras: False` limpio — ninguna ancla, ningún
+  bloque escaneado. Confirmado hueco real, no bug (ISA ya estaba confirmado por lectura
+  directa + auditoría independiente de la otra sesión; Promigas tiene un archivo aparte con
+  las cifras reales que sí se procesó bien).
+- **`GRUPO_NUTRESA` y `BVC`**: mismo patrón (`contiene_cifras: False`) en los archivos de
+  muestra revisados — consistente con la corrupción letra-por-letra ya documentada
+  (Nutresa) y con informes de gestión genuinamente narrativos (BVC), pero **no se revisó
+  cada período individualmente** — queda pendiente confirmar sistemáticamente si BVC tiene
+  algún archivo `estados_financieros` real en algún período.
+- **`TERPEL` es un caso distinto y sin resolver**: `triage_documento()` SÍ encuentra las
+  anclas correctas (verificado en 2023-T1: páginas 14-20, las 4 categorías) — el fallo está
+  más adentro, en `extractor_generico.py` (matching de etiqueta/columna no encuentra
+  ninguno de los 11 campos en esas páginas). Terpel apareció en `SIN_TABLAS_RECONOCIDAS` en
+  casi todos sus períodos del lote — **candidato real a investigar a fondo** (probable
+  formato de tabla o etiquetas distinto al calibrado), no se profundizó más en esta sesión.
+
+**Siguiente paso concreto**: investigar por qué `extractor_generico.py` no encuentra
+campos en las páginas correctas de TERPEL (triage ya las ubica bien); confirmar
+sistemáticamente si BVC tiene algún período con EEFF reales descargados; decidir si vale
+la pena un canal de imagen/OCR para casos como Banco de Bogotá (o dejarlo para lectura
+directa del subagente, consistente con la arquitectura). Los 178 `requiere_revision` y 54
+`error` quedan disponibles para reintento tras cualquiera de esos arreglos — el pipeline es
+incremental, no hace falta esperar a resolver todo antes de seguir.
