@@ -86,6 +86,9 @@ def _con_limite_de_tiempo(func, *args):
 # secciones, que a su vez NO trae cifras -- remite a SIMEV/la web). Un
 # reporte que cae en el rango de fechas pero no trae la tabla ancla queda
 # `requiere_revision`, nunca se fuerza.
+# DESACTIVADAS el 08-sep-2026 -- ver `PLANTILLAS_DESACTIVADAS` abajo. Se deja
+# la configuracion intacta para poder reactivarlas si alguna vez superan al
+# extractor generico en un emisor puntual.
 PLANTILLAS_DISPONIBLES = {
     "ECOPETROL": [
         {
@@ -103,6 +106,24 @@ PLANTILLAS_DISPONIBLES = {
     ],
 }
 
+# Las plantillas por emisor NO declaran unidad: devuelven la cifra tal como
+# aparece en la tabla (ECOPETROL publica en millones) y el job la escribia sin
+# convertir, mientras el extractor generico convierte todo a miles de millones.
+# O sea que la misma columna de `fundamentales_reportados` estaba guardando dos
+# unidades distintas segun que camino hubiera tomado cada archivo. Se vio en el
+# analizador: las filas ANUAL de ECOPETROL daban activos 306.369.507 contra
+# 312.361 de su propio 2023-T1, y el ROE salia 18.189%.
+#
+# No se "arregla" la plantilla poniendole la unidad a mano: codificar "Ecopetrol
+# reporta en millones" es exactamente el mantenimiento por emisor que la
+# decision de arquitectura (db/DECISION_ARQUITECTURA_EXTRACCION.md) dejo atras.
+# El extractor generico ya cubre ECOPETROL mejor que su plantilla -- 9 de 11
+# campos con el balance cuadrando -- asi que el camino de plantilla queda
+# apagado. La guarda `_activos_fuera_de_rango` no lo habia detectado porque
+# compara contra el historial del propio emisor, y ahi TODAS las filas de
+# plantilla estaban igual de infladas.
+PLANTILLAS_DESACTIVADAS = True
+
 CAMPOS_NUMERICOS = [
     "ingresos", "utilidad_operacional", "utilidad_neta", "ebitda",
     "activos_totales", "pasivos_totales", "patrimonio", "flujo_caja_operativo",
@@ -111,6 +132,8 @@ CAMPOS_NUMERICOS = [
 
 
 def _plantilla_para(slug_emisor: str, tipo_documento: str, anio: int):
+    if PLANTILLAS_DESACTIVADAS:
+        return None
     candidatas = PLANTILLAS_DISPONIBLES.get(slug_emisor, [])
     for c in candidatas:
         if tipo_documento in c["tipos_documento"] and anio >= int(c["vigente_desde"][:4]):

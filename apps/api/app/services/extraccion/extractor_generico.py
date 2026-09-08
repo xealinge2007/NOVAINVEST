@@ -505,22 +505,6 @@ def _suma_todas_ocurrencias(texto: str, alternativas: list[str], indice_columna:
 # y parser propios en vez de relajar el matcher general, que esta calibrado.
 PATRON_NUMERO_POR_ACCION = re.compile(r"-?[0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?")
 
-SINONIMOS_UTILIDAD_POR_ACCION = [
-    "ganancia basica por accion",
-    "ganancia basica y diluida por accion",
-    "ganancia neta por accion",
-    "ganancia por accion basica",
-    "utilidad basica por accion",
-    "utilidad basica y diluida por accion",
-    "utilidad neta por accion",
-    "utilidad por accion",
-    "utilidad por accion del controlante",
-    "utilidad por accion de la controlante",
-    "utilidad neta por accion de intereses controlantes",
-    "perdida basica por accion",
-    "perdida por accion basica y diluida",
-    "perdida basica y diluida por accion",
-]
 
 # Rango de plausibilidad del numero de acciones de un emisor de la BVC.
 # Ecopetrol tiene ~41.100 millones de acciones (el mayor del mercado) y los
@@ -561,12 +545,35 @@ def _parsear_por_accion(token: str) -> float | None:
     return -valor if negativo else valor
 
 
-def _etiqueta_sin_parentesis(etiqueta: str) -> str:
-    """Quita un parentesis final de la etiqueta antes de comparar. Verificado
-    real: la fila llega como "Utilidad basica y diluida por accion (en pesos
-    colombianos)", y el match exacto -- que es lo correcto para el resto -- no
-    la reconoceria."""
-    return normalizar(re.sub(r"\s*\([^)]*\)\s*$", "", etiqueta))
+def _es_etiqueta_por_accion(etiqueta: str) -> bool:
+    """True si la etiqueta es la fila de utilidad por accion.
+
+    Aqui NO se usa una lista de sinonimos exactos como en el resto del modulo,
+    y es a proposito: se cosecharon las etiquetas reales de los emisores que
+    faltaban y practicamente no hay dos iguales --
+
+        Ganancia por accion de operaciones continuas
+        Utilidad por accion basica y diluida:
+        Ganancia neta por accion (en pesos colombianos)
+        Utilidad neta por accion que se presenta en pesos
+        Ganancia por accion basica ordinaria procedente de operaciones continuas
+        Ganancia basica y diluida por accion en pesos
+
+    -- enumerarlas es una carrera perdida, el mismo callejon que ya obligo a
+    reducir las anclas del triage a un nucleo. La regla: empieza por
+    ganancia/utilidad/perdida/resultado, contiene "por accion", y no es una de
+    las filas que se le parecen y significan otra cosa (el ratio "Precio /
+    Utilidad por accion", el dividendo por accion, el valor intrinseco o
+    nominal). Lo que hace segura esta apertura es la verificacion posterior: el
+    numero de acciones derivado tiene que caer en el rango plausible de un
+    emisor de la BVC, y si no, se descarta."""
+    n = normalizar(re.sub(r"\([^)]*\)", "", etiqueta)).rstrip(":.,-")
+    if "poraccion" not in n:
+        return False
+    if not n.startswith(("ganancia", "utilidad", "perdida", "resultado")):
+        return False
+    prohibidas = ("precio", "dividendo", "valorintrinseco", "valorpatrimonial", "nominal", "numerode")
+    return not any(x in n for x in prohibidas)
 
 
 def _utilidad_por_accion(texto: str, indice_columna: int, patron, parser) -> float | None:
@@ -587,10 +594,9 @@ def _utilidad_por_accion(texto: str, indice_columna: int, patron, parser) -> flo
     (BVC: "400,78") no se lee. Se acepta: es preferible cubrir menos emisores
     que derivar un numero de acciones equivocado, que contaminaria todas las
     metricas por accion."""
-    objetivos = {normalizar(a) for a in SINONIMOS_UTILIDAD_POR_ACCION}
     for linea in texto.split("\n"):
         etiqueta, valores = separar_etiqueta_y_valores_linea(linea, patron, parser)
-        if _etiqueta_sin_parentesis(etiqueta) in objetivos and indice_columna < len(valores):
+        if _es_etiqueta_por_accion(etiqueta) and indice_columna < len(valores):
             return valores[indice_columna]
     return None
 
