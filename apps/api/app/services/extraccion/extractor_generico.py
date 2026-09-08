@@ -75,6 +75,16 @@ SINONIMOS_PATRIMONIO = ["total patrimonio", "total patrimonio neto"]
 SINONIMOS_PATRIMONIO_TOTAL_CON_MINORITARIOS = ["total pasivo y patrimonio", "total pasivos y patrimonio"]
 SINONIMOS_DEUDA = ["prestamos y financiaciones", "obligaciones financieras"]
 
+# Las listas de abajo se ampliaron el 08-sep-2026 COSECHANDO LAS ETIQUETAS
+# REALES de los PDF, no inventando sinonimos: se recorrieron las 161 paginas
+# de estado de resultados que el triage ubicaba bien y de las que no salia ni
+# un campo, y se contaron las etiquetas de fila que traian cifras. Las mas
+# frecuentes ("utilidad neta" en 35 filas de 6 emisores, "resultado neto del
+# periodo" 24, "utilidad neta del ejercicio" 14, "ingresos" 17, "resultado
+# operacional" 14) sencillamente no estaban. El matching sigue siendo por
+# IGUALDAD EXACTA de etiqueta normalizada, asi que agregar la forma corta no
+# arrastra sus variantes: "ingresos" no coincide con "otros ingresos" ni con
+# "ingresos financieros", que son lineas distintas de la misma tabla.
 SINONIMOS_INGRESOS = [
     "ingresos procedentes de contratos con clientes",
     "ingresos de actividades ordinarias",
@@ -83,19 +93,59 @@ SINONIMOS_INGRESOS = [
     "ingresos operacionales",
     "total de ingresos",
     "ventas netas",
+    # cosechadas de los PDF reales
+    "ingresos",
+    "total ingresos",
+    "ingresos netos",
+    "ingresos por ventas",
+    "ingresos por venta de bienes y prestacion de servicios",
+    "ingresos de actividades ordinarias procedentes de contratos con clientes",
+    "total ingresos de actividades ordinarias",
+    "ventas",
 ]
 SINONIMOS_UTILIDAD_OPERACIONAL = [
     "resultado de la operacion",
     "utilidad operacional",
     "ganancia operativa",
     "ganancia operacional",
+    # cosechadas de los PDF reales
+    "resultado operacional",
+    "utilidad de operacion",
+    "utilidad de la operacion",
+    "resultado de las actividades de operacion",
+    "ganancia por actividades de operacion",
+    "utilidad operativa",
 ]
+
+# Utilidad neta: se busca PRIMERO la atribuible a la controladora y solo si no
+# aparece, la del grupo completo. No es un detalle de estilo -- el numerador de
+# cualquier metrica por accion es el resultado atribuible a los accionistas de
+# la matriz, no el que incluye el interes no controlante. Buscar por lista
+# unica dejaria que ganara la que aparezca primero en la pagina, que en varios
+# formatos es la del grupo.
 SINONIMOS_UTILIDAD_NETA = [
     "a los accionistas",
     "a los accionistas de la controladora",
     "ganancia neta atribuible a los propietarios de la controladora",
     "utilidad neta atribuible a los accionistas",
     "ganancia neta atribuible a los accionistas",
+    "utilidad neta atribuible a los propietarios de la controladora",
+    "resultado atribuible a los propietarios de la controladora",
+    "propietarios de la controladora",
+]
+SINONIMOS_UTILIDAD_NETA_GRUPO = [
+    "utilidad neta",
+    "utilidad neta del ejercicio",
+    "utilidad neta del periodo",
+    "utilidad del ejercicio",
+    "utilidad del periodo",
+    "resultado neto del periodo",
+    "resultado neto del ejercicio",
+    "resultado del periodo",
+    "resultado del ejercicio",
+    "ganancia neta",
+    "ganancia del periodo",
+    "ganancia neta del periodo",
 ]
 SINONIMOS_FLUJO_OPERATIVO = [
     "efectivo neto provisto por las actividades de operacion",
@@ -180,9 +230,54 @@ def _detectar_factor_unidad_documento(
             continue
         if _declara_mas_de_una_unidad(texto):
             continue
-        deteccion = _factor_de_texto(texto)
+        deteccion = _factor_de_texto_declarado(texto)
         if deteccion is not None:
             return deteccion
+    return None
+
+
+# Palabras que convierten una frase de unidad en una DECLARACION sobre las
+# tablas, y no en un monto suelto dentro de un parrafo.
+PALABRAS_DE_DECLARACION = ("expresad", "cifras", "valores", "importes", "montos", "expresa")
+VENTANA_DECLARACION = 80  # caracteres normalizados antes de la frase de unidad
+
+
+def _factor_de_texto_declarado(texto: str) -> tuple[float, str] | None:
+    """Como `_factor_de_texto`, pero exige que la frase de unidad sea una
+    DECLARACION y no una cifra citada de pasada.
+
+    Verificado real y necesario: TERPEL 2025-ANUAL. Su balance (pagina 102) no
+    declara unidad en el membrete ni marca simbolo de columna, asi que caia al
+    respaldo por prosa; nueve paginas antes, en el capitulo narrativo, esta la
+    frase "...el proyecto TPI registro un costo asociado a bloqueos de $4.899
+    millones de pesos.". El respaldo la tomaba como la unidad del documento y
+    aplicaba millones a una tabla que esta en MILES -- el activo total salia
+    9.603.781 en vez de 9.604, mil veces mas grande. La declaracion legitima
+    del mismo emisor se ve asi: "Estados financieros intermedios consolidados
+    EXPRESADOS EN miles de pesos colombianos".
+
+    Dos condiciones, las dos necesarias: una palabra de declaracion en los 80
+    caracteres previos, y que la frase no venga pegada a un digito (un monto
+    citado siempre lo esta: "$4.899millonesdepesos")."""
+    t = normalizar(texto)
+    for marcador, factor in (
+        (MARCADOR_MILES_DE_MILLONES, 1.0),
+        (MARCADOR_MILLONES, 0.001),
+        (MARCADOR_MILES, 0.000001),
+    ):
+        objetivo = normalizar(marcador)
+        desde = 0
+        while True:
+            pos = t.find(objetivo, desde)
+            if pos == -1:
+                break
+            desde = pos + 1
+            previo = t[max(0, pos - VENTANA_DECLARACION):pos]
+            if not any(pal in previo for pal in PALABRAS_DE_DECLARACION):
+                continue
+            if previo and previo[-1].isdigit():
+                continue
+            return factor, "miles_de_millones"
     return None
 
 
@@ -399,6 +494,125 @@ def _suma_todas_ocurrencias(texto: str, alternativas: list[str], indice_columna:
     return sum(valores) if valores else None
 
 
+# --- utilidad por accion: su propio parser, a proposito ---------------------
+#
+# `separar_etiqueta_y_valores_linea` exige separador de miles (minimo 4
+# digitos) para no confundir un numero de nota al pie con un valor real. Esa
+# regla es correcta para las lineas del balance, y hace imposible leer la
+# utilidad por accion, que es justamente un numero chico con decimales y sin
+# separador de miles: "Utilidad por accion del controlante 400,78 657,61",
+# "Ganancia basica por accion $ 948.74 400.78". Por eso este campo trae patron
+# y parser propios en vez de relajar el matcher general, que esta calibrado.
+PATRON_NUMERO_POR_ACCION = re.compile(r"-?[0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?")
+
+SINONIMOS_UTILIDAD_POR_ACCION = [
+    "ganancia basica por accion",
+    "ganancia basica y diluida por accion",
+    "ganancia neta por accion",
+    "ganancia por accion basica",
+    "utilidad basica por accion",
+    "utilidad basica y diluida por accion",
+    "utilidad neta por accion",
+    "utilidad por accion",
+    "utilidad por accion del controlante",
+    "utilidad por accion de la controlante",
+    "utilidad neta por accion de intereses controlantes",
+    "perdida basica por accion",
+    "perdida por accion basica y diluida",
+    "perdida basica y diluida por accion",
+]
+
+# Rango de plausibilidad del numero de acciones de un emisor de la BVC.
+# Ecopetrol tiene ~41.100 millones de acciones (el mayor del mercado) y los
+# emisores chicos estan en el orden de las decenas de millones. Fuera de
+# 1e6..2e11 el cociente no es un numero de acciones: es una unidad mal
+# resuelta o una fila que no era la utilidad por accion.
+MIN_ACCIONES = 1_000_000
+MAX_ACCIONES = 200_000_000_000
+
+
+def _parsear_por_accion(token: str) -> float | None:
+    """'400,78' -> 400.78; '948.74' -> 948.74; '1,203.97' -> 1203.97;
+    '1.157,84' -> 1157.84.
+
+    Con un solo separador la ambiguedad es real y se resuelve por la cantidad
+    de digitos que le siguen: tres digitos es separador de miles, uno o dos es
+    decimal. Es la misma convencion que usan los dos formatos del corpus y no
+    hay un caso de utilidad por accion donde falle -- un valor por accion en
+    pesos colombianos no llega a las decenas de miles con tres decimales."""
+    t = token.strip()
+    if not t:
+        return None
+    negativo = t.startswith("-")
+    t = t.lstrip("-")
+    tiene_punto, tiene_coma = "." in t, "," in t
+    if tiene_punto and tiene_coma:
+        decimal = "." if t.rfind(".") > t.rfind(",") else ","
+        miles = "," if decimal == "." else "."
+        t = t.replace(miles, "").replace(decimal, ".")
+    elif tiene_punto or tiene_coma:
+        sep = "." if tiene_punto else ","
+        cola = t.rsplit(sep, 1)[1]
+        t = t.replace(sep, "") if len(cola) == 3 else t.replace(sep, ".")
+    try:
+        valor = float(t)
+    except ValueError:
+        return None
+    return -valor if negativo else valor
+
+
+def _etiqueta_sin_parentesis(etiqueta: str) -> str:
+    """Quita un parentesis final de la etiqueta antes de comparar. Verificado
+    real: la fila llega como "Utilidad basica y diluida por accion (en pesos
+    colombianos)", y el match exacto -- que es lo correcto para el resto -- no
+    la reconoceria."""
+    return normalizar(re.sub(r"\s*\([^)]*\)\s*$", "", etiqueta))
+
+
+def _utilidad_por_accion(texto: str, indice_columna: int, patron, parser) -> float | None:
+    """Usa el MISMO separador de etiqueta y valores que el resto del modulo, no
+    uno propio. Verificado real y necesario: la fila llega como
+
+        Ganancia basica por accion (*) 27 1.572,48 1.837,75
+        Utilidad basica y diluida por accion (en pesos colombianos) 15 1,800 1,816
+
+    y en las dos el primer numero de la linea es la REFERENCIA DE NOTA (27, 15),
+    no la cifra. Un parser propio que tomara el primer numero devolvia 27 y 15,
+    y de ahi salian 10.566 millones de acciones para TERPEL y 117.486 millones
+    para Bancolombia -- contra ~183 y ~961 millones reales. El separador general
+    ya resuelve esto: exige separador de miles (una nota al pie nunca lo tiene)
+    y ademas recorta la nota pegada al final de la etiqueta.
+
+    El precio de reusarlo es que una utilidad por accion sin separador de miles
+    (BVC: "400,78") no se lee. Se acepta: es preferible cubrir menos emisores
+    que derivar un numero de acciones equivocado, que contaminaria todas las
+    metricas por accion."""
+    objetivos = {normalizar(a) for a in SINONIMOS_UTILIDAD_POR_ACCION}
+    for linea in texto.split("\n"):
+        etiqueta, valores = separar_etiqueta_y_valores_linea(linea, patron, parser)
+        if _etiqueta_sin_parentesis(etiqueta) in objetivos and indice_columna < len(valores):
+            return valores[indice_columna]
+    return None
+
+
+def _acciones_desde_utilidad_por_accion(utilidad_neta_mmm, por_accion) -> float | None:
+    """acciones = utilidad neta / utilidad por accion. `utilidad_neta_mmm` viene
+    en miles de millones de pesos y `por_accion` en pesos, de ahi el 1e9.
+
+    Es aritmetica sobre dos cifras ya leidas del mismo estado de resultados, no
+    una suposicion -- por eso se marca `origen=derivado`, igual que el
+    patrimonio derivado de activos menos pasivos. Se descarta si el resultado
+    cae fuera del rango plausible de acciones de un emisor de la BVC: eso
+    delata una unidad mal resuelta antes que publicar un dato por accion
+    equivocado."""
+    if utilidad_neta_mmm is None or not por_accion:
+        return None
+    acciones = abs(utilidad_neta_mmm) * 1_000_000_000 / abs(por_accion)
+    if not (MIN_ACCIONES <= acciones <= MAX_ACCIONES):
+        return None
+    return round(acciones)
+
+
 def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
     """Devuelve {"campos": {...}, "unidad": str|None, "cuadra_balance": bool|None,
     "paginas_usadas": {...}}. `campos` sigue el mismo shape que las plantillas
@@ -506,7 +720,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 if activos and pasivos is not None and patrimonio is not None:
                     cuadra_balance = abs(pasivos + patrimonio - activos) / activos <= 0.01
 
-        def _factor_y_columna(texto_pagina: str) -> tuple[float, int] | None:
+        def _factor_y_columna(texto_pagina: str, pagina: int | None = None) -> tuple[float, int] | None:
             """(factor, índice de columna) de ESTA página -- unidad e índice
             pueden variar por tabla dentro del mismo documento (ver Ecopetrol:
             balance a 2 columnas, resultados/flujos a 3 -- el índice hay que
@@ -515,22 +729,61 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             if indice_local is None:
                 return None
             deteccion_local = _detectar_factor_unidad(texto_pagina)
+            # La unidad de ESTA pagina, si su propio membrete no la trae:
+            # misma cascada que el balance (simbolo de columna -> declaracion
+            # en prosa de las paginas anteriores). Antes se caia directo a
+            # `factor_documento`, el factor del balance, y si el balance no
+            # habia podido determinar el suyo, el estado de resultados no se
+            # intentaba siquiera: 45 de los 161 archivos sin ningun campo de
+            # resultados fallaban SOLO por eso, con su pagina bien ubicada y
+            # su columna resoluble. La unidad de la pagina de resultados no
+            # tiene por que depender de que el balance haya resuelto la suya.
+            if deteccion_local is None and pagina is not None:
+                deteccion_local = _detectar_factor_unidad_por_simbolo(texto_pagina, _texto, pagina)
+            if deteccion_local is None and pagina is not None:
+                deteccion_local = _detectar_factor_unidad_documento(_texto, pagina)
             factor = deteccion_local[0] if deteccion_local is not None else factor_documento
             return (factor, indice_local) if factor is not None else None
 
         pagina_resultados = anclas.get("resultados")
-        if pagina_resultados is not None and factor_documento is not None:
+        if pagina_resultados is not None:
             texto = _texto(pagina_resultados)
-            resuelto = _factor_y_columna(texto)
+            resuelto = _factor_y_columna(texto, pagina_resultados)
+            if resuelto is None:
+                motivos.append(
+                    f"no se pudo resolver la columna de {periodo} {anio} en la pagina "
+                    f"de resultados {pagina_resultados + 1}"
+                )
             if resuelto is not None:
                 factor, indice_col = resuelto
+                if unidad is None:
+                    unidad = "miles_de_millones"
                 patron, parser = detectar_formato_numero(texto)
                 utilidad_neta = _valor_en_columna(texto, SINONIMOS_UTILIDAD_NETA, indice_col, patron, parser)
+                if utilidad_neta is None:
+                    utilidad_neta = _valor_en_columna(texto, SINONIMOS_UTILIDAD_NETA_GRUPO, indice_col, patron, parser)
                 campos["utilidad_neta"] = {
                     "valor": round(utilidad_neta * factor, 3) if utilidad_neta is not None else None,
                     "pagina": pagina_resultados + 1,
                     "tabla": "resultados (generico)",
                 }
+                por_accion = _utilidad_por_accion(texto, indice_col, patron, parser)
+                if por_accion is None and pagina_resultados + 1 < len(pdf.pages):
+                    # la fila de utilidad por accion suele quedar al pie del
+                    # estado de resultados, a veces ya en la pagina siguiente
+                    texto_sig = _texto(pagina_resultados + 1)
+                    patron_sig, parser_sig = detectar_formato_numero(texto_sig)
+                    por_accion = _utilidad_por_accion(texto_sig, indice_col, patron_sig, parser_sig)
+                acciones = _acciones_desde_utilidad_por_accion(
+                    campos["utilidad_neta"]["valor"], por_accion
+                )
+                if acciones is not None:
+                    campos["acciones_en_circulacion"] = {
+                        "valor": acciones,
+                        "pagina": pagina_resultados + 1,
+                        "tabla": "derivado: utilidad neta / utilidad por accion (origen=derivado)",
+                    }
+
                 if es_financiero:
                     campos["ingresos"] = {"valor": None, "pagina": None, "tabla": "no aplicable (sector financiero)"}
                     campos["utilidad_operacional"] = {"valor": None, "pagina": None, "tabla": "no aplicable (sector financiero)"}
@@ -548,9 +801,9 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
 
         pagina_flujo = anclas.get("flujos_efectivo")
         depreciacion = None
-        if pagina_flujo is not None and factor_documento is not None:
+        if pagina_flujo is not None:
             texto = _texto(pagina_flujo)
-            resuelto = _factor_y_columna(texto)
+            resuelto = _factor_y_columna(texto, pagina_flujo)
             if resuelto is not None:
                 factor, indice_col = resuelto
                 patron, parser = detectar_formato_numero(texto)
@@ -576,6 +829,16 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
 
         campos.setdefault("acciones_en_circulacion", {"valor": None, "pagina": None, "tabla": None})
         campos.setdefault("dividendos_decretados", {"valor": None, "pagina": None, "tabla": None})
+
+    hay_resultados = any(
+        campos.get(c, {}).get("valor") is not None
+        for c in ("ingresos", "utilidad_operacional", "utilidad_neta")
+    )
+    if anclas.get("resultados") is not None and not hay_resultados and not es_financiero and not motivos:
+        motivos.append(
+            f"pagina de resultados {anclas['resultados'] + 1} ubicada y columna resuelta, "
+            "pero ninguna etiqueta de ingresos/utilidad coincidio -- vocabulario no cubierto"
+        )
 
     if not motivos and not any(c.get("valor") is not None for c in campos.values()):
         motivos.append(

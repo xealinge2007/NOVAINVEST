@@ -58,6 +58,7 @@ def _extraer_worker(cola, ruta, sector, anio, periodo):
         from app.services.extraccion import extractor_generico
         r = extractor_generico.extraer(Path(ruta), sector, anio, periodo)
         cola.put({
+            "anclas": r["paginas_usadas"],
             "unidad": r["unidad"],
             "cuadra": r["cuadra_balance"],
             "anclas": r["paginas_usadas"],
@@ -139,16 +140,35 @@ def main():
     def _una(tarea):
         emisor, pdf, anio, periodo, saltado = tarea
         if saltado:
+            vacio = {k: "" for k in ("pag_balance", "pag_resultados", "pag_flujos",
+                                     "v_activos_totales", "v_ingresos", "v_utilidad_operacional",
+                                     "v_utilidad_neta", "v_ebitda", "v_flujo_caja_operativo",
+                                     "v_acciones_en_circulacion")}
             return {"emisor": emisor, "archivo": pdf.name, "anio": anio, "periodo": periodo,
-                    "clase": saltado, "segundos": 0, "campos": "", "unidad": "", "cuadra": "", "motivo": ""}
+                    "clase": saltado, "segundos": 0, "campos": "", "unidad": "", "cuadra": "",
+                    **vacio, "motivo": ""}
         t0 = time.time()
         res = _con_timeout(pdf, sectores.get(emisor, "sin_clasificar"), anio, periodo)
         dt = round(time.time() - t0, 1)
         con_valor = [k for k, v in res.get("campos", {}).items() if v is not None]
+        anclas = res.get("anclas") or {}
+        campos = res.get("campos") or {}
         return {
             "emisor": emisor, "archivo": pdf.name, "anio": anio, "periodo": periodo,
             "clase": _clasificar(res), "segundos": dt, "campos": len(con_valor),
             "unidad": res.get("unidad") or "", "cuadra": res.get("cuadra"),
+            # Columnas por ancla y por campo: lo que separa "no encuentro la
+            # pagina del estado de resultados" de "la encuentro pero no
+            # reconozco la etiqueta de la fila". Sin esta distincion no se
+            # puede priorizar la cobertura del estado de resultados, que es
+            # lo que hoy bloquea el analizador (utilidad_neta al 7%).
+            "pag_balance": anclas.get("situacion_financiera", ""),
+            "pag_resultados": anclas.get("resultados", ""),
+            "pag_flujos": anclas.get("flujos_efectivo", ""),
+            **{f"v_{k}": ("" if campos.get(k) is None else campos[k])
+               for k in ("activos_totales", "ingresos", "utilidad_operacional",
+                         "utilidad_neta", "ebitda", "flujo_caja_operativo",
+                         "acciones_en_circulacion")},
             "motivo": res.get("excepcion") or " | ".join(res.get("motivos") or []),
         }
 
