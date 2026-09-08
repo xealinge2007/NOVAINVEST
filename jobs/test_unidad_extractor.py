@@ -30,6 +30,14 @@ LEYENDA_TERPEL = NL.join([
 fallos = []
 
 
+def lector(paginas):
+    """`extraer` le pasa a la deteccion de unidad un lector de paginas
+    (pdfplumber), no una lista. Aqui se simula con las paginas de prueba."""
+    def leer(i):
+        return paginas[i] if 0 <= i < len(paginas) else ""
+    return leer
+
+
 def revisar(nombre, obtenido, esperado):
     ok = obtenido == esperado
     print(f"{'OK  ' if ok else 'FALLA'} {nombre}: esperado={esperado} obtenido={obtenido}")
@@ -60,7 +68,7 @@ for encabezado, esperado in [
     ("Activos corrientes:", None),
 ]:
     b = _balance(encabezado)
-    r = eg._detectar_factor_unidad_por_simbolo(b, [LEYENDA_TERPEL, b], 1)
+    r = eg._detectar_factor_unidad_por_simbolo(b, lector([LEYENDA_TERPEL, b]), 1)
     revisar(f"simbolo {encabezado!r}", r[0] if r else None, esperado)
 
 # --- la pagina de glosario es ambigua y se descarta --------------------------
@@ -79,7 +87,7 @@ paginas = [
     LEYENDA_TERPEL,          # ambigua: se salta
     _balance("Activos M$ M$"),
 ]
-r = eg._detectar_factor_unidad_documento(paginas, 3)
+r = eg._detectar_factor_unidad_documento(lector(paginas), 3)
 revisar("respaldo por prosa salta el glosario", r[0] if r else None, 0.000001)
 
 # --- el membrete clasico sigue igual que siempre (sin regresion) -------------

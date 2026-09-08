@@ -843,3 +843,91 @@ ampliada. Vale extender el chequeo.
    automatizable por decisión.
 5. **Nutresa 2022-ANUAL y similares** — reconstrucción de filas por coordenada
    (`extract_words()`), descrita en la adenda. Desbloquea pocos archivos: baja prioridad.
+
+## F4a — el triage cambia de lector: 12,8x más rápido, cero timeouts (08-sep-2026)
+
+La corrida real contra Supabase **murió en el archivo 14 de 232**. Investigarla llevó a la
+causa de fondo del rendimiento, que no era la que se suponía.
+
+### Dónde estaba el costo (medido, no estimado)
+
+Sobre `CONSTRUCTORA_CONCONCRETO/2020-ANUAL_Informe-Fin-de-Ejercicio...pdf` (204 páginas),
+el archivo que tumbó la corrida, desglosando página por página:
+
+| Operación | Tiempo |
+|---|---:|
+| `len(page.chars)` — solo forzar el parseo | **433 s** |
+| `extract_text()` sobre esas mismas páginas ya parseadas | **1,0 s** |
+
+El costo es el **parseo de la página**, no la extracción de texto. Eso descarta de entrada
+las optimizaciones obvias: liberar el caché con `page.close()` no cambia nada (medido:
+RSS +0 MB, mismo tiempo) y contar objetos para saltar páginas pesadas exige parsearlas
+primero. El único remedio es parsear menos, o parsear más barato.
+
+Misma pasada completa de texto sobre ese documento:
+
+| Biblioteca | Tiempo |
+|---|---:|
+| **PyMuPDF** | **10,7 s** |
+| pypdf | 410,2 s |
+| pdfplumber | ~670 s |
+
+### La línea que quedó trazada
+
+- **PyMuPDF ubica.** El triage solo necesita saber dónde está cada estado financiero.
+- **pdfplumber lee las cifras.** Todo el calibrado de `extraer` está hecho contra su
+  texto y sigue saliendo de ahí — son 3-5 páginas por documento, no 400. La detección de
+  unidad también volvió a pdfplumber (≤12 páginas): PyMuPDF entrega la leyenda de símbolos
+  partida en dos columnas y se pierde la asociación `M$` → "miles de pesos".
+
+### Cuatro reglas que describían a pdfplumber, no al documento
+
+Cambiar de lector destapó que varias reglas del triage estaban atadas al orden en que
+pdfplumber concatena el texto. Las cuatro se reemplazaron por criterios que describen el
+documento:
+
+1. **"El título en los primeros 150 caracteres" → el título en la BANDA SUPERIOR de la
+   página.** GEB 2023-ANUAL (balance a 2 columnas): pdfplumber pone el título en el
+   carácter 65, PyMuPDF sin ordenar en el 2663, y con `sort=True` el núcleo deja de existir
+   como subcadena contigua. Ningún modo de ningún lector reproduce al otro. La geometría sí
+   es del documento — y de paso resuelve sin caso especial la barra de navegación larga de
+   TERPEL que empujaba el título al carácter 184.
+2. **Coordenadas rotadas.** GEB 2023-ANUAL es un Excel impreso con `/Rotate 90`:
+   `get_text("blocks")` devuelve coordenadas SIN rotar mientras `page.rect` sí lo está, así
+   que los 37 bloques caían todos en y0 = 67-68. Con `page.rotation_matrix` el título queda
+   en la posición 65 — exactamente donde lo ponía pdfplumber.
+3. **El borde de las notas.** MINEROS 2023-ANUAL trae en la página 86 la frase en prosa
+   "...notas a los estados financieros. La Compañía utiliza técnicas de valuación..." en el
+   carácter 299. Se tomaba como el inicio de las notas y cortaba la búsqueda ahí — dejando
+   fuera el balance **consolidado** real (páginas 138-139, con 43 y 49 cifras). El triage
+   se quedaba entonces con la sección **separada** (páginas 58-61): justo lo que la regla
+   dura de Alex prohíbe. "Notas a los estados financieros" es un título de sección y ahora
+   tiene que ir al principio del encabezado.
+4. **El descarte de índices.** MINEROS 2024-ANUAL pone un botón "Tabla de contenido" en el
+   encabezado de CADA página, incluidas las del balance consolidado. El descarte de índices
+   tiraba justo las páginas buscadas. Ahora una página es índice solo si además NO trae una
+   tabla real de cifras — un índice de verdad no tiene 20+ cifras con separador de miles.
+
+Se añadió además una **pasada del consolidado sobre el documento entero**, sin el corte en
+las notas y con tope de posición más estricto (200): MINEROS, CORFICOLOMBIANA y GRUPO_ARGOS
+publican la sección separada primero y la consolidada mucho después en el mismo PDF.
+
+### Resultado medido (297 archivos-fuente)
+
+| | Antes | Ahora |
+|---|---:|---:|
+| OK | 158 (53,2 %) | **165 (55,6 %)** |
+| TIMEOUT | 25 | **0** |
+| SIN_ANCLA | 57 | 46 |
+| Tiempo total del corpus | 19.667 s | **1.541 s** |
+
+**Una sola regresión**: PROMIGAS 2023-T2 pasa a revisión (el ancla que encontraba era una
+página de prosa que menciona "el estado consolidado de situación financiera" con cifras
+suficientes para pasar la densidad). Va a revisión, no publica una cifra equivocada.
+
+El aumento de `PARCIAL_SIN_BALANCE` (17 → 32) viene de archivos que antes eran `SIN_ANCLA`:
+ahora se ubica su balance pero solo se extrae parte de los campos. Es avance, no retroceso.
+
+Y una corrección de fondo que no se ve en el conteo: **varios de los "OK" anteriores estaban
+leyendo la sección SEPARADA** (MINEROS, y por el mismo mecanismo probablemente otros). Ahora
+leen el consolidado.

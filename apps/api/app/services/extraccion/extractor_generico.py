@@ -151,7 +151,7 @@ PAGINAS_ATRAS_DECLARACION_UNIDAD = 12
 
 
 def _detectar_factor_unidad_documento(
-    textos_paginas: list[str], pagina_ancla: int
+    leer, pagina_ancla: int
 ) -> tuple[float, str] | None:
     """Respaldo cuando el membrete de la pagina del balance no declara la
     unidad. Causa raiz real de TERPEL (una docena larga de archivos, todos
@@ -175,11 +175,12 @@ def _detectar_factor_unidad_documento(
     se va a `requiere_revision` como antes."""
     limite = max(-1, pagina_ancla - PAGINAS_ATRAS_DECLARACION_UNIDAD)
     for i in range(pagina_ancla, limite, -1):
-        if not (0 <= i < len(textos_paginas)) or textos_paginas[i] is None:
+        texto = leer(i)
+        if not texto:
             continue
-        if _declara_mas_de_una_unidad(textos_paginas[i]):
+        if _declara_mas_de_una_unidad(texto):
             continue
-        deteccion = _factor_de_texto(textos_paginas[i])
+        deteccion = _factor_de_texto(texto)
         if deteccion is not None:
             return deteccion
     return None
@@ -234,7 +235,7 @@ def _factor_de_definicion(linea: str) -> tuple[float, str] | None:
 
 
 def _detectar_factor_unidad_por_simbolo(
-    texto_balance: str, textos_paginas: list[str], pagina_ancla: int
+    texto_balance: str, leer, pagina_ancla: int
 ) -> tuple[float, str] | None:
     """Resuelve la unidad cuando la tabla la declara con un SIMBOLO en el
     encabezado de columna y define ese simbolo en una leyenda aparte.
@@ -253,7 +254,15 @@ def _detectar_factor_unidad_por_simbolo(
 
     Si el simbolo del encabezado es de moneda extranjera (USD/MUSD) devuelve
     None a proposito: mejor mandar a revision que publicar una tabla en
-    dolares como si fueran pesos."""
+    dolares como si fueran pesos.
+
+    `leer(i)` tiene que devolver texto de **pdfplumber**, no del triage. El
+    renglon de leyenda solo sirve si el simbolo y su definicion quedan en la
+    misma linea, y PyMuPDF (que es lo que usa el triage para ubicar paginas)
+    entrega esa tabla partida en dos columnas: por un lado los cinco simbolos,
+    por otro las cinco definiciones. Son 12 paginas como maximo por documento,
+    asi que leerlas con pdfplumber no cuesta nada frente a las 400 que el
+    triage ya se ahorro."""
     lineas_significativas = [l for l in texto_balance.split("\n") if len(l.strip()) > 2]
     encabezado = " ".join(lineas_significativas[:15])
     simbolos = PATRON_SIMBOLO_UNIDAD.findall(encabezado)
@@ -267,9 +276,7 @@ def _detectar_factor_unidad_por_simbolo(
 
     limite = max(-1, pagina_ancla - PAGINAS_ATRAS_DECLARACION_UNIDAD)
     for i in range(pagina_ancla, limite, -1):
-        if not (0 <= i < len(textos_paginas)) or textos_paginas[i] is None:
-            continue
-        for linea in textos_paginas[i].split("\n"):
+        for linea in (leer(i) or "").split("\n"):
             marcados = PATRON_SIMBOLO_UNIDAD.findall(linea)
             # un renglon de leyenda define UN simbolo; si la linea nombra
             # varios no es una definicion sino prosa o una tabla.
@@ -406,18 +413,27 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
     factor_documento = None  # factor de la página del balance -- respaldo si otra página no declara la suya
     cuadra_balance = None
 
-    # Una sola apertura para triage + extraccion. Causa raiz real de los 54
-    # timeouts del lote: eran DOS pasadas completas de `extract_text()` sobre
-    # el mismo documento de 200-300 paginas (una del triage, otra de aqui).
-    # El triage ya devuelve el texto que extrajo en `textos_paginas`.
+    # El triage ubica las paginas (con PyMuPDF, barato) y este modulo lee las
+    # cifras de esas 3-5 paginas (con pdfplumber, calibrado). `textos_paginas`
+    # es el texto del triage y aqui SOLO se usa para buscar la declaracion de
+    # unidad en paginas vecinas -- una busqueda de frase, robusta a
+    # diferencias entre extractores. Las cifras nunca salen de ahi.
     with pdfplumber.open(ruta_pdf) as pdf:
         triage = triage_documento(ruta_pdf, pdf_abierto=pdf)
         anclas = triage.get("anclas_encontradas", {})
         textos_paginas: list[str] = triage.get("textos_paginas") or []
 
         def _texto(indice: int) -> str:
-            if 0 <= indice < len(textos_paginas) and textos_paginas[indice] is not None:
-                return textos_paginas[indice]
+            """SIEMPRE pdfplumber, nunca el texto del triage. El triage ahora
+            lee con PyMuPDF porque es ~60x mas rapido para recorrer 200-475
+            paginas (ver `triage._textos_del_documento`), pero TODO el
+            calibrado de este modulo -- match exacto de etiqueta, resolucion
+            de columna por fecha, deteccion de unidad por membrete -- esta
+            hecho contra el texto de pdfplumber. Mezclar las dos fuentes aqui
+            cambiaria en silencio cifras ya verificadas. Son 3-5 paginas por
+            documento: el costo es despreciable y la garantia es total."""
+            if not (0 <= indice < len(pdf.pages)):
+                return ""
             return pdf.pages[indice].extract_text() or ""
 
         pagina_balance = anclas.get("situacion_financiera")
@@ -431,9 +447,9 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             indice_col = _indice_columna_actual(texto, anio, periodo)
             deteccion = _detectar_factor_unidad(texto)
             if deteccion is None:
-                deteccion = _detectar_factor_unidad_por_simbolo(texto, textos_paginas, pagina_balance)
+                deteccion = _detectar_factor_unidad_por_simbolo(texto, _texto, pagina_balance)
             if deteccion is None:
-                deteccion = _detectar_factor_unidad_documento(textos_paginas, pagina_balance)
+                deteccion = _detectar_factor_unidad_documento(_texto, pagina_balance)
             patron, parser = detectar_formato_numero(texto)
             if deteccion is None:
                 motivos.append(f"unidad no declarada en la pagina {pagina_balance + 1} ni en las 12 anteriores")

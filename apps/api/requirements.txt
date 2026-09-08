@@ -11,3 +11,9 @@ requests>=2.32.3
 pandas>=2.3.3
 numpy>=1.26
 PyPortfolioOpt>=1.5.5
+# Solo para LOCALIZAR paginas en el triage de extraccion (~60x mas rapido que
+# pdfplumber recorriendo 200-475 paginas). Las cifras las sigue leyendo
+# pdfplumber -- ver apps/api/app/services/extraccion/triage.py.
+# Licencia AGPL-3.0: uso interno, no se distribuye el binario.
+PyMuPDF>=1.24
+pdfplumber>=0.11

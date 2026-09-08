@@ -20,7 +20,7 @@ rondas de corrección, ambas confirmadas con `pdfplumber` sobre el PDF real):
    páginas más adelante que menciona de pasada "el estado de ganancias y
    pérdidas consolidado". El rango resultante cubría ~120 de 122 páginas.
    Corrección: exigir que la frase aparezca en los primeros
-   `POSICION_MAXIMA_ANCLA` caracteres normalizados de la página (el
+   la BANDA SUPERIOR de la página (el
    encabezado real es lo primero tras el membrete fijo; una mención en
    prosa nunca cae tan cerca del inicio) y acotar la búsqueda a las páginas
    ANTERIORES a donde empiezan las notas.
@@ -79,12 +79,17 @@ rondas de corrección, ambas confirmadas con `pdfplumber` sobre el PDF real):
 
 import pdfplumber
 
+try:  # PyMuPDF: solo para LOCALIZAR paginas, nunca para leer cifras (ver _textos_del_documento)
+    import fitz
+except ImportError:  # pragma: no cover
+    fitz = None
+
 from .pdf_utils import PATRON_NUMERO_FINANCIERO, PATRON_NUMERO_FINANCIERO_PUNTO, normalizar
 
 # Núcleo distintivo de cada estado -- SIN "estado(s)" ni "consolidado(s)":
 # la concordancia de género/posición entre esas dos palabras varía por
 # emisor de formas que no vale la pena enumerar como frases exactas (ver
-# puntos 4 y 5 del docstring). La posición (`POSICION_MAXIMA_ANCLA`) y la
+# puntos 4 y 5 del docstring). La banda superior (`FRACCION_BANDA_SUPERIOR`) y la
 # densidad de cifras (`MINIMO_NUMEROS_TABLA`) son las que evitan las falsas
 # alarmas -- verificado real que exigir además "consolidado" cerca no
 # ganaba precisión y sí rompía emisores sin subsidiarias (PEI).
@@ -111,13 +116,47 @@ MARCADOR_NOTAS = [
 
 MARCADOR_INDICE = ["contenido", "indice", "tabla de contenido"]
 
-POSICION_MAXIMA_ANCLA = 150  # caracteres normalizados desde el inicio de la página
-POSICION_MAXIMA_ANCLA_AMPLIA = 450  # segunda oportunidad, solo si no se encontró nada con 150:
-# cubre las páginas cuyo encabezado fijo es una barra de navegación larga (TERPEL 2023/2025-ANUAL,
-# informes de gestión de 400+ páginas). 450 se calibró contra el caso real (título en el carácter
-# 184) con margen, no al ojo. Sigue siendo un tope: una mención en medio de un párrafo largo cae
-# más allá, y la densidad de cifras filtra las páginas de prosa que sí caen dentro.
-POSICION_MAXIMA_INDICE = 100  # el "Contenido"/"Índice" es lo primero tras el membrete, más cerca aún
+# --- dónde tiene que estar el título: GEOMETRÍA, no posición en el string ---
+#
+# Hasta el 07-sep-2026 la regla era "el núcleo del título aparece dentro de los
+# primeros 150 caracteres normalizados del texto de la página". Esa regla no
+# describe el documento: describe el ORDEN EN QUE pdfplumber concatena el
+# texto. Al cambiar el lector del triage a PyMuPDF (~60x más rápido, ver
+# `_textos_del_documento`) la regla se rompió en los dos sentidos y de forma
+# medida:
+#   - GEB 2023-ANUAL_EEFF-Consolidados, página 7 (balance a 2 columnas):
+#     pdfplumber pone el título en el carácter 65; PyMuPDF sin ordenar, en el
+#     2663; PyMuPDF con `sort=True` intercala las dos columnas y el núcleo
+#     "situacion financiera" deja de existir como subcadena contigua (-1).
+#   - ECOPETROL 2022-ANUAL: sin ordenar 668, con `sort=True` 191 — que es
+#     exactamente lo que da pdfplumber.
+# O sea: ningún modo de ningún lector reproduce al otro, y atar el criterio a
+# uno de ellos hace que cambiar de lector sea imposible.
+#
+# Lo que la regla de 150 caracteres siempre quiso decir es "el título está en
+# el encabezado de la página, no en medio de un párrafo". Eso se puede pedir
+# directamente: se toman los bloques de texto cuya coordenada superior cae en
+# la banda de arriba de la página y se busca ahí. Es independiente del orden de
+# lectura, sobrevive a la barra de navegación larga de TERPEL (que empujaba el
+# título al carácter 184) y no depende de qué biblioteca extraiga el texto.
+FRACCION_BANDA_SUPERIOR = 0.40  # los estados financieros titulan en el tercio/mitad de arriba
+POSICION_MAXIMA_EN_CABECERA = 450  # tope dentro de esa banda, para una página de prosa densa
+POSICION_MAXIMA_INDICE = 150  # el "Contenido"/"Índice" es lo primero del encabezado
+POSICION_MAXIMA_CONSOLIDADO_GLOBAL = 200  # tope MÁS ESTRICTO para la pasada del consolidado sobre
+# el documento entero (la que cruza el borde de las notas). Más allá de ese borde abundan las
+# menciones en prosa: PROMIGAS 2023-T2 tiene en la página 21 el texto "...son aquellas que las NIC
+# requieren o permiten en el estado consolidado de situación financiera al final de cada periodo
+# contable. La siguiente tabla analiza..." -- con cifras suficientes para pasar la densidad. Un
+# encabezado real llega mucho antes (MINEROS 149, CORFICOLOMBIANA 131); una frase en medio de un
+# párrafo, no.
+POSICION_MAXIMA_NOTAS = 150  # "Notas a los estados financieros" es un TÍTULO DE SECCIÓN, y va al
+# principio del encabezado -- no en cualquier parte de él. Verificado real y necesario:
+# MINEROS/2023-ANUAL trae en la página 86 la frase en prosa "...notas a los estados financieros.
+# La Compañía utiliza técnicas de valuación que son..." en el carácter 299 de su cabecera. Con el
+# tope de las anclas (450) esa frase se tomaba como el borde de las notas y cortaba la búsqueda en
+# la página 86 -- dejando fuera el balance CONSOLIDADO real, que está en la 138-139 con 43 y 49
+# cifras y "consolidado" en el título. El resultado era peor que un hueco: el triage se quedaba con
+# la sección SEPARADA (páginas 58-61), justo lo que la regla de Alex prohíbe.
 MINIMO_NUMEROS_TABLA = 20  # calibrado contra CIBEST 2025-T2: la página de prosa que discute el
 # balance en el análisis de la administración cita 6 cifras de pasada; la tabla real de ese
 # mismo documento trae 30-105. 20 separa limpio ambos casos reales sin exigir tanto que rechace
@@ -162,6 +201,97 @@ def _bloques_contiguos(paginas: list[int]) -> list[list[int]]:
     return bloques
 
 
+# Presupuesto de paginas del triage. Existe como red de seguridad, no como
+# criterio: con PyMuPDF un documento de 475 paginas se lee en segundos, pero
+# si `fitz` no esta disponible y hay que caer a pdfplumber, un informe de
+# gestion de 200+ paginas puede tardar 10 minutos y tumbar el lote entero.
+MAX_PAGINAS_TRIAGE_LENTO = 120
+
+
+def _textos_del_documento(ruta_pdf, pdf_abierto) -> tuple[list[str], list[str], int]:
+    """(texto crudo por pagina, cabecera NORMALIZADA por pagina, total).
+
+    La "cabecera" es el texto de los bloques cuya coordenada superior cae en
+    la banda de arriba de la pagina (`FRACCION_BANDA_SUPERIOR`), en orden de
+    lectura. Es lo que sustituye a la regla de posicion por caracter -- ver el
+    comentario de las constantes.
+
+    **Por que PyMuPDF y no pdfplumber (07-sep-2026).** Medido sobre
+    `CONSTRUCTORA_CONCONCRETO/2020-ANUAL_Informe-Fin-de-Ejercicio...pdf` (204
+    paginas), que fue el archivo que tumbo la corrida real: el costo NO esta
+    en `extract_text()` sino en el PARSEO de la pagina. Desglosado por
+    pagina, `len(page.chars)` (que solo fuerza el parseo) sumo **433 s** y
+    `extract_text()` sobre esas mismas paginas ya parseadas sumo **1,0 s**.
+    O sea que no hay nada que optimizar dentro de pdfplumber: liberar el
+    cache con `page.close()` no cambia nada (medido: RSS +0 MB, mismo
+    tiempo), y contar objetos para saltar paginas pesadas exige parsearlas
+    primero. El unico remedio real es parsear menos, o parsear mas barato.
+
+    La misma pasada completa de texto sobre ese documento:
+        PyMuPDF      10,7 s
+        pypdf       410,2 s
+        pdfplumber ~670   s (extrapolado de 433 s en 133 paginas)
+
+    De ahi la linea que separa las dos bibliotecas, y que conviene no
+    cruzar:
+
+    - **PyMuPDF ubica.** El triage solo necesita el titulo cerca del inicio
+      de la pagina y cuantas cifras con separador de miles trae. Las dos
+      cosas son robustas a diferencias de extractor.
+    - **pdfplumber lee las cifras.** Todo el calibrado de `extraer` (match
+      exacto de etiqueta, resolucion de columna por fecha, deteccion de
+      unidad) esta hecho contra el texto de pdfplumber, y sigue saliendo de
+      ahi -- son 3-5 paginas por documento, no 400.
+
+    Si `fitz` no esta instalado se cae a pdfplumber con el presupuesto de
+    paginas de arriba, y el llamador lo sabe por el tercer valor devuelto.
+    """
+    if fitz is not None:
+        textos: list[str] = []
+        cabeceras: list[str] = []
+        with fitz.open(ruta_pdf) as documento:
+            for pagina in documento:
+                # `get_text("blocks")` da (x0, y0, x1, y1, texto, n, tipo) y sale
+                # de la misma pasada de parseo que el texto plano -- no cuesta
+                # una segunda lectura.
+                bloques = [b for b in pagina.get_text("blocks") if isinstance(b[4], str)]
+                # Se unen con SALTO DE LINEA, no con espacio: el texto que
+                # devuelve el triage lo usa `extractor_generico` para buscar
+                # renglones de leyenda de unidad ("M$ : Cifras expresadas en
+                # miles de pesos"), y esa busqueda es linea por linea. Unir
+                # bloques con espacio pegaba las cinco definiciones de la
+                # leyenda de TERPEL en un solo renglon, que entonces nombraba
+                # varios simbolos y se descartaba por ambiguo.
+                textos.append("\n".join(b[4] for b in bloques))
+                # Las coordenadas de `get_text("blocks")` vienen SIN rotar,
+                # mientras `page.rect` si esta rotada. Verificado real y
+                # necesario: GEB 2023-ANUAL_EEFF-Consolidados es un Excel
+                # impreso con /Rotate 90, y sin convertir, TODOS sus bloques
+                # caian en y0 = 67-68 (la banda superior se comia la pagina
+                # entera y el titulo no aparecia por ningun lado). Con
+                # `rotation_matrix` el titulo queda en la posicion 65 de la
+                # cabecera -- exactamente donde lo ponia pdfplumber.
+                matriz = pagina.rotation_matrix
+                ubicados = []
+                for b in bloques:
+                    r = fitz.Rect(b[0], b[1], b[2], b[3]) * matriz
+                    ubicados.append((r.y0, r.x0, b[4]))
+                limite_y = pagina.rect.height * FRACCION_BANDA_SUPERIOR
+                arriba = sorted((u for u in ubicados if u[0] <= limite_y), key=lambda u: (round(u[0], 1), u[1]))
+                cabeceras.append(normalizar(" ".join(u[2] for u in arriba)))
+            return textos, cabeceras, documento.page_count
+
+    # Respaldo sin PyMuPDF: no hay coordenadas baratas, asi que la cabecera se
+    # aproxima con el inicio del texto de la pagina -- el comportamiento
+    # historico. Con presupuesto de paginas, porque aqui cada pagina se paga.
+    with _abrir(ruta_pdf, pdf_abierto) as pdf:
+        total = len(pdf.pages)
+        tope = min(total, MAX_PAGINAS_TRIAGE_LENTO)
+        textos = [(pdf.pages[i].extract_text() or "") for i in range(tope)]
+        textos.extend([""] * (total - tope))
+        return textos, [normalizar(t)[:POSICION_MAXIMA_EN_CABECERA] for t in textos], total
+
+
 class _NoCerrar:
     """Envuelve un `pdfplumber.PDF` ya abierto para que el `with` de
     `triage_documento` no lo cierre -- el dueño es el llamador."""
@@ -198,38 +328,34 @@ def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
     pasada (y `textos_paginas` devuelto para que el llamador no reextraiga)
     el costo se reduce a la mitad sin cambiar ningún criterio.
     """
-    with _abrir(ruta_pdf, pdf_abierto) as pdf:
-        total_paginas = len(pdf.pages)
-        # Lectura PEREZOSA, no de todo el documento por adelantado. Segunda
-        # mitad del arreglo de los 54 timeouts: `extract_text()` es la
-        # operacion cara y se estaba pagando sobre las 200-300 paginas de
-        # cada PDF, cuando los estados financieros y su limite superior (el
-        # borde de las notas) casi siempre caen en el primer tercio. La
-        # semantica no cambia -- cada busqueda de abajo pide exactamente las
-        # mismas paginas que antes, solo que se extraen cuando se piden y el
-        # bucle de notas ya cortaba al encontrarla. Si no se encuentra nada
-        # por texto, el respaldo de bloque escaneado lee el resto (abajo).
-        textos_crudos: list[str] = [None] * total_paginas
-        textos_normalizados: list[str] = [None] * total_paginas
-        es_indice: list[bool] = [False] * total_paginas
-        paginas_sin_texto: list[int] = []
-        leidas: set[int] = set()
+    textos_crudos, cabeceras, total_paginas = _textos_del_documento(ruta_pdf, pdf_abierto)
+    if True:
+        # El texto de TODAS las paginas ya esta leido (barato, ver
+        # `_textos_del_documento`), asi que aqui no hay lectura perezosa que
+        # administrar: se derivan de una vez las tres vistas que usan las
+        # busquedas de abajo.
+        # `cabeceras` ya viene normalizada; es sobre ella que se buscan los
+        # títulos (ver constantes). El texto crudo se guarda solo para contar
+        # cifras y para devolvérselo al llamador.
+        textos_normalizados = cabeceras
+        # Una página es índice solo si además NO trae una tabla real de cifras.
+        # Verificado real y necesario: MINEROS 2024-ANUAL pone un botón de
+        # navegación "Tabla de contenido" en el encabezado de CADA página,
+        # incluidas las del balance consolidado (137-138). Sin este matiz, el
+        # descarte de índices tiraba justo las páginas que se estaban buscando,
+        # y el triage terminaba quedándose con la sección separada. Un índice
+        # de verdad no tiene 20+ cifras con separador de miles.
+        es_indice = [
+            _es_pagina_indice(c) and not _tiene_tabla_real(crudo)
+            for c, crudo in zip(cabeceras, textos_crudos)
+        ]
+        paginas_sin_texto = [i for i, t in enumerate(textos_crudos) if not t.strip()]
 
-        def _leer(i: int) -> None:
-            if i in leidas:
-                return
-            leidas.add(i)
-            texto = pdf.pages[i].extract_text() or ""
-            if not texto.strip():
-                paginas_sin_texto.append(i)
-            textos_crudos[i] = texto
-            t_norm = normalizar(texto)
-            textos_normalizados[i] = t_norm
-            es_indice[i] = _es_pagina_indice(t_norm)
+        def _leer(_i: int) -> None:
+            return None
 
-        def _leer_hasta(fin: int) -> None:
-            for i in range(0, min(fin, total_paginas)):
-                _leer(i)
+        def _leer_hasta(_fin: int) -> None:
+            return None
 
         # Límite superior: donde empiezan las notas (si el documento las tiene).
         # Los estados financieros en sí siempre van antes.
@@ -253,12 +379,12 @@ def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
             _leer(i)
             if es_indice[i]:
                 continue
-            pos = _primera_posicion(textos_normalizados[i], MARCADOR_NOTAS)
-            if pos is None or pos > POSICION_MAXIMA_ANCLA:
+            pos = _primera_posicion(cabeceras[i], MARCADOR_NOTAS)
+            if pos is None or pos > POSICION_MAXIMA_NOTAS:
                 continue
             if pagina_notas_cualquiera is None:
                 pagina_notas_cualquiera = i
-            ventana = textos_normalizados[i][pos : pos + 80]
+            ventana = cabeceras[i][pos : pos + 80]
             es_notas_de_separado = "separad" in ventana and "consolidad" not in ventana
             if not es_notas_de_separado:
                 pagina_notas = i
@@ -269,8 +395,13 @@ def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
         limite_busqueda = pagina_notas if pagina_notas is not None else total_paginas
         _leer_hasta(limite_busqueda)
 
-        def _buscar_ancla(nucleos: list[str], exigir_consolidado: bool, posicion_maxima: int = POSICION_MAXIMA_ANCLA) -> int | None:
-            for i in range(limite_busqueda):
+        def _buscar_ancla(
+            nucleos: list[str],
+            exigir_consolidado: bool,
+            posicion_maxima: int = POSICION_MAXIMA_EN_CABECERA,
+            limite: int | None = None,
+        ) -> int | None:
+            for i in range(limite if limite is not None else limite_busqueda):
                 if es_indice[i]:
                     continue
                 pos = _primera_posicion(textos_normalizados[i], nucleos)
@@ -313,28 +444,30 @@ def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
             # aparece en ningún lado (ej. PEI, un fondo sin distinción
             # consolidado/separado), se cae al match suelto de antes.
             pagina = _buscar_ancla(nucleos, exigir_consolidado=True)
+            # Segunda pasada del CONSOLIDADO sobre el documento entero, sin el
+            # corte en el borde de las notas. Verificado real y necesario:
+            # MINEROS, CORFICOLOMBIANA y GRUPO_ARGOS publican en un mismo PDF la
+            # seccion separada primero y la consolidada mucho despues (MINEROS
+            # 2023-ANUAL: separado en la pagina 61, consolidado en la 138-139
+            # con 43 y 49 cifras). El limite de notas, que existe para no
+            # confundir el titulo con una mencion dentro de las notas, cortaba
+            # antes de llegar al consolidado -- y entonces la pasada suelta se
+            # quedaba con el SEPARADO, exactamente lo que la regla de Alex
+            # prohibe. Se corre ANTES que la pasada suelta a proposito: es
+            # preferible ir a buscar el consolidado al final del documento que
+            # conformarse con el separado que esta a la mano.
+            if pagina is None:
+                pagina = _buscar_ancla(
+                    nucleos, exigir_consolidado=True,
+                    posicion_maxima=POSICION_MAXIMA_CONSOLIDADO_GLOBAL, limite=total_paginas,
+                )
             if pagina is None:
                 pagina = _buscar_ancla(nucleos, exigir_consolidado=False)
-            # Tercera y cuarta pasada, con la ventana de posicion ampliada.
-            # SOLO se ejecutan cuando las dos anteriores no encontraron nada,
-            # asi que no pueden mover ninguna ancla que ya funcionaba: son
-            # estrictamente aditivas. Verificado real y necesario: TERPEL
-            # 2023-ANUAL (475 paginas) trae el balance consolidado en la
-            # pagina 284 con la fila "Total activos 9.337.716.408
-            # 10.238.949.515" perfectamente legible, pero cada pagina
-            # arranca con una barra de navegacion larga ("Aspectos generales
-            # de la operacion Desempeno bursatil y financiero Practicas de
-            # sostenibilidad...") que empuja el titulo del estado al caracter
-            # 184 -- fuera de los 150 de POSICION_MAXIMA_ANCLA. El documento
-            # quedaba en SIN_ANCLA por el membrete, no por su contenido.
-            # Lo que evita el falso positivo aqui no es la posicion sino la
-            # densidad de cifras (`MINIMO_NUMEROS_TABLA`), el descarte de
-            # paginas de indice y el corte en el borde de las notas, que
-            # siguen aplicando igual en estas dos pasadas.
-            if pagina is None:
-                pagina = _buscar_ancla(nucleos, exigir_consolidado=True, posicion_maxima=POSICION_MAXIMA_ANCLA_AMPLIA)
-            if pagina is None:
-                pagina = _buscar_ancla(nucleos, exigir_consolidado=False, posicion_maxima=POSICION_MAXIMA_ANCLA_AMPLIA)
+            # Las dos pasadas con "ventana ampliada" que hubo aquí entre el
+            # 07-sep y este cambio ya no hacen falta: existían para rescatar
+            # páginas cuyo encabezado fijo empujaba el título más allá de los
+            # 150 caracteres (TERPEL 2023-ANUAL, título en el 184). Con la
+            # banda superior por geometría eso deja de ser un caso especial.
             if pagina is not None:
                 anclas_encontradas[categoria] = pagina
 
@@ -342,8 +475,8 @@ def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
         for i in range(limite_busqueda):
             if es_indice[i]:
                 continue
-            pos = _primera_posicion(textos_normalizados[i], ANCLAS_RESUMEN_EJECUTIVO)
-            if pos is not None and pos <= POSICION_MAXIMA_ANCLA:
+            pos = _primera_posicion(cabeceras[i], ANCLAS_RESUMEN_EJECUTIVO)
+            if pos is not None and pos <= POSICION_MAXIMA_EN_CABECERA:
                 pagina_resumen_ejecutivo = i
                 break
 
