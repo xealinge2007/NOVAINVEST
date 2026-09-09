@@ -345,3 +345,66 @@ archivo por descargar.**
 - El job que recorra `C:\Proyectos\BVC\SIMEV_XBRL` y escriba en
   `fundamentales_reportados`, aprovechando los dos períodos de cada archivo.
 - Tanda 1 de descarga: anual consolidado 2020-2025 de los 20 emisores.
+
+## Corpus XBRL completo — lo que enseñó (09-sep-2026)
+
+Con los 109 archivos de la tanda 1 (18 emisores × 6 años + Davivienda, que
+solo existe como emisor desde 2025), el lector saca **215 de 218 períodos
+—informe más comparativo—, con el balance cuadrando en los 215** y cobertura
+del 100 % en activos, pasivos, patrimonio, ingresos, utilidad operacional y
+utilidad neta. El canal de PDF, sobre un corpus mayor, daba 193 filas con
+utilidad neta al 77 % e ingresos al 49 %.
+
+Llegar ahí exigió corregir tres cosas, y las tres son la misma lección:
+
+1. **La convención del identificador de contexto era de un generador, no del
+   formato.** Deducida del primer archivo (Ecopetrol, `xbrlengine`:
+   `Context_Instant_Final_P1202212P`), falló en **103 de 109 archivos** — el
+   resto usa `p1`, `p2`, `p3`. Se reemplazó por la fecha de cierre, que todos
+   declaran igual. Es literalmente el mismo error que atar el triage al orden
+   de concatenación de pdfplumber.
+2. **La escala no se puede deducir solo de la aritmética.** El contraste
+   utilidad-por-acción × acciones / utilidad es orientativo, no exacto: la
+   utilidad por acción se calcula sobre el promedio ponderado de acciones. Con
+   tolerancia del 5 % quedaban 156 de 218 períodos sin leer. Y en GRUPO_SURA
+   directamente mentía: la mitad de sus archivos deducían ×1.000.000 y la otra
+   mitad ×1.000 **para los mismos períodos** (70.941.764 contra 75.902 miles de
+   millones de activos). Se añadió el ancla que faltaba: **la magnitud**. La
+   banda de activos de un emisor de la BVC es de un factor 1.000 exacto
+   —de 500 a 500.000 miles de millones—, así que a lo sumo una escala cabe
+   dentro, y manda sobre la aritmética cuando se contradicen. Un emisor con
+   70.941.764 miles de millones tendría 47 veces el PIB del país.
+3. **Un cero etiquetado no es un dato.** Varios emisores ponen
+   `ProfitLossAttributableToOwnersOfParent = 0` en el contexto primario y la
+   cifra real en `ProfitLoss`. Como la controladora va primero en la lista de
+   preferencia, la utilidad neta de BVC, MINEROS 2024 y CIBEST 2025 salía en
+   cero, y las acciones de GEB también. Ahora un cero no gana sobre una
+   alternativa con valor.
+
+Contrastes contra la realidad que dan confianza: GEB devuelve **9.181.177.017**
+acciones y Bancolombia **509.704.584** ordinarias —las cifras exactas—, GEB
+2023 da activos 43.526 e ingresos 7.978 (el canal de PDF daba 43.525,811 y
+7.978), y Promigas y Mineros 2025 coinciden con lo que ya tenía el analizador.
+
+### Lo que queda anotado, no resuelto
+
+- **GRUPO_SURA cambia de clase de acción entre años**: 469.037.260 en 2020 y
+  2021, pero 282.620.429 en 2024 y 165.834.026 en 2025 — ordinarias y
+  preferenciales bajo miembros distintos del eje. La prueba de dispersión del
+  analizador lo descarta sola, pero conviene resolverlo.
+- **CIBEST 2025 no es comparable con 2020-2024.** Ver abajo.
+- **BVC tiene activos de 66.606 a 202.885** con patrimonio de 623 a 633. No es
+  un error de escala: consolida infraestructura de mercado (custodia,
+  contrapartida central). Su patrimonio e ingresos coinciden con el canal de
+  PDF. Simplemente el activo total no significa lo mismo ahí.
+
+### Bancolombia S.A. vs Grupo Cibest
+
+Cowork usó el código de **BANCOLOMBIA S.A.** para los 6 años, porque Grupo
+Cibest solo tiene PDF y solo desde 2025. Para 2020-2024 es correcto: es la
+misma entidad económica que el corpus de PDF ya rastreaba. **Pero el archivo de
+2025 marca un cambio de perímetro**, y se ve en los datos: activos caen de
+372.215 a 287.856 (−23 %) y patrimonio de 43.542 a 27.842 (−36 %) de un año a
+otro. No es deterioro del negocio, es que la matriz del grupo pasó a ser Grupo
+Cibest y Bancolombia S.A. dejó de consolidar lo mismo. Cualquier crecimiento
+calculado a través de 2024→2025 con estas dos filas es falso.

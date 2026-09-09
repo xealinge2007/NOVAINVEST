@@ -26,29 +26,37 @@ Y entrega cuatro cosas que el PDF no daba:
 Devuelve el mismo shape que `extractor_generico.extraer` para que el job que
 escribe en `fundamentales_reportados` no tenga que distinguir el canal.
 
-**La única trampa del formato.** Las fechas de los contextos de duración NO son
-de fiar: para una cifra anual de 2022 el contexto declara
-`2022-12-01..2022-12-31`, un mes. Lo que sí es fiable es la convención del
-identificador del contexto que usa el generador de la SFC:
+**Cómo se resuelve el período.** Por la FECHA DE CIERRE de cada contexto, que
+es del documento, y no por el identificador, que es de quien lo generó. La
+distinción costó una vuelta: el primer archivo que se probó (Ecopetrol, hecho
+con `xbrlengine`) nombra sus contextos
+`Context_Instant_Final_P1202212P` / `..._P2202112P`, y esa convención parecía
+la del formato. No lo era. Al correr el corpus completo, **103 de 109 archivos
+fallaron**: Grupo Sura, Celsia y el resto usan `p1`, `p2`, `p3` a secas. Es
+exactamente el mismo error que ya se había cometido en el canal de PDF al atar
+las reglas del triage al orden de concatenación de pdfplumber — una regla
+deducida de un solo espécimen.
 
-    Context_Instant_Final_P1202212P   ->  P1 = periodo del informe, corte 2022-12
-    Context_Instant_Final_P2202112P   ->  P2 = comparativo, corte 2021-12
+Lo que sí es común a todos: cada contexto declara un `instant` o un
+`endDate`, y esa fecha de cierre ordena los períodos. La más reciente es la
+del informe; la siguiente, el comparativo.
 
-Así que el período se resuelve por ese índice (`P1` es el del informe pedido),
-nunca por las fechas. Es la misma lección que el canal de PDF: el criterio
-tiene que describir el documento, no el capricho de quien lo generó.
+Queda una salvedad sobre las duraciones: Ecopetrol declara la suya como
+`2022-12-01..2022-12-31` (un mes) para una cifra que es anual, mientras Celsia
+declara bien `2022-01-01..2022-12-31` y además trae `2022-10-01..2022-12-31`,
+que es el cuarto trimestre suelto. Por eso, entre contextos que cierran en la
+misma fecha se prefiere **el de mayor duración**: con Celsia eso elige el año
+sobre el trimestre, y con Ecopetrol elige el único que hay.
 """
 
-import re
-from pathlib import Path
+import math
+from datetime import date
 from xml.etree import ElementTree as ET
 
 XBRLI = "{http://www.xbrl.org/2003/instance}"
 XBRLDI = "{http://xbrl.org/2006/xbrldi}"
 LINK = "{http://www.xbrl.org/2003/linkbase}"
 XLINK = "{http://www.w3.org/1999/xlink}"
-
-PATRON_CONTEXTO = re.compile(r"P(\d)(\d{4})(\d{2})([PA])")
 
 PESOS_POR_MIL_MILLONES = 1_000_000_000
 
@@ -102,16 +110,53 @@ def _leer_contextos(raiz) -> dict:
             if contenedor is not None:
                 for m in contenedor.findall(f"{XBRLDI}explicitMember"):
                     dims[_sin_prefijo(m.get("dimension"))] = _sin_prefijo(m.text)
-        m = PATRON_CONTEXTO.search(c.get("id") or "")
+        instante = periodo.findtext(f"{XBRLI}instant")
+        inicio = periodo.findtext(f"{XBRLI}startDate")
+        fin = periodo.findtext(f"{XBRLI}endDate")
         contextos[c.get("id")] = {
-            "instante": periodo.findtext(f"{XBRLI}instant"),
-            "indice": int(m.group(1)) if m else None,   # 1 = informe, 2 = comparativo
-            "anio": int(m.group(2)) if m else None,
-            "mes": int(m.group(3)) if m else None,
+            "instante": instante,
+            "inicio": inicio,
+            # La fecha de CIERRE es lo único que declaran igual todos los
+            # generadores, y es lo que ordena los períodos.
+            "fecha": instante or fin,
+            "dias": _dias(inicio, fin),
             "dims": dims,
-            "es_final": "_Final_" in (c.get("id") or "") or periodo.findtext(f"{XBRLI}instant") is not None,
         }
     return contextos
+
+
+def _dias(inicio, fin):
+    """Duración en días, o None para un instante. Sirve para desempatar entre
+    contextos que cierran el mismo día: el año contra el trimestre suelto."""
+    if not (inicio and fin):
+        return None
+    try:
+        return (date.fromisoformat(fin) - date.fromisoformat(inicio)).days
+    except ValueError:
+        return None
+
+
+def _fechas_de_cierre(contextos) -> list:
+    """Fechas de cierre del documento, de la más reciente a la más antigua,
+    mirando solo contextos SIN dimensiones -- los de los estados primarios.
+    La posición en esta lista es el índice de período: 1 = el del informe,
+    2 = el comparativo.
+
+    Se toma UNA fecha por año, la más tardía. Verificado real y necesario:
+    Ecopetrol declara además contextos de saldo INICIAL (instantes en
+    2022-12-01 y 2021-12-01, el arranque del estado de cambios en el
+    patrimonio). Sin agrupar por año, esos se colaban entre el cierre del
+    informe y el del comparativo, y el período 2 apuntaba al 2022-12-01 en vez
+    del 2021-12-31 -- el comparativo entero se perdía.
+    """
+    por_anio = {}
+    for c in contextos.values():
+        if not c["fecha"] or c["dims"]:
+            continue
+        anio = c["fecha"][:4]
+        if c["fecha"] > por_anio.get(anio, ""):
+            por_anio[anio] = c["fecha"]
+    return sorted(por_anio.values(), reverse=True)
 
 
 def _leer_hechos(raiz) -> list:
@@ -136,19 +181,25 @@ def _a_numero(texto):
         return None
 
 
-def _buscar(hechos, contextos, conceptos, dims_exigidas=None, indice=1):
-    """Primer hecho que case, respetando el orden de `conceptos`. Solo mira
-    contextos del período pedido (`indice`); sin dimensiones, salvo que se
-    exijan unas concretas -- un hecho dimensionado es un desglose (por
-    segmento, por clase de acción, por componente del patrimonio), no el total.
-    """
+def _buscar(hechos, contextos, conceptos, fecha, dims_exigidas=None):
+    """Hecho que case, respetando el orden de `conceptos`. Solo mira contextos
+    que cierran en `fecha`; sin dimensiones, salvo que se exijan unas concretas
+    -- un hecho dimensionado es un desglose (por segmento, por clase de acción,
+    por componente del patrimonio), no el total.
+
+    Entre varios candidatos gana el de MAYOR duración: en un informe anual eso
+    elige el año completo sobre el trimestre suelto que algunos emisores
+    incluyen con la misma fecha de cierre (Celsia trae `2022-01-01..2022-12-31`
+    y `2022-10-01..2022-12-31`)."""
     dims_exigidas = dims_exigidas or {}
+    cero = None
     for concepto in conceptos:
+        candidatos = []
         for h in hechos:
             if h["concepto"] != concepto:
                 continue
             ctx = contextos.get(h["ctx"])
-            if ctx is None or ctx["indice"] != indice:
+            if ctx is None or ctx["fecha"] != fecha:
                 continue
             if dims_exigidas:
                 if any(ctx["dims"].get(k) != v for k, v in dims_exigidas.items()):
@@ -157,15 +208,65 @@ def _buscar(hechos, contextos, conceptos, dims_exigidas=None, indice=1):
                 continue
             valor = _a_numero(h["valor"])
             if valor is not None:
+                candidatos.append((ctx["dias"] if ctx["dias"] is not None else -1, valor))
+        if candidatos:
+            valor = max(candidatos, key=lambda x: x[0])[1]
+            # Un CERO no gana sobre la alternativa. Verificado real y
+            # necesario: varios emisores tagean
+            # `ProfitLossAttributableToOwnersOfParent = 0` en el contexto
+            # primario y ponen la cifra de verdad en `ProfitLoss` -- y como la
+            # controladora va primero en la lista de preferencia, la utilidad
+            # neta de BVC, MINEROS 2024 y CIBEST 2025 salia en cero. Lo mismo
+            # con las acciones de GEB. Un cero exacto en activos, ingresos,
+            # utilidad o acciones de un emisor de la BVC es un hueco de
+            # etiquetado, no un dato; si TODAS las alternativas dan cero, se
+            # devuelve el cero y que el llamador decida.
+            if valor != 0:
                 return valor, concepto
-    return None, None
+            if cero is None:
+                cero = (valor, concepto)
+    return cero if cero is not None else (None, None)
 
 
 ESCALAS_ACEPTADAS = (1, 1_000, 1_000_000)
-TOLERANCIA_ESCALA = 0.05
+# Holgura contra la potencia de mil mas cercana. Es amplia a proposito: la
+# utilidad por accion no es exactamente utilidad / acciones -- se calcula sobre
+# el PROMEDIO PONDERADO de acciones del periodo, y la utilidad que la acompana
+# puede ser la de operaciones continuas y no la total. Medido sobre el corpus,
+# la razon se va entre 0,68 y 1,8 veces la escala real en emisores donde el
+# resto de la lectura es impecable (balance cuadrando al peso). Exigir 5% dejo
+# 156 de 218 periodos sin leer por un contraste que nunca pretendio ser exacto.
+#
+# Que sea amplia no la vuelve laxa: las tres escalas posibles estan a factor
+# 1.000 una de otra, asi que una ventana de 3x no puede confundirlas.
+FACTOR_HOLGURA_ESCALA = 3.0
 
 
-def _escala_del_archivo(utilidad, acciones, por_accion):
+# Banda de activos totales de un emisor de la BVC, en miles de millones de
+# pesos. El ancho es deliberadamente de un factor 1.000 EXACTO: como las tres
+# escalas posibles estan a factor 1.000 una de otra, a lo sumo una puede dejar
+# el activo dentro de la banda, y la prueba nunca es ambigua.
+#
+# Los extremos son reales, no inventados: el emisor mas chico del universo
+# (BVC) ronda el billon de pesos y el mas grande (Bancolombia) los 363
+# billones. Se dejo margen a ambos lados. Como referencia de que el techo es
+# sano: el PIB de Colombia esta en el orden de 1.500 billones, asi que un solo
+# emisor con 70.000 billones de activos -- lo que daba GRUPO_SURA con la
+# escala mal deducida -- es imposible por varios ordenes de magnitud.
+MIN_ACTIVOS_MMM = 500
+MAX_ACTIVOS_MMM = 500_000
+
+
+def _escalas_plausibles_por_magnitud(activos_brutos):
+    """Escalas que dejan el activo total dentro de la banda. Ninguna, una, o
+    en el peor caso ninguna -- por el ancho de la banda no pueden ser dos."""
+    if not activos_brutos:
+        return []
+    return [e for e in ESCALAS_ACEPTADAS
+            if MIN_ACTIVOS_MMM <= activos_brutos * e / PESOS_POR_MIL_MILLONES <= MAX_ACTIVOS_MMM]
+
+
+def _escala_del_archivo(utilidad, acciones, por_accion, activos_brutos=None):
     """(factor, evidencia) para llevar las cifras monetarias a pesos.
 
     Hace falta porque **el archivo miente sobre su propia unidad**: declara
@@ -185,19 +286,65 @@ def _escala_del_archivo(utilidad, acciones, por_accion):
     cerca de una potencia de mil. Si no hay con que deducirla, se devuelve
     None y el documento va a revision, igual que un balance que no cuadra.
     """
+    por_magnitud = _escalas_plausibles_por_magnitud(activos_brutos)
+
     if not (utilidad and acciones and por_accion):
-        return None, "sin utilidad por accion o sin acciones: no hay con que deducir la escala"
-    razon = (por_accion * acciones) / utilidad
-    for escala in ESCALAS_ACEPTADAS:
-        if abs(razon - escala) / escala <= TOLERANCIA_ESCALA:
-            return escala, (
-                f"x{escala:,} deducida de utilidad por accion ({por_accion:,.2f}) x acciones "
-                f"({acciones:,.0f}) / utilidad ({utilidad:,.0f}) = {razon:,.1f}"
+        # Sin utilidad por accion no hay contraste aritmetico, pero la magnitud
+        # sola alcanza cuando deja una sola escala en pie.
+        if len(por_magnitud) == 1:
+            return por_magnitud[0], (
+                f"x{por_magnitud[0]:,} por magnitud: es la unica escala que deja el activo total "
+                f"({activos_brutos * por_magnitud[0] / PESOS_POR_MIL_MILLONES:,.0f} miles de millones) "
+                f"dentro de lo posible para un emisor de la BVC"
             )
-    return None, f"la razon utilidad-por-accion x acciones / utilidad da {razon:,.1f}, que no es una escala reconocible"
+        return None, "sin utilidad por accion o sin acciones, y la magnitud no basta para deducir la escala"
+    razon = (por_accion * acciones) / utilidad
+    if razon <= 0:
+        return None, f"la razon utilidad-por-accion x acciones / utilidad da {razon:,.1f}"
+    escala = min(ESCALAS_ACEPTADAS, key=lambda e: abs(math.log(razon / e)))
+    cerca = 1 / FACTOR_HOLGURA_ESCALA <= razon / escala <= FACTOR_HOLGURA_ESCALA
+
+    # La MAGNITUD manda sobre el contraste aritmetico cuando se contradicen.
+    # Verificado real y necesario: GRUPO_SURA deducia x1.000.000 en la mitad de
+    # sus archivos y x1.000 en la otra mitad, para los MISMOS periodos --
+    # 70.941.764 contra 75.902 miles de millones de activos. La razon
+    # utilidad-por-accion no es fiable ahi (su utilidad por accion no se
+    # calcula sobre las acciones que tagea), pero la magnitud no deja lugar a
+    # dudas: un emisor con 70.941.764 miles de millones de activos tendria 47
+    # veces el PIB del pais.
+    if por_magnitud and escala not in por_magnitud:
+        if len(por_magnitud) == 1:
+            return por_magnitud[0], (
+                f"x{por_magnitud[0]:,} por magnitud, descartando la x{escala:,} que sugeria la "
+                f"utilidad por accion (razon {razon:,.1f}): esa dejaba el activo total en "
+                f"{activos_brutos * escala / PESOS_POR_MIL_MILLONES:,.0f} miles de millones, imposible"
+            )
+        return None, (
+            f"la utilidad por accion sugiere x{escala:,} pero la magnitud del activo lo desmiente, "
+            "y la magnitud sola no deja una unica escala en pie"
+        )
+
+    if cerca:
+        return escala, (
+            f"x{escala:,} deducida de utilidad por accion ({por_accion:,.2f}) x acciones "
+            f"({acciones:,.0f}) / utilidad ({utilidad:,.0f}) = {razon:,.1f}"
+        )
+    if len(por_magnitud) == 1:
+        return por_magnitud[0], f"x{por_magnitud[0]:,} por magnitud (la razon {razon:,.1f} no concluia)"
+    return None, f"la razon utilidad-por-accion x acciones / utilidad da {razon:,.1f}, que no cae cerca de ninguna escala"
 
 
-def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1) -> dict:
+def _vacio(motivos, evidencia_escala=None) -> dict:
+    """Salida sin cifras, con el MISMO shape que la buena. Que los retornos
+    tempranos omitieran la clave `xbrl` rompía a quien la leyera sin
+    comprobarla -- una forma cara de descubrir un problema."""
+    return {"campos": {}, "unidad": None, "cuadra_balance": None, "motivos": motivos,
+            "paginas_usadas": {},
+            "xbrl": {"escala": None, "evidencia_escala": evidencia_escala,
+                     "punto_entrada": None, "conceptos": {}}}
+
+
+def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_conocida=None) -> dict:
     """Mismo shape que `extractor_generico.extraer`.
 
     `indice_periodo`: 1 es el período del informe; 2 es el comparativo, que
@@ -216,26 +363,35 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1) -> dict:
     if "-con-" not in punto_entrada:
         motivos.append(f"el punto de entrada no es consolidado: {punto_entrada.rsplit('/', 1)[-1]}")
 
-    del_periodo = [c for c in contextos.values() if c["indice"] == indice_periodo and c["anio"]]
-    if not del_periodo:
-        motivos.append(f"el archivo no trae contextos del período {indice_periodo}")
-        return {"campos": {}, "unidad": None, "cuadra_balance": None,
-                "motivos": motivos, "paginas_usadas": {}}
-    anio_archivo = del_periodo[0]["anio"]
+    fechas = _fechas_de_cierre(contextos)
+    if len(fechas) < indice_periodo:
+        motivos.append(f"el archivo solo trae {len(fechas)} fecha(s) de cierre; se pidió la {indice_periodo}")
+        return _vacio(motivos)
+    fecha = fechas[indice_periodo - 1]
+    anio_archivo = int(fecha[:4])
     if anio_archivo != anio:
-        motivos.append(f"el archivo corresponde a {anio_archivo}, no a {anio} -- no se extrae")
-        return {"campos": {}, "unidad": None, "cuadra_balance": None,
-                "motivos": motivos, "paginas_usadas": {}}
+        motivos.append(f"el cierre {fecha} no corresponde a {anio} -- no se extrae")
+        return _vacio(motivos)
 
     # La escala primero: sin ella no se puede convertir nada (ver
     # `_escala_del_archivo`).
     acciones, concepto_acc = _buscar(
         hechos, contextos, CONCEPTO_ACCIONES,
-        dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA}, indice=indice_periodo,
+        fecha, dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA},
     )
-    por_accion, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, indice=indice_periodo)
-    utilidad_bruta, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], indice=indice_periodo)
-    escala, evidencia_escala = _escala_del_archivo(utilidad_bruta, acciones, por_accion)
+    por_accion, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, fecha)
+    utilidad_bruta, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], fecha)
+    activos_brutos, _ = _buscar(hechos, contextos, CONCEPTOS["activos_totales"], fecha)
+    escala, evidencia_escala = _escala_del_archivo(utilidad_bruta, acciones, por_accion, activos_brutos)
+    if escala is None and escala_conocida:
+        # La escala la fija el EMISOR (su generador de XBRL y su convención de
+        # presentación), no cada archivo. Cuando un año concreto no trae con qué
+        # deducirla -- sin utilidad por acción o sin acciones etiquetadas -- se
+        # acepta la que ya se dedujo de otro año del mismo emisor, y se dice de
+        # dónde vino. Es la misma lógica que heredar la escala al comparativo,
+        # un nivel más arriba.
+        escala = escala_conocida
+        evidencia_escala = f"x{escala:,} heredada de otro período del mismo emisor"
     if escala is None and indice_periodo != 1:
         # La escala es propiedad del DOCUMENTO, no del periodo: el comparativo
         # rara vez trae acciones ni utilidad por accion propias, asi que se
@@ -244,22 +400,22 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1) -> dict:
         # comparativo 2021 -- que viene completo en el mismo archivo -- se
         # perdia entero.
         acc1, _ = _buscar(hechos, contextos, CONCEPTO_ACCIONES,
-                          dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA}, indice=1)
-        pa1, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, indice=1)
-        ut1, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], indice=1)
-        escala, evidencia_escala = _escala_del_archivo(ut1, acc1, pa1)
+                          fechas[0], dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA})
+        pa1, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, fechas[0])
+        ut1, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], fechas[0])
+        act1, _ = _buscar(hechos, contextos, CONCEPTOS["activos_totales"], fechas[0])
+        escala, evidencia_escala = _escala_del_archivo(ut1, acc1, pa1, act1)
         if escala is not None:
             evidencia_escala += " (deducida del período del informe y aplicada al comparativo)"
     if escala is None:
         motivos.append(evidencia_escala)
-        return {"campos": {}, "unidad": None, "cuadra_balance": None, "motivos": motivos,
-                "paginas_usadas": {}, "xbrl": {"escala": None, "evidencia_escala": evidencia_escala}}
+        return _vacio(motivos, evidencia_escala)
     divisor = PESOS_POR_MIL_MILLONES / escala
 
     campos = {}
     origen_concepto = {}
     for campo, conceptos in CONCEPTOS.items():
-        valor, concepto = _buscar(hechos, contextos, conceptos, indice=indice_periodo)
+        valor, concepto = _buscar(hechos, contextos, conceptos, fecha)
         origen_concepto[campo] = concepto
         campos[campo] = {
             "valor": round(valor / divisor, 6) if valor is not None else None,
@@ -278,7 +434,7 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1) -> dict:
 
     dividendos, concepto_div = _buscar(
         hechos, contextos, CONCEPTO_DIVIDENDOS,
-        dims_exigidas={EJE_PATRIMONIO: MIEMBRO_PATRIMONIO_TOTAL}, indice=indice_periodo,
+        fecha, dims_exigidas={EJE_PATRIMONIO: MIEMBRO_PATRIMONIO_TOTAL},
     )
     campos["dividendos_decretados"] = {
         "valor": round(dividendos / divisor, 6) if dividendos else None,
@@ -287,7 +443,7 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1) -> dict:
     }
 
     # EBITDA sigue siendo derivado -- no es una línea NIIF, es métrica no-NIIF.
-    depreciacion, _ = _buscar(hechos, contextos, CONCEPTO_DEPRECIACION, indice=indice_periodo)
+    depreciacion, _ = _buscar(hechos, contextos, CONCEPTO_DEPRECIACION, fecha)
     operacional = campos["utilidad_operacional"]["valor"]
     if operacional is not None and depreciacion is not None:
         campos["ebitda"] = {
@@ -302,7 +458,7 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1) -> dict:
     # ser el atribuible a la controladora, que NO cuadra con activos - pasivos
     # cuando hay interés no controlante, así que el chequeo usa el patrimonio
     # TOTAL del grupo, que es el que cierra la ecuación.
-    patrimonio_grupo, _ = _buscar(hechos, contextos, ["Equity"], indice=indice_periodo)
+    patrimonio_grupo, _ = _buscar(hechos, contextos, ["Equity"], fecha)
     activos = campos["activos_totales"]["valor"]
     pasivos = campos["pasivos_totales"]["valor"]
     cuadra = None
@@ -345,8 +501,4 @@ def periodos_disponibles(ruta_xbrl) -> list:
     """(indice, anio) de los períodos que trae el archivo — el del informe y su
     comparativo. Sirve para aprovechar los dos de una sola descarga."""
     contextos = _leer_contextos(ET.parse(str(ruta_xbrl)).getroot())
-    vistos = {}
-    for c in contextos.values():
-        if c["indice"] and c["anio"]:
-            vistos.setdefault(c["indice"], c["anio"])
-    return sorted(vistos.items())
+    return [(i, int(f[:4])) for i, f in enumerate(_fechas_de_cierre(contextos), start=1)]
