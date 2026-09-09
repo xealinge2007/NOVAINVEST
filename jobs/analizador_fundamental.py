@@ -128,6 +128,15 @@ def desacumular(filas: list[dict]) -> list[dict]:
     for f in filas:
         g = dict(f)
         g["flujo_desacumulado"] = True
+        # `acumulado` viene del XBRL, que lo declara (ver
+        # db/migrate_f4d_acumulado.sql). Cuando está, MANDA sobre lo que diga
+        # la inferencia por razones T2/T1: un dato registrado le gana a uno
+        # deducido. Cuando es False, la fila ya trae el trimestre suelto y
+        # restarle el anterior lo destrozaría. Cuando es None -- las filas del
+        # canal de PDF -- sigue valiendo la inferencia, que es lo único que hay.
+        if f.get("acumulado") is False:
+            salida.append(g)
+            continue
         if f["periodo"] in ("T2", "T3", "T4"):
             previo = por_clave.get((f["anio"], TRIMESTRES[TRIMESTRES.index(f["periodo"]) - 1]))
             for c in CAMPOS_FLUJO:
@@ -271,7 +280,17 @@ def main():
         em = emisores[emisor_id]
         filas = sorted(filas, key=lambda f: _orden(f["anio"], f["periodo"]))
         filas, avisos_escala = descartar_escala_atipica(filas)
-        acumulado, evidencia = detectar_acumulado(filas)
+        # Si alguna fila trae la periodicidad declarada, se usa esa y no se
+        # infiere nada. La inferencia queda para las series que solo tienen
+        # filas del canal de PDF.
+        declaradas = [f for f in filas if f.get("acumulado") is not None and f["periodo"] != "ANUAL"]
+        if declaradas:
+            n_acum = sum(1 for f in declaradas if f["acumulado"])
+            acumulado = n_acum > 0
+            evidencia = (f"declarado por el XBRL en {n_acum} de {len(declaradas)} trimestres "
+                         f"({'acumulado' if acumulado else 'trimestre suelto'})")
+        else:
+            acumulado, evidencia = detectar_acumulado(filas)
         desac = desacumular(filas) if acumulado else filas
 
         ingresos, fuente_ing = ttm(desac, "ingresos")
