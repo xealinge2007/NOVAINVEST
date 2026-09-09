@@ -47,6 +47,14 @@ from app.services.extraccion import lector_xbrl  # noqa: E402
 CARPETA_XBRL = Path(r"C:\Proyectos\BVC\SIMEV_XBRL")
 NOMBRE_MANIFIESTO = ("MANIFESTO.csv", "MANIFIESTO.csv")
 PATRON_NOMBRE = re.compile(r"^(\d{4})-(ANUAL|T[1-4])_", re.IGNORECASE)
+# Un archivo con sufijo después de `-XBRL` es una SERIE PARALELA del mismo
+# emisor y período, no un reemplazo. Verificado real: Grupo Cibest empezó a
+# radicar XBRL propio desde 2025-T2, y Cowork lo bajó junto al de Bancolombia
+# S.A. dentro de la misma carpeta (`...-XBRL-CIBEST.xbrl`). Las dos series
+# comparten (emisor, año, período), así que cargarlas sin distinguir haría que
+# una pisara a la otra en silencio -- exactamente el cambio de perímetro que se
+# quería poder ver. Se saltan y se reportan hasta decidir cómo empalmarlas.
+PATRON_SERIE_PARALELA = re.compile(r"-XBRL-(.+)\.xbrl$", re.IGNORECASE)
 
 CAMPOS_NUMERICOS = [
     "ingresos", "utilidad_operacional", "utilidad_neta", "ebitda",
@@ -160,6 +168,16 @@ def main():
     emisores = {e["slug"]: e["id"] for e in datos_emisores}
     sectores = {e["slug"]: e["sector"] for e in datos_emisores}
 
+    # `acumulado` y `dias_periodo` los agrega db/migrate_f4d_acumulado.sql. El
+    # job funciona con o sin ellos: si la migración no está aplicada, escribe
+    # todo lo demás y avisa, en vez de morir a mitad de una carga de 200
+    # archivos por una columna que falta.
+    muestra = cliente.table("fundamentales_reportados").select("*").limit(1).execute().data
+    hay_periodicidad = bool(muestra) and "acumulado" in muestra[0]
+    if not hay_periodicidad:
+        print("AVISO: falta db/migrate_f4d_acumulado.sql -- se cargan las cifras, "
+              "pero sin registrar si el flujo es acumulado o del trimestre suelto")
+
     previas = {}
     for f in cliente.table("fundamentales_reportados").select("*").execute().data:
         previas[(f["emisor_id"], f["anio"], f["periodo"])] = f
@@ -173,7 +191,7 @@ def main():
         print("AVISO: sin manifiesto de procedencia -- las filas quedarán sin url_descarga")
 
     resumen = defaultdict(int)
-    dobles, discrepancias, avisos = [], [], []
+    dobles, discrepancias, avisos, paralelas = [], [], [], []
 
     for carpeta in carpetas:
         slug = carpeta.name
@@ -195,6 +213,11 @@ def main():
             m = PATRON_NOMBRE.match(arch.name)
             if not m:
                 resumen["nombre_no_parseable"] += 1
+                continue
+            paralela = PATRON_SERIE_PARALELA.search(arch.name)
+            if paralela:
+                paralelas.append(f"{slug}/{arch.name} (serie '{paralela.group(1)}')")
+                resumen["serie_paralela_no_cargada"] += 1
                 continue
             anio_informe, periodo = int(m.group(1)), m.group(2).upper()
 
@@ -249,6 +272,8 @@ def main():
                     "emisor_id": emisor_id, "anio": anio, "periodo": periodo, "consolidado": True,
                     "origen": "reportado", "metodo_validacion": metodo,
                     "moneda": "COP", "unidad": "miles_de_millones",
+                    **({"acumulado": r["xbrl"].get("acumulado"),
+                        "dias_periodo": r["xbrl"].get("dias_periodo")} if hay_periodicidad else {}),
                     **{c: None for c in CAMPOS_NUMERICOS},
                     **campos,
                 }
@@ -271,6 +296,10 @@ def main():
         print(f"\n{len(discrepancias)} período(s) donde PDF y XBRL DISCREPAN — manda el XBRL, revisar:")
         for d in discrepancias[:20]:
             print(f"   {d}")
+    if paralelas:
+        print(f"\n{len(paralelas)} archivo(s) de SERIE PARALELA no cargados (pisarían la serie principal):")
+        for x in paralelas:
+            print(f"   {x}")
     if avisos:
         print(f"\n{len(avisos)} aviso(s) de escala:")
         for a in avisos:

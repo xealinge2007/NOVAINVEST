@@ -181,6 +181,12 @@ def _a_numero(texto):
         return None
 
 
+# Duración (en días) del contexto que usó la última búsqueda. Es lo que
+# permite registrar si un flujo es acumulado o del trimestre suelto en vez de
+# inferirlo después — ver db/migrate_f4d_acumulado.sql.
+_ULTIMA_DURACION = {"dias": None}
+
+
 def _buscar(hechos, contextos, conceptos, fecha, dims_exigidas=None):
     """Hecho que case, respetando el orden de `conceptos`. Solo mira contextos
     que cierran en `fecha`; sin dimensiones, salvo que se exijan unas concretas
@@ -210,7 +216,9 @@ def _buscar(hechos, contextos, conceptos, fecha, dims_exigidas=None):
             if valor is not None:
                 candidatos.append((ctx["dias"] if ctx["dias"] is not None else -1, valor))
         if candidatos:
-            valor = max(candidatos, key=lambda x: x[0])[1]
+            elegido = max(candidatos, key=lambda x: x[0])
+            valor = elegido[1]
+            _ULTIMA_DURACION["dias"] = elegido[0] if elegido[0] >= 0 else None
             # Un CERO no gana sobre la alternativa. Verificado real y
             # necesario: varios emisores tagean
             # `ProfitLossAttributableToOwnersOfParent = 0` en el contexto
@@ -414,9 +422,17 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
 
     campos = {}
     origen_concepto = {}
+    dias_flujo = None
     for campo, conceptos in CONCEPTOS.items():
+        _ULTIMA_DURACION["dias"] = None
         valor, concepto = _buscar(hechos, contextos, conceptos, fecha)
         origen_concepto[campo] = concepto
+        # `ingresos` es el flujo de referencia: su contexto es el que dice si
+        # el estado de resultados de este informe va acumulado o por trimestre.
+        if campo == "ingresos" and valor is not None:
+            dias_flujo = _ULTIMA_DURACION["dias"]
+        if campo == "utilidad_neta" and dias_flujo is None and valor is not None:
+            dias_flujo = _ULTIMA_DURACION["dias"]
         campos[campo] = {
             "valor": round(valor / divisor, 6) if valor is not None else None,
             "pagina": None,
@@ -490,6 +506,17 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
             "punto_entrada": punto_entrada.rsplit("/", 1)[-1],
             "escala": escala,
             "evidencia_escala": evidencia_escala,
+            "dias_periodo": dias_flujo,
+            # Acumulado = el flujo arranca en enero. Un trimestre suelto dura
+            # ~90 días; el acumulado de T2 ~180, el de T3 ~270, el anual ~365.
+            # El corte en 100 separa limpio, no hay nada entre medias.
+            #
+            # Un informe ANUAL es acumulado por definición y no se le pregunta
+            # al archivo: el generador de Ecopetrol declara su duración anual
+            # como `2022-12-01..2022-12-31` (30 días) para una cifra que es de
+            # todo el año. La duración declarada se guarda igual, para poder
+            # auditar, pero no decide.
+            "acumulado": True if periodo == "ANUAL" else (None if dias_flujo is None else dias_flujo > 100),
             "anio_contexto": anio_archivo,
             "utilidad_por_accion_reportada": por_accion,
             "conceptos": origen_concepto,
