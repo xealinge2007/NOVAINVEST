@@ -258,3 +258,90 @@ atribuidos**, y la causa que sí bloqueaba el lote entero no estaba en la lista.
    475 páginas que mezcla informe de gestión y EEFF el riesgo de tomar la
    declaración de otra sección es real: conviene atarlo al símbolo de columna
    (nivel b) antes que a la distancia.
+
+---
+
+# Adenda — 08-sep-2026: canal D, el XBRL radicado
+
+Alex encontró que SIMEV publica, junto al PDF, **el mismo estado financiero en
+XBRL desde el primer trimestre de 2015**. Eso cambia la pregunta: buena parte de
+`extractor_generico.py` existe para reconstruir de un PDF una información que el
+emisor ya reportó estructurada.
+
+## La prueba
+
+Se pidió **un solo archivo** —  `ECOPETROL/2022-ANUAL` consolidado, el mismo
+período que el canal de PDF ya extraía bien— antes de invertir en nada. Las tres
+cifras comparables coinciden **al peso**:
+
+| | Canal PDF | Canal XBRL |
+|---|---:|---:|
+| activos | 306.369,507 | 306.369,50661 |
+| ingresos | 159.473,954 | 159.473,954056 |
+| utilidad neta | 33.406,291 | 33.406,29119 |
+
+Y entrega cuatro cosas que el PDF no daba:
+
+- **41.116.694.690 acciones ordinarias**, etiquetadas por clase
+  (`ClassesOfShareCapitalAxis`). Ese campo estaba en **0 de 193 filas** y era lo
+  que bloqueaba toda métrica por acción.
+- **Controladora y grupo como conceptos distintos**
+  (`ProfitLossAttributableToOwnersOfParent` 33.406 vs `ProfitLoss` 37.036;
+  `EquityAttributableToOwnersOfParent` 91.035 vs `Equity` 119.087). En el PDF
+  eso costó una búsqueda de sinónimos en dos pasadas.
+- **Dividendos decretados**: 20.493 miles de millones. Otro campo vacío.
+- **El comparativo en el mismo archivo** (2021 completo), así que un archivo
+  rinde dos períodos.
+
+## Las dos trampas del formato, y cómo se resuelven
+
+Ninguna se resuelve suponiendo. Las dos se resuelven con algo que el archivo
+trae consigo.
+
+1. **Las fechas de los contextos mienten.** Para una cifra anual de 2022 el
+   contexto declara `2022-12-01..2022-12-31`, un mes. Lo fiable es la
+   convención del identificador que usa el generador de la SFC:
+   `Context_Instant_Final_P1202212P` (P1 = período del informe) contra
+   `..._P2202112P` (P2 = comparativo). El período sale de ese índice.
+2. **La unidad miente.** Los 10.606 hechos monetarios declaran
+   `unitRef="peso"` (iso4217:COP) y `decimals="0"`, pero están en **miles de
+   pesos**. Lo delata la aritmética del propio documento: utilidad
+   33.406.291.190 entre 41.116.694.690 acciones da 0,81 por acción, y el mismo
+   archivo declara `BasicEarningsLossPerShare = 813`. La escala se **deduce** de
+   esa redundancia (`utilidad por acción × acciones / utilidad`), se acepta solo
+   si cae cerca de una potencia de mil, y si no hay con qué deducirla el
+   documento va a revisión. No se codifica "la SFC reporta en miles" como
+   constante: esa es la suposición por emisor que ya salió cara en el canal de
+   PDF.
+
+   Vale la pena notar que **ese contraste lo escribí como chequeo de sanidad y
+   terminó cazando un error mío** (había dividido por 1e9 en vez de 1e6). Un
+   canal que puede verificarse contra sí mismo es preferible a uno que no,
+   aparte de ser más rápido.
+
+## Cómo queda el pipeline
+
+| Canal | Qué es | Cuándo |
+|---|---|---|
+| **D — XBRL** | `lector_xbrl.py` sobre la radicación oficial | **Primario, siempre que exista** |
+| A — texto | el subagente lee la capa de texto | donde no haya XBRL |
+| B — imagen | el subagente lee la página renderizada | páginas escaneadas |
+| C — parser | `extractor_generico.py` sobre el PDF | respaldo y contraste |
+
+**No se descarta nada de lo construido.** Los ~200 archivos que el canal de PDF
+ya resuelve siguen sirviendo, y son la contraparte independiente que convierte
+una cifra en `doble_extraccion`: dos canales que no comparten ni la fuente ni el
+código. Además hay emisores —PEI, patrimonio autónomo— que pueden no reportar
+en este formato.
+
+Lo que sí cambia: **todo lo que hoy está en `requiere_revision` por unidad,
+columna, vocabulario o escaneo deja de ser un problema de código y pasa a ser un
+archivo por descargar.**
+
+## Pendiente
+
+- Aplicar `db/migrate_f4c_xbrl.sql` (valor `xbrl_radicado` en
+  `metodo_validacion`, y la tabla `reportes_xbrl`).
+- El job que recorra `C:\Proyectos\BVC\SIMEV_XBRL` y escriba en
+  `fundamentales_reportados`, aprovechando los dos períodos de cada archivo.
+- Tanda 1 de descarga: anual consolidado 2020-2025 de los 20 emisores.
