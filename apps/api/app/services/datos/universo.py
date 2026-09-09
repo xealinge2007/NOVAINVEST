@@ -93,6 +93,18 @@ TICKERS_BVC = [
     DefinicionActivo("CONCONCRET.CL", "Constructora Conconcreto", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("BOGOTA.CL", "Banco de Bogotá", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("PROMIGAS.CL", "Promigas", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    # Agregados el 09-sep-2026. Los cinco tenían estados financieros completos
+    # en `fundamentales_reportados` —ROE, márgenes, patrimonio— pero ningún
+    # instrumento dado de alta, así que el analizador no podía calcularles ni
+    # capitalización ni múltiplos. Era un hueco del catálogo, no de los datos.
+    # Los cinco tickers se verificaron contra yfinance antes de agregarlos:
+    # devuelven serie diaria y cierre del día (MINEROS 19.840, TERPEL 18.680,
+    # ETB 137, NUTRESA 316.000, BVC 16.340 al 09-sep-2026).
+    DefinicionActivo("MINEROS.CL", "Mineros", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("TERPEL.CL", "Organización Terpel", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("ETB.CL", "Empresa de Telecomunicaciones de Bogotá (ETB)", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("NUTRESA.CL", "Grupo Nutresa", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("BVC.CL", "Bolsa de Valores de Colombia", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("ICOLCAP.CL", "iShares MSCI COLCAP (proxy del índice COLCAP)", "indice_proxy", "BVC", "COP", "yfinance", None, "bvc"),
 ]
 
@@ -124,6 +136,17 @@ EMISORES_BVC = [
     DefinicionEmisorBVC("CONSTRUCTORA_CONCONCRETO", "Constructora Conconcreto", "cemento_construccion"),
     DefinicionEmisorBVC("BANCO_DE_BOGOTA", "Banco de Bogotá", "banca"),
     DefinicionEmisorBVC("PROMIGAS", "Promigas", "energia_utilities"),
+    # Agregados el 09-sep-2026. Ya existían en Supabase —`ingesta_simev` los
+    # creó solos al encontrar sus carpetas de PDF— pero con
+    # sector='sin_clasificar' y sin instrumento, así que no tenían precio y el
+    # analizador les calculaba ROE y márgenes pero ningún múltiplo. Se les da
+    # aquí su sector real y su ticker, y `seed_emisores_instrumentos.py` los
+    # reconcilia por slug sin duplicar nada.
+    DefinicionEmisorBVC("MINEROS", "Mineros", "mineria"),
+    DefinicionEmisorBVC("TERPEL", "Organización Terpel", "petroleo_gas"),
+    DefinicionEmisorBVC("ETB", "Empresa de Telecomunicaciones de Bogotá", "telecomunicaciones"),
+    DefinicionEmisorBVC("GRUPO_NUTRESA", "Grupo Nutresa", "consumo"),
+    DefinicionEmisorBVC("BVC", "Bolsa de Valores de Colombia", "infraestructura_mercado"),
 ]
 
 # Instrumentos BVC (§3.4): cada especie negociada, con su emisor y clase.
@@ -152,6 +175,11 @@ INSTRUMENTOS_BVC = [
     DefinicionInstrumentoBVC("CONCONCRET.CL", "CONSTRUCTORA_CONCONCRETO", "ordinaria"),
     DefinicionInstrumentoBVC("BOGOTA.CL", "BANCO_DE_BOGOTA", "ordinaria"),
     DefinicionInstrumentoBVC("PROMIGAS.CL", "PROMIGAS", "ordinaria"),
+    DefinicionInstrumentoBVC("MINEROS.CL", "MINEROS", "ordinaria"),
+    DefinicionInstrumentoBVC("TERPEL.CL", "TERPEL", "ordinaria"),
+    DefinicionInstrumentoBVC("ETB.CL", "ETB", "ordinaria"),
+    DefinicionInstrumentoBVC("NUTRESA.CL", "GRUPO_NUTRESA", "ordinaria"),
+    DefinicionInstrumentoBVC("BVC.CL", "BVC", "ordinaria"),
 ]
 
 # Tickers válidos para dar de alta una posición clase='accion' (F2b: el alta

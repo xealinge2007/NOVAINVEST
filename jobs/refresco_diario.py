@@ -36,7 +36,16 @@ CACHE_LOCAL = Path(__file__).parent / "_cache_local"
 
 
 def _supabase_configurado() -> bool:
-    return bool(os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY"))
+    """Mira la configuración de la app, no `os.environ` a secas.
+
+    Leyendo el entorno directamente, el job no veía el `.env` de `apps/api` y
+    se iba a la caché local sin que las credenciales faltaran de verdad: decía
+    "Destino: cache local" y llenaba un directorio que nadie lee, mientras
+    `precios` en Supabase se quedaba viejo. Es el mismo error que ya había en
+    `config.py` con `env_file=".env"` relativo al cwd, en otro sitio."""
+    from app.config import settings
+
+    return bool(settings.supabase_url and settings.supabase_service_key)
 
 
 def _obtener_precios_con_fallback(activo: DefinicionActivo, desde: date, hasta: date):
@@ -106,17 +115,32 @@ def _upsert_cache_local(activo: DefinicionActivo, precios, fuente_usada: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--anios", type=int, default=3)
+    parser.add_argument(
+        "--ticker", type=str, default=None,
+        help="uno o varios tickers separados por coma. Sin esto se refresca el universo completo. "
+             "Existe para el caso de agregar un activo nuevo: bajar 3 años de un ticker no debería "
+             "obligar a rebajar los otros 25.",
+    )
     args = parser.parse_args()
 
     hasta = date.today()
     desde = hasta - timedelta(days=365 * args.anios)
     en_supabase = _supabase_configurado()
 
-    print(f"Refresco diario NOVAINVEST — {len(UNIVERSO_F0)} activos, {desde} a {hasta}")
+    universo = UNIVERSO_F0
+    if args.ticker:
+        pedidos = {t.strip().upper() for t in args.ticker.split(",")}
+        universo = [a for a in UNIVERSO_F0 if a.ticker.upper() in pedidos]
+        faltan = pedidos - {a.ticker.upper() for a in universo}
+        if faltan:
+            print(f"No están en el universo: {sorted(faltan)}")
+            sys.exit(1)
+
+    print(f"Refresco diario NOVAINVEST — {len(universo)} activos, {desde} a {hasta}")
     print(f"Destino: {'Supabase' if en_supabase else 'cache local (' + str(CACHE_LOCAL) + ')'}")
 
     resumen = []
-    for activo in UNIVERSO_F0:
+    for activo in universo:
         try:
             precios, fuente_usada = _obtener_precios_con_fallback(activo, desde, hasta)
             if en_supabase:

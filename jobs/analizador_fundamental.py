@@ -207,6 +207,34 @@ def acciones_del_emisor(filas: list[dict]) -> tuple[float | None, str]:
     return mediana, f"mediana de {len(valores)} periodos (dispersión {dispersion:.2f}x)"
 
 
+PVL_IMPLAUSIBLE = 8.0
+PER_IMPLAUSIBLE = 60.0
+
+
+def revisar_multiplos(per, pvl, ticker) -> str:
+    """Aviso cuando un múltiplo sale fuera de todo rango razonable. No se
+    oculta la cifra ni se publica como si nada: se muestra marcada.
+
+    Verificado real: GRUPO_NUTRESA sale con P/E 115,6 y P/VL 14,3, lo que
+    implicaría una capitalización de 143 billones de pesos —más que Ecopetrol—
+    para una compañía con 20,6 billones de ingresos. El precio no es un error
+    de carga: la serie de Yahoo va de 45.217 en septiembre de 2023 a 316.000
+    hoy, coherente con las OPA sobre la compañía. Pero un salto de 7x en el
+    precio junto a un conteo de acciones estable deja dos sospechosos —una
+    serie de precios sin ajustar por la reorganización, o un conteo que ya no
+    corresponde a la acción que cotiza— y ninguno se puede descartar desde
+    aquí. Marcarlo es lo honesto; adivinar cuál de los dos es, no."""
+    avisos = []
+    if pvl is not None and pvl > PVL_IMPLAUSIBLE:
+        avisos.append(f"P/VL {pvl:.1f} fuera de rango")
+    if per is not None and per > PER_IMPLAUSIBLE:
+        avisos.append(f"P/E {per:.0f} fuera de rango")
+    if not avisos:
+        return ""
+    return (" y ".join(avisos) + " — revisar el precio de " + (ticker or "la acción")
+            + " o el conteo de acciones antes de usarlo")
+
+
 def _div(a, b):
     if a is None or b is None or b == 0:
         return None
@@ -298,6 +326,8 @@ def main():
             "eps_cop": _r(_div(utilidad * 1_000_000_000 if utilidad is not None else None, acciones), 2),
             "per": _r(_div(capitalizacion, utilidad)),
             "precio_valor_libro": _r(_div(capitalizacion, patrimonio)),
+            "alerta_multiplos": revisar_multiplos(
+                _r(_div(capitalizacion, utilidad)), _r(_div(capitalizacion, patrimonio)), ticker),
             "clase_precio": clase_precio,
             "serie_resultados": evidencia,
             "filas_descartadas_por_escala": " | ".join(avisos_escala),
@@ -348,6 +378,12 @@ def _imprimir(filas):
             f"{_f(r['per'], 8)}{_f(r['precio_valor_libro'], 7)}"
         )
     print("-" * 132)
+    alertadas = [r for r in filas if r["alerta_multiplos"]]
+    if alertadas:
+        print(f"\n  {len(alertadas)} emisor(es) con múltiplos fuera de rango:")
+        for r in alertadas:
+            print(f"    {r['emisor']}: {r['alerta_multiplos']}")
+    print()
     n = len(filas)
     for campo, etiqueta in (("per", "P/E"), ("roe", "ROE"), ("margen_neto", "margen neto"),
                             ("capitalizacion_mmm", "capitalización"), ("ingresos_ttm", "ingresos TTM")):
