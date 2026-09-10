@@ -93,6 +93,10 @@ export const calcularRebalanceo = (body) => peticion("POST", "/rebalanceo", body
 export const getFichaEtf = (ticker) => peticion("GET", `/etf/${ticker}`);
 export const getSolapamientoEtf = (a, b) => peticion("GET", `/etf/solapamiento/${a}/${b}`);
 
+// fundamentales
+export const getFundamentales = () => peticion("GET", "/fundamentales");
+export const getFundamentalDetalle = (slug) => peticion("GET", `/fundamentales/${slug}`);
+
 // señales
 export const getSenales = (params = {}) => {
   const qs = new URLSearchParams(params).toString();

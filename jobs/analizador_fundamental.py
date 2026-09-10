@@ -365,8 +365,20 @@ def main():
         w.writeheader()
         w.writerows(filas_salida)
 
+    # slug -> emisor_id, para que la tabla en Supabase (que la API real lee)
+    # tenga la misma llave primaria estable que el resto del esquema.
+    slug_a_id = {e["slug"]: eid for eid, e in emisores.items()}
+    filas_supabase = []
+    for fila in filas_salida:
+        fila_db = {k: v for k, v in fila.items() if k != "emisor"}
+        fila_db["emisor_id"] = slug_a_id[fila["emisor"]]
+        fila_db["slug"] = fila["emisor"]
+        filas_supabase.append(fila_db)
+    cliente.table("fundamentales_analisis").upsert(filas_supabase, on_conflict="emisor_id").execute()
+
     _imprimir(filas_salida)
     print(f"\nCSV: {destino.resolve()}")
+    print(f"Supabase: {len(filas_supabase)} filas en fundamentales_analisis")
 
 
 def _r(v, dec=2):

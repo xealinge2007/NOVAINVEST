@@ -10,6 +10,7 @@ const LINKS = [
   { to: "/gastos", texto: "Gastos" },
   { to: "/objetivos", texto: "Objetivos" },
   { to: "/portafolio", texto: "Portafolio" },
+  { to: "/fundamentales", texto: "Fundamentales" },
   { to: "/senales", texto: "Señales" },
   { to: "/etf", texto: "ETF" },
   { to: "/cuenta", texto: "Cuenta" },

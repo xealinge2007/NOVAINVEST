@@ -13,6 +13,7 @@ from app.routers import (
     deudas,
     etf,
     finanzas,
+    fundamentales,
     gastos,
     importar_broker,
     objetivos,
@@ -53,6 +54,7 @@ app.include_router(rebalanceo.router)
 app.include_router(etf.router)
 app.include_router(importar_broker.router)
 app.include_router(senales.router)
+app.include_router(fundamentales.router)
 
 
 @app.get("/health", tags=["infra"])
