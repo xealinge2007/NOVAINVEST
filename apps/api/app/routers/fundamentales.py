@@ -14,8 +14,14 @@ router = APIRouter(prefix="/fundamentales", tags=["fundamentales"])
 @router.get("")
 async def listar_fundamentales(usuario: UsuarioActual = Depends(get_current_usuario)):
     cliente = cliente_supabase_de(usuario)
-    resp = cliente.table("fundamentales_analisis").select("*").order("per", desc=False, nullsfirst=False).execute()
+    resp = cliente.table("fundamentales_analisis").select("*").order("ranking_estrella", desc=False, nullsfirst=False).execute()
     return resp.data
+
+
+@router.get("/macro/supuestos")
+async def supuestos_macro(usuario: UsuarioActual = Depends(get_current_usuario)):
+    cliente = cliente_supabase_de(usuario)
+    return cliente.table("supuestos_macro").select("*").order("parametro").execute().data
 
 
 @router.get("/{slug}")

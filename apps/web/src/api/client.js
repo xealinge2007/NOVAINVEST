@@ -96,6 +96,7 @@ export const getSolapamientoEtf = (a, b) => peticion("GET", `/etf/solapamiento/$
 // fundamentales
 export const getFundamentales = () => peticion("GET", "/fundamentales");
 export const getFundamentalDetalle = (slug) => peticion("GET", `/fundamentales/${slug}`);
+export const getSupuestosMacro = () => peticion("GET", "/fundamentales/macro/supuestos");
 
 // señales
 export const getSenales = (params = {}) => {

@@ -308,15 +308,47 @@ def acciones_del_emisor(filas: list[dict]) -> tuple[float | None, str]:
 
 SECTORES_FINANCIEROS = {"banca", "holding_financiero"}
 
-# Supuestos macro para el costo de capital — no salen de los estados
-# financieros de cada emisor, son de mercado y se revisan a mano de vez en
-# cuando, no cada corrida. Documentados aquí en vez de en una fuente en vivo
-# porque no hay un conector confiable a la curva de TES en este proyecto
-# todavía; si se agrega uno (F6, datos macro), esto se vuelve dinámico.
-TASA_LIBRE_RIESGO = 0.10          # aprox. TES 10 años COP, revisar periódicamente
-PRIMA_RIESGO_MERCADO = 0.075      # prima de riesgo accionario Colombia (estilo Damodaran), aprox.
-SPREAD_CREDITO_APROX = 0.03       # sobre la libre de riesgo, para el costo de la deuda -- no hay gasto financiero por emisor para derivarlo directo
-TASA_IMPUESTO_RENTA = 0.35        # tarifa de renta corporativa en Colombia
+# Supuestos macro para el costo de capital. La fuente de verdad es la tabla
+# `supuestos_macro` (cada fila con su fuente y fecha, ver
+# db/migrate_f4l_macro_y_financieros.sql); esto es solo el respaldo si la
+# tabla no existe todavía, con los MISMOS valores sembrados ahí.
+#
+# Hasta F4k eran constantes sin prima de riesgo país explícita y con la
+# libre de riesgo en 10% -- el TES real estaba en 12,458% (10-sep-2026).
+# Método Damodaran en moneda local:
+#   libre de riesgo COP = TES 10a - default spread soberano  (el TES ya trae
+#                         el riesgo de impago; sin restarlo se contaría dos
+#                         veces al sumar la prima de riesgo país)
+#   Ke = libre de riesgo COP + beta x (prima mercado maduro + prima riesgo país)
+#   Kd = TES 10a + spread corporativo
+SUPUESTOS_POR_DEFECTO = {
+    "tes_10a": 0.12458,
+    "default_spread_colombia": 0.0187,
+    "prima_mercado_maduro": 0.0423,
+    "prima_riesgo_pais": 0.0285,
+    "spread_corporativo": 0.015,
+    "tasa_renta": 0.35,
+}
+
+
+def cargar_supuestos(cliente) -> dict[str, float]:
+    try:
+        filas = cliente.table("supuestos_macro").select("parametro,valor").execute().data
+    except Exception as e:
+        print(f"AVISO: no se pudo leer `supuestos_macro` ({type(e).__name__}) -- se usan los valores por defecto del código.")
+        return dict(SUPUESTOS_POR_DEFECTO)
+    sup = dict(SUPUESTOS_POR_DEFECTO)
+    sup.update({f["parametro"]: float(f["valor"]) for f in filas})
+    faltantes = set(SUPUESTOS_POR_DEFECTO) - {f["parametro"] for f in filas}
+    if faltantes:
+        print(f"AVISO: `supuestos_macro` no trae {sorted(faltantes)} -- se usan los del código para esos.")
+    return sup
+
+
+def costo_patrimonio_capm(beta: float, sup: dict[str, float]) -> float:
+    libre_riesgo_cop = sup["tes_10a"] - sup["default_spread_colombia"]
+    prima_total = sup["prima_mercado_maduro"] + sup["prima_riesgo_pais"]
+    return libre_riesgo_cop + beta * prima_total
 
 
 def _retornos_diarios(precios_activo: list[dict]) -> dict[str, float]:
@@ -331,11 +363,24 @@ def _retornos_diarios(precios_activo: list[dict]) -> dict[str, float]:
     return retornos
 
 
+RETORNO_DIARIO_MAXIMO = 0.30
+
+
 def beta_vs_indice(retornos_activo: dict[str, float], retornos_indice: dict[str, float]) -> float | None:
     """Beta = cov(activo, índice) / var(índice), sobre las fechas en común.
     None si hay menos de 60 observaciones en común (~3 meses de pregones) --
-    con menos que eso el número no es confiable."""
-    fechas = sorted(set(retornos_activo) & set(retornos_indice))
+    con menos que eso el número no es confiable.
+
+    Se excluyen los días con un retorno de más de 30% en cualquiera de las
+    dos series. Verificado real: ENKA.CL trae en Yahoo un precio malo el
+    2025-09-02 (19,5 -> 0,0103 -> 19,7 al día siguiente); esa ida y vuelta
+    mete un retorno de +190.000% y el beta salía en 51. Un salto así también
+    puede ser un evento societario sin ajustar (escisión Sura/Argos) -- en
+    ningún caso es un movimiento de mercado que deba entrar a la regresión."""
+    fechas = sorted(
+        f for f in set(retornos_activo) & set(retornos_indice)
+        if abs(retornos_activo[f]) <= RETORNO_DIARIO_MAXIMO and abs(retornos_indice[f]) <= RETORNO_DIARIO_MAXIMO
+    )
     if len(fechas) < 60:
         return None
     ra = [retornos_activo[f] for f in fechas]
@@ -348,12 +393,12 @@ def beta_vs_indice(retornos_activo: dict[str, float], retornos_indice: dict[str,
     return cov / var_i
 
 
-def costo_capital(beta: float, capitalizacion: float, deuda: float) -> tuple[float, float, float]:
+def costo_capital(beta: float, capitalizacion: float, deuda: float, sup: dict[str, float]) -> tuple[float, float, float]:
     """(costo_patrimonio, costo_deuda_despues_de_impuesto, wacc) vía CAPM +
     estructura de capital a valor de mercado (deuda a valor en libros, que es
     lo único que hay)."""
-    costo_patrimonio = TASA_LIBRE_RIESGO + beta * PRIMA_RIESGO_MERCADO
-    costo_deuda_dt = (TASA_LIBRE_RIESGO + SPREAD_CREDITO_APROX) * (1 - TASA_IMPUESTO_RENTA)
+    costo_patrimonio = costo_patrimonio_capm(beta, sup)
+    costo_deuda_dt = (sup["tes_10a"] + sup["spread_corporativo"]) * (1 - sup["tasa_renta"])
     v = (capitalizacion or 0) + (deuda or 0)
     if v == 0:
         return costo_patrimonio, costo_deuda_dt, costo_patrimonio
@@ -398,27 +443,25 @@ def _div(a, b):
 
 
 def calcular_estrellas(filas_salida: list[dict]) -> None:
-    """Asigna `ranking_estrella` (1 = mejor) EN EL LUGAR a los emisores
-    elegibles para "Estrellas de la BVC" -- F4c del plan.
+    """Asigna `ranking_estrella` (1 = mejor) EN EL LUGAR a TODOS los
+    emisores con spread de creación de valor calculado -- "Estrellas de la
+    BVC", F4c del plan. Ranking completo, no solo los que crean valor: Alex
+    lo pidió así, y un emisor en el puesto 18 con spread -10pp dice tanto
+    como uno en el 1.
 
-    Elegible: spread de creación de valor (ROIC - WACC) positivo, y sin
-    alerta de múltiplos implausibles (un P/E de 115 no es una señal de
-    compra por más spread positivo que tenga alrededor -- normalmente ni
-    siquiera tiene spread, pero por si acaso). Ordenado por spread
-    descendente: es la señal más directa de "crea valor por encima de lo que
-    cuesta su capital" que ya se calcula, más defendible que inventar un
-    puntaje compuesto mezclando percentiles de métricas distintas sin
-    validar. Sin ranking (`None`) para el resto -- no significa "malo", solo
-    "no se puede clasificar con lo que hay" (bancos sin ROIC, sin datos, etc).
+    Spread = ROIC - WACC para no financieras, ROE - Ke para bancos, holdings
+    financieros y quien no reporta utilidad operacional (ver `metodo_valor`
+    de cada fila). Ordenado de mayor a menor. "Estrella" (lo decide el
+    frontend) = spread positivo y sin alerta de múltiplos implausibles; los
+    alertados SÍ entran al ranking, marcados, porque esconderlos sería
+    ocultar el dato. Sin ranking (`None`) solo quien no tiene con qué
+    calcular el spread, con el motivo en `motivo_sin_roic`.
 
     Esto NO es una recomendación de inversión ni está respaldado por
     backtest todavía -- eso es la siguiente pieza del plan (F4c), pendiente."""
-    elegibles = [
-        r for r in filas_salida
-        if r.get("spread_valor") is not None and r["spread_valor"] > 0 and not r.get("alerta_multiplos")
-    ]
-    elegibles.sort(key=lambda r: r["spread_valor"], reverse=True)
-    for i, r in enumerate(elegibles, start=1):
+    clasificables = [r for r in filas_salida if r.get("spread_valor") is not None]
+    clasificables.sort(key=lambda r: r["spread_valor"], reverse=True)
+    for i, r in enumerate(clasificables, start=1):
         r["ranking_estrella"] = i
     for r in filas_salida:
         r.setdefault("ranking_estrella", None)
@@ -448,6 +491,10 @@ def main():
     # `precios` de arriba porque esa viene truncada a 20.000 filas globales y
     # para el beta hace falta la historia completa de cada activo, no solo el
     # último cierre.
+    sup = cargar_supuestos(cliente)
+    print(f"Supuestos macro: TES {sup['tes_10a']:.2%}, default spread {sup['default_spread_colombia']:.2%}, "
+          f"prima madura {sup['prima_mercado_maduro']:.2%}, prima país {sup['prima_riesgo_pais']:.2%}")
+
     activo_icolcap = next((a["id"] for a in cliente.table("activos").select("id,ticker").eq("ticker", "ICOLCAP.CL").execute().data), None)
     retornos_icolcap: dict[str, float] = {}
     if activo_icolcap:
@@ -512,15 +559,17 @@ def main():
         if precio is not None and acciones:
             capitalizacion = round(precio * acciones / 1_000_000_000, 3)
 
-        # Creación de valor: ROIC vs. WACC. No aplica a bancos/holdings
-        # financieros -- su "deuda" son depósitos de clientes, no financiación,
-        # así que ni el capital invertido ni el costo de la deuda significan
-        # lo mismo que en una empresa no financiera.
-        beta = costo_patrimonio = costo_deuda_dt = wacc = roic = eva = None
+        # Creación de valor. No financieras: ROIC vs. WACC. Bancos y holdings
+        # financieros: ROE vs. Ke -- su "deuda" son depósitos de clientes,
+        # materia prima del negocio y no financiación, así que capital
+        # invertido y WACC no significan nada; lo comparable es cuánto rinde
+        # el patrimonio contra lo que exige el accionista (el mismo Ke por
+        # CAPM). EVA en ese caso = (ROE - Ke) x patrimonio.
+        financiero = em["sector"] in SECTORES_FINANCIEROS
+        metodo_valor = "ROE-Ke" if financiero else "ROIC-WACC"
+        beta = costo_patrimonio = costo_deuda_dt = wacc = roic = eva = spread = None
         motivo_sin_roic = ""
-        if em["sector"] in SECTORES_FINANCIEROS:
-            motivo_sin_roic = "no aplica: sector financiero"
-        elif not elegido or not retornos_icolcap:
+        if not elegido or not retornos_icolcap:
             motivo_sin_roic = "sin ticker con precio o sin serie de COLCAP"
         else:
             serie_activo = cliente.table("precios").select("fecha,cierre").eq(
@@ -529,15 +578,41 @@ def main():
             beta = beta_vs_indice(retornos_activo, retornos_icolcap)
             if beta is None:
                 motivo_sin_roic = "menos de 60 pregones en común con COLCAP para estimar beta"
+            elif financiero:
+                roe_fraccion = _div(utilidad, patrimonio)
+                if roe_fraccion is None:
+                    motivo_sin_roic = "sin utilidad neta TTM o sin patrimonio"
+                else:
+                    costo_patrimonio = costo_patrimonio_capm(beta, sup)
+                    spread = roe_fraccion - costo_patrimonio
+                    eva = round(spread * patrimonio, 1)
             elif operacional is None:
-                motivo_sin_roic = "sin utilidad operacional TTM"
-            elif capitalizacion is None:
-                motivo_sin_roic = "sin capitalización (falta precio o acciones)"
+                # Sin utilidad operacional (PEI, vehículo inmobiliario, no la
+                # reporta como línea aparte): ROE - Ke como respaldo, el mismo
+                # criterio que para financieros.
+                roe_fraccion = _div(utilidad, patrimonio)
+                if roe_fraccion is None:
+                    motivo_sin_roic = "sin utilidad operacional ni utilidad neta TTM"
+                else:
+                    metodo_valor = "ROE-Ke (sin utilidad operacional)"
+                    costo_patrimonio = costo_patrimonio_capm(beta, sup)
+                    spread = roe_fraccion - costo_patrimonio
+                    eva = round(spread * patrimonio, 1)
             else:
-                costo_patrimonio, costo_deuda_dt, wacc = costo_capital(beta, capitalizacion, deuda)
+                # Sin capitalización (BVC, EXITO: sin conteo de acciones
+                # confiable) los pesos del WACC salen del patrimonio contable
+                # en vez del valor de mercado -- aproximación estándar, se
+                # marca en `metodo_valor`.
+                pesos_mercado = capitalizacion is not None
+                if not pesos_mercado:
+                    metodo_valor = "ROIC-WACC (pesos contables)"
+                costo_patrimonio, costo_deuda_dt, wacc = costo_capital(
+                    beta, capitalizacion if pesos_mercado else patrimonio, deuda, sup)
                 capital_invertido = (deuda or 0) + (patrimonio or 0)
-                nopat = operacional * (1 - TASA_IMPUESTO_RENTA)
+                nopat = operacional * (1 - sup["tasa_renta"])
                 roic = _div(nopat, capital_invertido)
+                if roic is not None:
+                    spread = roic - wacc
                 if capital_invertido and wacc is not None:
                     eva = round(nopat - wacc * capital_invertido, 1)
 
@@ -571,7 +646,8 @@ def main():
             "wacc": _pct(wacc),
             "roic": _pct(roic),
             "eva_mmm": eva,
-            "spread_valor": _pct(roic - wacc) if roic is not None and wacc is not None else None,
+            "spread_valor": _pct(spread),
+            "metodo_valor": metodo_valor if spread is not None else None,
             "motivo_sin_roic": motivo_sin_roic,
             "clase_precio": clase_precio,
             "serie_resultados": evidencia,

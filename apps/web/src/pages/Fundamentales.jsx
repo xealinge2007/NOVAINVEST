@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
-import { getFundamentales } from "../api/client";
+import { getFundamentales, getSupuestosMacro } from "../api/client";
+
+const ETIQUETA_MACRO = {
+  tes_10a: "TES 10 años",
+  default_spread_colombia: "Default spread Colombia",
+  prima_mercado_maduro: "Prima mercado maduro",
+  prima_riesgo_pais: "Prima riesgo país",
+  spread_corporativo: "Spread corporativo",
+  tasa_renta: "Tarifa de renta",
+};
+
+// Crea valor por encima de su costo de capital y sin múltiplos fuera de rango.
+function esEstrella(f) {
+  return f.ranking_estrella && f.spread_valor > 0 && !f.alerta_multiplos;
+}
 
 function fmt(v, dec = 1) {
   if (v === null || v === undefined) return "—";
@@ -11,6 +25,7 @@ export default function Fundamentales() {
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [expandido, setExpandido] = useState(null);
+  const [macro, setMacro] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -22,6 +37,7 @@ export default function Fundamentales() {
         setCargando(false);
       }
     })();
+    getSupuestosMacro().then(setMacro).catch(() => setMacro([]));
   }, []);
 
   return (
@@ -39,26 +55,48 @@ export default function Fundamentales() {
       {cargando && <p className="text-sm text-slate-500">Cargando…</p>}
       {!cargando && filas.length === 0 && <p className="text-sm text-slate-500">Todavía no hay análisis cargado.</p>}
 
-      {filas.some((f) => f.ranking_estrella) && (
+      {filas.some(esEstrella) && (
         <div>
           <h2 className="text-sm font-semibold text-slate-700 mb-2">⭐ Estrellas de la BVC</h2>
           <p className="text-xs text-slate-500 mb-3">
-            Crean valor por encima de su costo de capital (ROIC &gt; WACC) y no tienen múltiplos fuera de rango.
-            No es una recomendación de inversión — sin backtest todavía.
+            Crean valor por encima de su costo de capital (ROIC &gt; WACC; en bancos y holdings financieros,
+            ROE &gt; Ke) y no tienen múltiplos fuera de rango. No es una recomendación de inversión — sin backtest todavía.
           </p>
           <div className="flex flex-wrap gap-2">
             {filas
-              .filter((f) => f.ranking_estrella)
+              .filter(esEstrella)
               .sort((a, b) => a.ranking_estrella - b.ranking_estrella)
               .map((f) => (
                 <div key={f.emisor_id} className="border rounded-lg px-3 py-2 bg-emerald-50 border-emerald-200 text-sm">
                   <span className="font-semibold text-emerald-800">#{f.ranking_estrella}</span>{" "}
                   <span className="font-medium">{f.nombre}</span>{" "}
-                  <span className="text-emerald-700">+{fmt(f.spread_valor)}pp</span>
+                  <span className="text-emerald-700">+{fmt(f.spread_valor)}pp</span>{" "}
+                  <span className="text-xs text-slate-400">{f.metodo_valor}</span>
                 </div>
               ))}
           </div>
         </div>
+      )}
+
+      {macro.length > 0 && (
+        <details className="border rounded-lg px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium text-slate-700">
+            Supuestos macro del costo de capital
+          </summary>
+          <p className="text-xs text-slate-500 mt-2">
+            Ke = (TES − default spread) + beta × (prima madura + prima riesgo país). Método Damodaran en pesos.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+            {macro.map((m) => (
+              <div key={m.parametro} className="text-xs">
+                <span className="font-medium text-slate-800">
+                  {ETIQUETA_MACRO[m.parametro] || m.parametro}: {fmt(m.valor * 100, 2)}%
+                </span>
+                <div className="text-slate-400">{m.fuente} · {m.fecha_dato}</div>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {filas.length > 0 && (
@@ -90,7 +128,7 @@ export default function Fundamentales() {
                     onClick={() => setExpandido(expandido === f.emisor_id ? null : f.emisor_id)}
                   >
                     <td className="px-3 py-2 text-center text-amber-500">
-                      {f.ranking_estrella ? `⭐${f.ranking_estrella}` : ""}
+                      {f.ranking_estrella ? (esEstrella(f) ? `⭐${f.ranking_estrella}` : `#${f.ranking_estrella}`) : ""}
                     </td>
                     <td className="px-3 py-2">
                       <div className="font-medium">{f.nombre}</div>
@@ -109,7 +147,7 @@ export default function Fundamentales() {
                     <td className="px-3 py-2 text-right">{fmt(f.deuda_patrimonio, 2)}</td>
                     <td className="px-3 py-2 text-right">{f.roic === null ? "—" : `${fmt(f.roic)}%`}</td>
                     <td className="px-3 py-2 text-right">{f.wacc === null ? "—" : `${fmt(f.wacc)}%`}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${
+                    <td title={f.metodo_valor || ""} className={`px-3 py-2 text-right font-medium ${
                       f.spread_valor === null ? "" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
                     }`}>
                       {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
@@ -131,6 +169,7 @@ export default function Fundamentales() {
                           <Dato etiqueta="Costo de patrimonio" valor={f.costo_patrimonio === null ? "—" : `${fmt(f.costo_patrimonio)}%`} />
                           <Dato etiqueta="Costo de deuda (dt)" valor={f.costo_deuda_dt === null ? "—" : `${fmt(f.costo_deuda_dt)}%`} />
                           <Dato etiqueta="EVA (MMM)" valor={fmt(f.eva_mmm)} />
+                          <Dato etiqueta="Método de valor" valor={f.metodo_valor || "—"} />
                           <Dato etiqueta="Clase de precio" valor={f.clase_precio || "—"} />
                           <Dato etiqueta="Serie de resultados" valor={f.serie_resultados || "—"} />
                           <Dato etiqueta="Fuente resultados" valor={f.fuente_resultados || "—"} />
