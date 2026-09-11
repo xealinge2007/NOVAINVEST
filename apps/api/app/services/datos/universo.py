@@ -105,6 +105,19 @@ TICKERS_BVC = [
     DefinicionActivo("ETB.CL", "Empresa de Telecomunicaciones de Bogotá (ETB)", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("NUTRESA.CL", "Grupo Nutresa", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("BVC.CL", "Bolsa de Valores de Colombia", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    # Agregados el 11-sep-2026 a pedido de Alex. A diferencia de los cinco de
+    # arriba, estos CUATRO no tienen todavía estados financieros en
+    # `fundamentales_reportados` — no hay corpus de XBRL/PDF descargado para
+    # ellos en C:\Proyectos\BVC. Esto solo les da precio (vía yfinance) y
+    # entrada en el catálogo; el analizador les calculará precio pero ningún
+    # múltiplo hasta que se descarguen y procesen sus radicados ante la
+    # Superfinanciera, igual que se hizo para los 20 originales. Tickers
+    # verificados contra yfinance el 11-sep-2026 (EXITO 4.845, ENKA 19,30,
+    # ELCONDOR 500, FABRICATO 5,00 COP).
+    DefinicionActivo("EXITO.CL", "Almacenes Éxito", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("ENKA.CL", "Enka de Colombia", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("ELCONDOR.CL", "Construcciones El Cóndor", "accion", "BVC", "COP", "yfinance", None, "bvc"),
+    DefinicionActivo("FABRICATO.CL", "Fabricato", "accion", "BVC", "COP", "yfinance", None, "bvc"),
     DefinicionActivo("ICOLCAP.CL", "iShares MSCI COLCAP (proxy del índice COLCAP)", "indice_proxy", "BVC", "COP", "yfinance", None, "bvc"),
 ]
 
@@ -147,6 +160,12 @@ EMISORES_BVC = [
     DefinicionEmisorBVC("ETB", "Empresa de Telecomunicaciones de Bogotá", "telecomunicaciones"),
     DefinicionEmisorBVC("GRUPO_NUTRESA", "Grupo Nutresa", "consumo"),
     DefinicionEmisorBVC("BVC", "Bolsa de Valores de Colombia", "infraestructura_mercado"),
+    # Agregados el 11-sep-2026 a pedido de Alex — ver nota en TICKERS_BVC:
+    # solo catálogo y precio, sin estados financieros todavía.
+    DefinicionEmisorBVC("EXITO", "Almacenes Éxito", "consumo_retail"),
+    DefinicionEmisorBVC("ENKA", "Enka de Colombia", "quimicos_petroquimica"),
+    DefinicionEmisorBVC("EL_CONDOR", "Construcciones El Cóndor", "cemento_construccion"),
+    DefinicionEmisorBVC("FABRICATO", "Fabricato", "textil"),
 ]
 
 # Instrumentos BVC (§3.4): cada especie negociada, con su emisor y clase.
@@ -180,6 +199,10 @@ INSTRUMENTOS_BVC = [
     DefinicionInstrumentoBVC("ETB.CL", "ETB", "ordinaria"),
     DefinicionInstrumentoBVC("NUTRESA.CL", "GRUPO_NUTRESA", "ordinaria"),
     DefinicionInstrumentoBVC("BVC.CL", "BVC", "ordinaria"),
+    DefinicionInstrumentoBVC("EXITO.CL", "EXITO", "ordinaria"),
+    DefinicionInstrumentoBVC("ENKA.CL", "ENKA", "ordinaria"),
+    DefinicionInstrumentoBVC("ELCONDOR.CL", "EL_CONDOR", "ordinaria"),
+    DefinicionInstrumentoBVC("FABRICATO.CL", "FABRICATO", "ordinaria"),
 ]
 
 # Tickers válidos para dar de alta una posición clase='accion' (F2b: el alta

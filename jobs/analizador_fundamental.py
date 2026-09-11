@@ -184,36 +184,81 @@ def ultimo_saldo(filas: list[dict], campo: str) -> tuple[float | None, str]:
 DISPERSION_MAXIMA_ACCIONES = 1.5  # max/min entre periodos
 
 
+ACCIONES_CURADAS_MANUALMENTE: dict[str, tuple[float, str]] = {
+    # (acciones, fuente) — solo para emisores donde acciones_del_emisor()
+    # no logra derivar nada confiable desde los estados financieros (ni un
+    # solo período, o sin supermayoría entre clústeres). Cifra de ORDINARIA
+    # en circulación (excluye tesorería), la clase que cotiza bajo el ticker
+    # de cada emisor en esta tabla. Verificado 11-sep-2026, puede quedar
+    # desactualizado tras un split, recompra o nueva emisión — revisar si el
+    # precio implica una capitalización que no cuadra con el tamaño conocido
+    # del emisor.
+    "GRUPO_CIBEST_BANCOLOMBIA": (509_704_584, "Bancolombia SEC Form 6-K, 31-mar-2025 (acciones ordinarias)"),
+    "GRUPO_SURA": (165_834_026, "Grupo SURA, Informe Circular 012 4T-2025, 31-dic-2025 (ordinarias en circulación, excluye readquiridas)"),
+    "GRUPO_ARGOS": (398_953_357, "derivado de estados financieros (período más reciente tras la conversión de acciones con Grupo Sura); corroborado por la composición 58% ordinarias / 42% preferenciales reportada tras la escisión (58% de 685.301.741 totales ≈ 397,5M)"),
+    "PROMIGAS": (1_134_848_043, "Promigas, Composición Accionaria (promigas.com/Documents/Inversionistas/Acciones-Promigas-202601.pdf)"),
+    "MINEROS": (292_793_666, "Mineros S.A., tras 1er tramo de recompra de acciones, cierre 26-may-2026"),
+    "ETB": (3_550_553_412, "Presentación corporativa ETB 2020-2021 — no se encontró una cifra más reciente; ETB no ha reportado splits ni recompras desde entonces"),
+    "PEI": (43_142_200, "PEI, base tras el desdoblamiento de 2022 (431.422 -> 43.142.200 títulos); hay una 12a emisión en curso desde ago-2025 (~7M títulos adicionales) que puede no estar reflejada aún"),
+    # BVC: sin cifra confiable — la búsqueda solo encontró una cifra de
+    # tercero (27,38M) sin corroborar contra fuente oficial. Mejor sin P/E
+    # que con un conteo que se sabe no verificado.
+}
+
+UMBRAL_SUPERMAYORIA_ACCIONES = 0.75
+
+
 def acciones_del_emisor(filas: list[dict]) -> tuple[float | None, str]:
-    """(acciones, evidencia). MEDIANA de lo derivado en todos los periodos, y
-    solo si los periodos concuerdan entre si.
+    """(acciones, evidencia). Agrupa lo derivado en cada período en clústeres
+    que concuerdan entre sí (dispersión interna ≤ DISPERSION_MAXIMA_ACCIONES),
+    y solo acepta la mediana del clúster si es una SUPERMAYORÍA (≥75% de los
+    períodos) — no solo la mayoría simple.
 
-    El numero de acciones de una empresa cambia poco de un trimestre a otro, asi
-    que la dispersion entre periodos es una prueba gratis de si la derivacion
-    (utilidad neta / utilidad por accion) esta funcionando. Medido sobre lo
-    extraido:
+    El número de acciones de una empresa cambia poco de un trimestre a otro,
+    así que la dispersión entre períodos es una prueba gratis de si la
+    derivación (utilidad neta / utilidad por acción) está funcionando. La
+    primera versión de este descarte comparaba mínimo contra máximo de TODA
+    la serie: bastaba un período mal derivado para tirar el conteo entero. La
+    segunda versión podaba extremos hasta que la mitad de los períodos
+    concordara — pero "la mitad" no es prueba de nada: en GRUPO_SURA (8 de 15
+    períodos daban ~166M) y GRUPO_CIBEST (6 de 9 daban ~510M) esa mayoría
+    simple ganaba sobre el clúster que en realidad es el correcto (~469M y
+    ~961M respectivamente, verificado contra fuentes externas) — probablemente
+    porque en varios períodos la utilidad usada es la del grupo consolidado y
+    en otros la de la controladora, y ese quiebre no es aleatorio: se repite
+    lo bastante seguido como para casi empatar con el clúster bueno.
 
-        GRUPO_CIBEST  11 periodos  966 M .. 979 M   -> concuerdan (real ~961 M)
-        GRUPO_SURA     3 periodos  359 M .. 389 M   -> concuerdan (real ~469 M)
-        BVC            2 periodos   66,0 M .. 66,1 M -> concuerdan (real ~60,5 M)
-        MINEROS        6 periodos   98 M .. 300 M   -> NO concuerdan
-        TERPEL        10 periodos  4,1 M .. 181 M   -> NO concuerdan
-
-    En TERPEL y MINEROS la utilidad y la utilidad por accion no siempre cubren
-    el mismo periodo (una fila trae el acumulado y la otra el trimestre), y el
-    cociente sale disparatado. Cuando eso pasa se devuelve None: sin numero de
-    acciones no hay P/E, que es preferible a un P/E calculado sobre un conteo
-    que se sabe malo."""
+    Con el umbral en 75%, SURA y CIBEST correctamente devuelven None en vez de
+    un número plausible pero equivocado — para esos (y para los que nunca
+    logran derivar nada: BVC, ETB, MINEROS, PEI, PROMIGAS, y ahora también
+    GRUPO_ARGOS) el número de acciones se cura a mano en
+    `ACCIONES_CURADAS_MANUALMENTE`, con su fuente documentada ahí. TERPEL sí
+    pasa el umbral (15 de 17 períodos, 88%) y coincide con el conteo real."""
     valores = sorted(f["acciones_en_circulacion"] for f in filas if f.get("acciones_en_circulacion"))
     if not valores:
         return None, ""
     if len(valores) == 1:
         return valores[0], "1 periodo, sin con qué contrastar"
-    mediana = valores[len(valores) // 2]
-    dispersion = valores[-1] / valores[0] if valores[0] else float("inf")
-    if dispersion > DISPERSION_MAXIMA_ACCIONES:
-        return None, f"descartado: {len(valores)} periodos dispersan {dispersion:.1f}x ({valores[0]:,.0f}..{valores[-1]:,.0f})"
-    return mediana, f"mediana de {len(valores)} periodos (dispersión {dispersion:.2f}x)"
+
+    clusteres = []
+    for v in valores:
+        if clusteres and v / clusteres[-1][0] <= DISPERSION_MAXIMA_ACCIONES:
+            clusteres[-1].append(v)
+        else:
+            clusteres.append([v])
+    mejor = max(clusteres, key=len)
+    proporcion = len(mejor) / len(valores)
+
+    if proporcion < UMBRAL_SUPERMAYORIA_ACCIONES:
+        otros = ", ".join(f"{len(c)}x~{c[len(c)//2]:,.0f}" for c in sorted(clusteres, key=len, reverse=True))
+        return None, f"descartado: sin supermayoría entre {len(valores)} periodos — clústeres: {otros}"
+
+    mediana = mejor[len(mejor) // 2]
+    if len(mejor) == len(valores):
+        return mediana, f"mediana de {len(valores)} periodos (dispersión {valores[-1] / valores[0]:.2f}x)"
+    return mediana, (f"mediana de {len(mejor)} de {len(valores)} periodos que concuerdan "
+                      f"({proporcion:.0%}); descartados como outlier "
+                      f"{len(valores) - len(mejor)}")
 
 
 PVL_IMPLAUSIBLE = 8.0
@@ -302,6 +347,9 @@ def main():
         deuda, _ = ultimo_saldo(filas, "deuda_financiera")
 
         acciones, fecha_acc = acciones_del_emisor(filas)
+        if acciones is None and em["slug"] in ACCIONES_CURADAS_MANUALMENTE:
+            acciones, fuente_manual = ACCIONES_CURADAS_MANUALMENTE[em["slug"]]
+            fecha_acc = f"curado a mano: {fuente_manual}"
 
         # Se prefiere la ORDINARIA: es la clase que el conteo de acciones
         # derivado de la utilidad por accion representa. Si el emisor solo
