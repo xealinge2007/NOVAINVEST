@@ -29,9 +29,9 @@ export default function Fundamentales() {
       <div>
         <h1 className="text-2xl font-semibold">Fundamentales BVC</h1>
         <p className="text-sm text-slate-500">
-          Análisis fundamental de los 20 emisores de la Bolsa de Valores de Colombia: TTM de resultados,
-          márgenes, ROE y múltiplos de mercado. Doble canal (PDF + XBRL radicado ante la Superfinanciera).
-          No es asesoría financiera ni recomendación de inversión.
+          Análisis fundamental de los emisores de la Bolsa de Valores de Colombia: TTM de resultados,
+          márgenes, ROE, múltiplos de mercado y creación de valor (ROIC vs. costo de capital). Doble canal
+          (PDF + XBRL radicado ante la Superfinanciera). No es asesoría financiera ni recomendación de inversión.
         </p>
       </div>
 
@@ -53,6 +53,9 @@ export default function Fundamentales() {
                 <th className="px-3 py-2 text-right">Margen neto</th>
                 <th className="px-3 py-2 text-right">ROE</th>
                 <th className="px-3 py-2 text-right">Deuda/Patr.</th>
+                <th className="px-3 py-2 text-right">ROIC</th>
+                <th className="px-3 py-2 text-right">WACC</th>
+                <th className="px-3 py-2 text-right">Spread</th>
               </tr>
             </thead>
             <tbody>
@@ -78,10 +81,17 @@ export default function Fundamentales() {
                     <td className="px-3 py-2 text-right">{f.margen_neto === null ? "—" : `${fmt(f.margen_neto)}%`}</td>
                     <td className="px-3 py-2 text-right">{f.roe === null ? "—" : `${fmt(f.roe)}%`}</td>
                     <td className="px-3 py-2 text-right">{fmt(f.deuda_patrimonio, 2)}</td>
+                    <td className="px-3 py-2 text-right">{f.roic === null ? "—" : `${fmt(f.roic)}%`}</td>
+                    <td className="px-3 py-2 text-right">{f.wacc === null ? "—" : `${fmt(f.wacc)}%`}</td>
+                    <td className={`px-3 py-2 text-right font-medium ${
+                      f.spread_valor === null ? "" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
+                    }`}>
+                      {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
+                    </td>
                   </tr>
                   {expandido === f.emisor_id && (
                     <tr key={`${f.emisor_id}-detalle`} className="border-t bg-slate-50/60">
-                      <td colSpan={9} className="px-3 py-3">
+                      <td colSpan={12} className="px-3 py-3">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                           <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
                           <Dato etiqueta="Utilidad neta TTM" valor={fmt(f.utilidad_neta_ttm)} />
@@ -91,6 +101,10 @@ export default function Fundamentales() {
                           <Dato etiqueta="Deuda financiera" valor={fmt(f.deuda_financiera)} />
                           <Dato etiqueta="EPS (COP)" valor={fmt(f.eps_cop, 2)} />
                           <Dato etiqueta="Acciones" valor={fmt(f.acciones, 0)} />
+                          <Dato etiqueta="Beta vs. COLCAP" valor={fmt(f.beta, 2)} />
+                          <Dato etiqueta="Costo de patrimonio" valor={f.costo_patrimonio === null ? "—" : `${fmt(f.costo_patrimonio)}%`} />
+                          <Dato etiqueta="Costo de deuda (dt)" valor={f.costo_deuda_dt === null ? "—" : `${fmt(f.costo_deuda_dt)}%`} />
+                          <Dato etiqueta="EVA (MMM)" valor={fmt(f.eva_mmm)} />
                           <Dato etiqueta="Clase de precio" valor={f.clase_precio || "—"} />
                           <Dato etiqueta="Serie de resultados" valor={f.serie_resultados || "—"} />
                           <Dato etiqueta="Fuente resultados" valor={f.fuente_resultados || "—"} />
@@ -104,6 +118,7 @@ export default function Fundamentales() {
                           <p className="text-xs text-amber-700 mt-2">⚠ Descartadas por escala: {f.filas_descartadas_por_escala}</p>
                         )}
                         {f.alerta_multiplos && <p className="text-xs text-amber-700 mt-2">⚠ {f.alerta_multiplos}</p>}
+                        {f.motivo_sin_roic && <p className="text-xs text-slate-400 mt-2">Sin ROIC/WACC: {f.motivo_sin_roic}</p>}
                       </td>
                     </tr>
                   )}

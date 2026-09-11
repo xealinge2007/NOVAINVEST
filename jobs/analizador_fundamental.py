@@ -261,6 +261,63 @@ def acciones_del_emisor(filas: list[dict]) -> tuple[float | None, str]:
                       f"{len(valores) - len(mejor)}")
 
 
+SECTORES_FINANCIEROS = {"banca", "holding_financiero"}
+
+# Supuestos macro para el costo de capital — no salen de los estados
+# financieros de cada emisor, son de mercado y se revisan a mano de vez en
+# cuando, no cada corrida. Documentados aquí en vez de en una fuente en vivo
+# porque no hay un conector confiable a la curva de TES en este proyecto
+# todavía; si se agrega uno (F6, datos macro), esto se vuelve dinámico.
+TASA_LIBRE_RIESGO = 0.10          # aprox. TES 10 años COP, revisar periódicamente
+PRIMA_RIESGO_MERCADO = 0.075      # prima de riesgo accionario Colombia (estilo Damodaran), aprox.
+SPREAD_CREDITO_APROX = 0.03       # sobre la libre de riesgo, para el costo de la deuda -- no hay gasto financiero por emisor para derivarlo directo
+TASA_IMPUESTO_RENTA = 0.35        # tarifa de renta corporativa en Colombia
+
+
+def _retornos_diarios(precios_activo: list[dict]) -> dict[str, float]:
+    """{fecha: retorno_simple} a partir de una serie ordenada por fecha ascendente."""
+    ordenados = sorted(precios_activo, key=lambda p: p["fecha"])
+    retornos = {}
+    anterior = None
+    for p in ordenados:
+        if anterior and anterior["cierre"]:
+            retornos[p["fecha"]] = (p["cierre"] - anterior["cierre"]) / anterior["cierre"]
+        anterior = p
+    return retornos
+
+
+def beta_vs_indice(retornos_activo: dict[str, float], retornos_indice: dict[str, float]) -> float | None:
+    """Beta = cov(activo, índice) / var(índice), sobre las fechas en común.
+    None si hay menos de 60 observaciones en común (~3 meses de pregones) --
+    con menos que eso el número no es confiable."""
+    fechas = sorted(set(retornos_activo) & set(retornos_indice))
+    if len(fechas) < 60:
+        return None
+    ra = [retornos_activo[f] for f in fechas]
+    ri = [retornos_indice[f] for f in fechas]
+    media_a, media_i = sum(ra) / len(ra), sum(ri) / len(ri)
+    cov = sum((a - media_a) * (i - media_i) for a, i in zip(ra, ri)) / len(fechas)
+    var_i = sum((i - media_i) ** 2 for i in ri) / len(fechas)
+    if var_i == 0:
+        return None
+    return cov / var_i
+
+
+def costo_capital(beta: float, capitalizacion: float, deuda: float) -> tuple[float, float, float]:
+    """(costo_patrimonio, costo_deuda_despues_de_impuesto, wacc) vía CAPM +
+    estructura de capital a valor de mercado (deuda a valor en libros, que es
+    lo único que hay)."""
+    costo_patrimonio = TASA_LIBRE_RIESGO + beta * PRIMA_RIESGO_MERCADO
+    costo_deuda_dt = (TASA_LIBRE_RIESGO + SPREAD_CREDITO_APROX) * (1 - TASA_IMPUESTO_RENTA)
+    v = (capitalizacion or 0) + (deuda or 0)
+    if v == 0:
+        return costo_patrimonio, costo_deuda_dt, costo_patrimonio
+    peso_patrimonio = (capitalizacion or 0) / v
+    peso_deuda = (deuda or 0) / v
+    wacc = peso_patrimonio * costo_patrimonio + peso_deuda * costo_deuda_dt
+    return costo_patrimonio, costo_deuda_dt, wacc
+
+
 PVL_IMPLAUSIBLE = 8.0
 PER_IMPLAUSIBLE = 60.0
 
@@ -314,6 +371,18 @@ def main():
     ultimo_precio: dict = {}
     for p in precios:
         ultimo_precio.setdefault(p["activo_id"], p)
+
+    # Serie completa por activo (para beta vs. COLCAP) -- consulta aparte de
+    # `precios` de arriba porque esa viene truncada a 20.000 filas globales y
+    # para el beta hace falta la historia completa de cada activo, no solo el
+    # último cierre.
+    activo_icolcap = next((a["id"] for a in cliente.table("activos").select("id,ticker").eq("ticker", "ICOLCAP.CL").execute().data), None)
+    retornos_icolcap: dict[str, float] = {}
+    if activo_icolcap:
+        serie = cliente.table("precios").select("fecha,cierre").eq("activo_id", activo_icolcap).order("fecha").limit(3000).execute().data
+        retornos_icolcap = _retornos_diarios(serie)
+    else:
+        print("AVISO: no se encontró ICOLCAP.CL en `activos` -- no se puede calcular beta ni WACC para nadie.")
 
     por_emisor: dict = defaultdict(list)
     for f in fundamentales:
@@ -371,6 +440,35 @@ def main():
         if precio is not None and acciones:
             capitalizacion = round(precio * acciones / 1_000_000_000, 3)
 
+        # Creación de valor: ROIC vs. WACC. No aplica a bancos/holdings
+        # financieros -- su "deuda" son depósitos de clientes, no financiación,
+        # así que ni el capital invertido ni el costo de la deuda significan
+        # lo mismo que en una empresa no financiera.
+        beta = costo_patrimonio = costo_deuda_dt = wacc = roic = eva = None
+        motivo_sin_roic = ""
+        if em["sector"] in SECTORES_FINANCIEROS:
+            motivo_sin_roic = "no aplica: sector financiero"
+        elif not elegido or not retornos_icolcap:
+            motivo_sin_roic = "sin ticker con precio o sin serie de COLCAP"
+        else:
+            serie_activo = cliente.table("precios").select("fecha,cierre").eq(
+                "activo_id", elegido[0]["activo_id"]).order("fecha").limit(3000).execute().data
+            retornos_activo = _retornos_diarios(serie_activo)
+            beta = beta_vs_indice(retornos_activo, retornos_icolcap)
+            if beta is None:
+                motivo_sin_roic = "menos de 60 pregones en común con COLCAP para estimar beta"
+            elif operacional is None:
+                motivo_sin_roic = "sin utilidad operacional TTM"
+            elif capitalizacion is None:
+                motivo_sin_roic = "sin capitalización (falta precio o acciones)"
+            else:
+                costo_patrimonio, costo_deuda_dt, wacc = costo_capital(beta, capitalizacion, deuda)
+                capital_invertido = (deuda or 0) + (patrimonio or 0)
+                nopat = operacional * (1 - TASA_IMPUESTO_RENTA)
+                roic = _div(nopat, capital_invertido)
+                if capital_invertido and wacc is not None:
+                    eva = round(nopat - wacc * capital_invertido, 1)
+
         filas_salida.append({
             "emisor": em["slug"],
             "nombre": em["nombre"],
@@ -395,6 +493,14 @@ def main():
             "precio_valor_libro": _r(_div(capitalizacion, patrimonio)),
             "alerta_multiplos": revisar_multiplos(
                 _r(_div(capitalizacion, utilidad)), _r(_div(capitalizacion, patrimonio)), ticker),
+            "beta": _r(beta, 2),
+            "costo_patrimonio": _pct(costo_patrimonio),
+            "costo_deuda_dt": _pct(costo_deuda_dt),
+            "wacc": _pct(wacc),
+            "roic": _pct(roic),
+            "eva_mmm": eva,
+            "spread_valor": _pct(roic - wacc) if roic is not None and wacc is not None else None,
+            "motivo_sin_roic": motivo_sin_roic,
             "clase_precio": clase_precio,
             "serie_resultados": evidencia,
             "filas_descartadas_por_escala": " | ".join(avisos_escala),

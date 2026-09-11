@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 jobs/*.csv
+apps/web/node_modules/
