@@ -152,13 +152,42 @@ def desacumular(filas: list[dict]) -> list[dict]:
 
 
 def ttm(filas_desacumuladas: list[dict], campo: str) -> tuple[float | None, str]:
-    """(valor TTM, cómo se obtuvo). Prefiere el ANUAL más reciente — es la cifra
-    auditada y no depende de que estén los cuatro trimestres. Si no hay ANUAL,
-    suma los cuatro últimos trimestres sueltos consecutivos."""
+    """(valor TTM, cómo se obtuvo). Prefiere el ANUAL más reciente -- es la cifra
+    auditada y no depende de que estén los cuatro trimestres -- pero lo
+    EXTIENDE con trimestres sueltos más nuevos si ya los hay: real
+    trailing-twelve-months = anual + trimestres del año siguiente ya
+    publicados - los mismos trimestres del año del anual (que ya están
+    contados dentro de él).
+
+    Antes de F4h esto no se podía hacer con confianza: los trimestres
+    comparativos de un año casi siempre venían en None por el bug de fechas
+    de `lector_xbrl.py`, así que intentar restar un trimestre ausente habría
+    dejado el TTM en None más seguido que acertar. Arreglado eso, extender es
+    seguro -- y hace falta: NUTRESA con el anual 2025 solo (1.235,8) escondía
+    que 2026-T1 fue pérdida y 2026-T2 tibio; el TTM real (extendido a
+    2026-T2) es 601,4, la mitad. Si falta CUALQUIER trimestre del año base
+    para restar, no se extiende ese tramo -- mejor quedarse en el anual
+    (dato real, aunque más viejo) que inventar un TTM con un hueco.
+
+    Si no hay ANUAL, suma los cuatro últimos trimestres sueltos consecutivos."""
     anuales = [f for f in filas_desacumuladas if f["periodo"] == "ANUAL" and f.get(campo) is not None]
+    trims_por_clave = {
+        (f["anio"], f["periodo"]): f[campo]
+        for f in filas_desacumuladas if f["periodo"] != "ANUAL" and f.get(campo) is not None
+    }
     if anuales:
-        mejor = max(anuales, key=lambda f: f["anio"])
-        return mejor[campo], f"anual {mejor['anio']}"
+        base = max(anuales, key=lambda f: f["anio"])
+        anio, valor, fuente = base["anio"], base[campo], f"anual {base['anio']}"
+        while True:
+            siguiente = anio + 1
+            trims_siguiente = sorted(t for (a, t) in trims_por_clave if a == siguiente)
+            if not trims_siguiente or not all((anio, t) in trims_por_clave for t in trims_siguiente):
+                break
+            for t in trims_siguiente:
+                valor = valor - trims_por_clave[(anio, t)] + trims_por_clave[(siguiente, t)]
+            fuente = f"anual {base['anio']} extendido a {siguiente}-{trims_siguiente[-1]}"
+            anio = siguiente
+        return round(valor, 3), fuente
 
     trims = sorted(
         [f for f in filas_desacumuladas if f["periodo"] != "ANUAL" and f.get(campo) is not None],
