@@ -39,11 +39,34 @@ export default function Fundamentales() {
       {cargando && <p className="text-sm text-slate-500">Cargando…</p>}
       {!cargando && filas.length === 0 && <p className="text-sm text-slate-500">Todavía no hay análisis cargado.</p>}
 
+      {filas.some((f) => f.ranking_estrella) && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 mb-2">⭐ Estrellas de la BVC</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            Crean valor por encima de su costo de capital (ROIC &gt; WACC) y no tienen múltiplos fuera de rango.
+            No es una recomendación de inversión — sin backtest todavía.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {filas
+              .filter((f) => f.ranking_estrella)
+              .sort((a, b) => a.ranking_estrella - b.ranking_estrella)
+              .map((f) => (
+                <div key={f.emisor_id} className="border rounded-lg px-3 py-2 bg-emerald-50 border-emerald-200 text-sm">
+                  <span className="font-semibold text-emerald-800">#{f.ranking_estrella}</span>{" "}
+                  <span className="font-medium">{f.nombre}</span>{" "}
+                  <span className="text-emerald-700">+{fmt(f.spread_valor)}pp</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {filas.length > 0 && (
         <div className="overflow-x-auto border rounded-lg">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
+                <th className="px-3 py-2"></th>
                 <th className="px-3 py-2">Emisor</th>
                 <th className="px-3 py-2">Sector</th>
                 <th className="px-3 py-2 text-right">Precio</th>
@@ -66,6 +89,9 @@ export default function Fundamentales() {
                     className="border-t hover:bg-slate-50 cursor-pointer"
                     onClick={() => setExpandido(expandido === f.emisor_id ? null : f.emisor_id)}
                   >
+                    <td className="px-3 py-2 text-center text-amber-500">
+                      {f.ranking_estrella ? `⭐${f.ranking_estrella}` : ""}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="font-medium">{f.nombre}</div>
                       <div className="text-xs text-slate-400">{f.ticker}</div>
@@ -91,7 +117,7 @@ export default function Fundamentales() {
                   </tr>
                   {expandido === f.emisor_id && (
                     <tr key={`${f.emisor_id}-detalle`} className="border-t bg-slate-50/60">
-                      <td colSpan={12} className="px-3 py-3">
+                      <td colSpan={13} className="px-3 py-3">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                           <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
                           <Dato etiqueta="Utilidad neta TTM" valor={fmt(f.utilidad_neta_ttm)} />

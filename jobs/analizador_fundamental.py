@@ -397,6 +397,33 @@ def _div(a, b):
     return a / b
 
 
+def calcular_estrellas(filas_salida: list[dict]) -> None:
+    """Asigna `ranking_estrella` (1 = mejor) EN EL LUGAR a los emisores
+    elegibles para "Estrellas de la BVC" -- F4c del plan.
+
+    Elegible: spread de creación de valor (ROIC - WACC) positivo, y sin
+    alerta de múltiplos implausibles (un P/E de 115 no es una señal de
+    compra por más spread positivo que tenga alrededor -- normalmente ni
+    siquiera tiene spread, pero por si acaso). Ordenado por spread
+    descendente: es la señal más directa de "crea valor por encima de lo que
+    cuesta su capital" que ya se calcula, más defendible que inventar un
+    puntaje compuesto mezclando percentiles de métricas distintas sin
+    validar. Sin ranking (`None`) para el resto -- no significa "malo", solo
+    "no se puede clasificar con lo que hay" (bancos sin ROIC, sin datos, etc).
+
+    Esto NO es una recomendación de inversión ni está respaldado por
+    backtest todavía -- eso es la siguiente pieza del plan (F4c), pendiente."""
+    elegibles = [
+        r for r in filas_salida
+        if r.get("spread_valor") is not None and r["spread_valor"] > 0 and not r.get("alerta_multiplos")
+    ]
+    elegibles.sort(key=lambda r: r["spread_valor"], reverse=True)
+    for i, r in enumerate(elegibles, start=1):
+        r["ranking_estrella"] = i
+    for r in filas_salida:
+        r.setdefault("ranking_estrella", None)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", type=str, default="ANALISIS_FUNDAMENTAL_BVC.csv")
@@ -556,6 +583,7 @@ def main():
             "periodos_con_cifras": len(filas),
         })
 
+    calcular_estrellas(filas_salida)
     filas_salida.sort(key=lambda r: (r["per"] is None, r["per"] if r["per"] is not None else 0))
 
     destino = Path(args.csv)
