@@ -81,6 +81,11 @@ CONCEPTOS = {
     "deuda_financiera": ["Borrowings", "BorrowingsNoncurrent"],
 }
 
+# Campos de FLUJO (cubren un período) vs. de SALDO (foto a una fecha) -- ver
+# `_fechas_de_cierre` para por qué el comparativo trimestral necesita una
+# fecha distinta para cada grupo.
+CAMPOS_FLUJO = {"ingresos", "utilidad_operacional", "utilidad_neta", "flujo_caja_operativo"}
+
 CONCEPTO_DEPRECIACION = ["DepreciationAndAmortisationExpense"]
 CONCEPTO_ACCIONES = ["NumberOfSharesOutstanding", "NumberOfSharesIssued"]
 CONCEPTO_DIVIDENDOS = ["DividendsPaid", "DividendsRecognisedAsDistributionsToOwners"]
@@ -140,23 +145,44 @@ def _fechas_de_cierre(contextos) -> list:
     """Fechas de cierre del documento, de la más reciente a la más antigua,
     mirando solo contextos SIN dimensiones -- los de los estados primarios.
     La posición en esta lista es el índice de período: 1 = el del informe,
-    2 = el comparativo.
+    2 = el comparativo. Cada elemento es `{"saldo": fecha, "flujo": fecha}`,
+    no una fecha suelta -- ver por qué abajo.
 
-    Se toma UNA fecha por año, la más tardía. Verificado real y necesario:
-    Ecopetrol declara además contextos de saldo INICIAL (instantes en
-    2022-12-01 y 2021-12-01, el arranque del estado de cambios en el
+    Se toma UNA fecha de SALDO por año, la más tardía. Verificado real y
+    necesario: Ecopetrol declara además contextos de saldo INICIAL (instantes
+    en 2022-12-01 y 2021-12-01, el arranque del estado de cambios en el
     patrimonio). Sin agrupar por año, esos se colaban entre el cierre del
     informe y el del comparativo, y el período 2 apuntaba al 2022-12-01 en vez
     del 2021-12-31 -- el comparativo entero se perdía.
+
+    Para un informe TRIMESTRAL esa fecha de saldo no sirve para los campos de
+    FLUJO del comparativo: el balance se compara contra el cierre del año
+    anterior completo (ej. 2025-12-31), pero el estado de resultados se
+    compara contra el mismo trimestre del año anterior (2025-03-31) -- dos
+    fechas reales, DISTINTAS, dentro del mismo año calendario. Verificado real
+    en GEB 2026-T1: el archivo trae contextos en 2025-12-31 (solo instante,
+    sin duración) Y en 2025-03-31 (duración de 89 días) -- tomar solo la más
+    tardía del año, como hacía la versión anterior, resolvía el comparativo a
+    2025-12-31 y la utilidad neta del trimestre comparativo salía None (no hay
+    ninguna duración que termine ahí). Por eso se guarda aparte la fecha de
+    FLUJO: la más tardía del año que además tenga al menos un contexto de
+    duración. Si no hay ninguna (año sin datos de flujo, o el caso normal
+    donde saldo y flujo coinciden, como en un ANUAL), se usa la de saldo.
     """
-    por_anio = {}
+    por_anio_saldo: dict[str, str] = {}
+    por_anio_flujo: dict[str, str] = {}
     for c in contextos.values():
         if not c["fecha"] or c["dims"]:
             continue
         anio = c["fecha"][:4]
-        if c["fecha"] > por_anio.get(anio, ""):
-            por_anio[anio] = c["fecha"]
-    return sorted(por_anio.values(), reverse=True)
+        if c["fecha"] > por_anio_saldo.get(anio, ""):
+            por_anio_saldo[anio] = c["fecha"]
+        if c.get("dias") is not None and c["fecha"] > por_anio_flujo.get(anio, ""):
+            por_anio_flujo[anio] = c["fecha"]
+    return [
+        {"saldo": por_anio_saldo[anio], "flujo": por_anio_flujo.get(anio, por_anio_saldo[anio])}
+        for anio in sorted(por_anio_saldo, reverse=True)
+    ]
 
 
 def _leer_hechos(raiz) -> list:
@@ -375,20 +401,23 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
     if len(fechas) < indice_periodo:
         motivos.append(f"el archivo solo trae {len(fechas)} fecha(s) de cierre; se pidió la {indice_periodo}")
         return _vacio(motivos)
-    fecha = fechas[indice_periodo - 1]
+    fecha = fechas[indice_periodo - 1]["saldo"]
+    fecha_flujo = fechas[indice_periodo - 1]["flujo"]
     anio_archivo = int(fecha[:4])
     if anio_archivo != anio:
         motivos.append(f"el cierre {fecha} no corresponde a {anio} -- no se extrae")
         return _vacio(motivos)
 
     # La escala primero: sin ella no se puede convertir nada (ver
-    # `_escala_del_archivo`).
+    # `_escala_del_archivo`). `por_accion` y `utilidad_bruta` son de FLUJO
+    # (ver `_fechas_de_cierre`) -- en un comparativo trimestral, buscarlos en
+    # `fecha` (la de saldo) los perdía si esa fecha no tenía duración.
     acciones, concepto_acc = _buscar(
         hechos, contextos, CONCEPTO_ACCIONES,
         fecha, dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA},
     )
-    por_accion, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, fecha)
-    utilidad_bruta, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], fecha)
+    por_accion, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, fecha_flujo)
+    utilidad_bruta, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], fecha_flujo)
     activos_brutos, _ = _buscar(hechos, contextos, CONCEPTOS["activos_totales"], fecha)
     escala, evidencia_escala = _escala_del_archivo(utilidad_bruta, acciones, por_accion, activos_brutos)
     if escala is None and escala_conocida:
@@ -408,10 +437,10 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
         # comparativo 2021 -- que viene completo en el mismo archivo -- se
         # perdia entero.
         acc1, _ = _buscar(hechos, contextos, CONCEPTO_ACCIONES,
-                          fechas[0], dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA})
-        pa1, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, fechas[0])
-        ut1, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], fechas[0])
-        act1, _ = _buscar(hechos, contextos, CONCEPTOS["activos_totales"], fechas[0])
+                          fechas[0]["saldo"], dims_exigidas={EJE_CLASE_ACCION: MIEMBRO_ORDINARIA})
+        pa1, _ = _buscar(hechos, contextos, CONCEPTO_UTILIDAD_POR_ACCION, fechas[0]["flujo"])
+        ut1, _ = _buscar(hechos, contextos, CONCEPTOS["utilidad_neta"], fechas[0]["flujo"])
+        act1, _ = _buscar(hechos, contextos, CONCEPTOS["activos_totales"], fechas[0]["saldo"])
         escala, evidencia_escala = _escala_del_archivo(ut1, acc1, pa1, act1)
         if escala is not None:
             evidencia_escala += " (deducida del período del informe y aplicada al comparativo)"
@@ -425,7 +454,8 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
     dias_flujo = None
     for campo, conceptos in CONCEPTOS.items():
         _ULTIMA_DURACION["dias"] = None
-        valor, concepto = _buscar(hechos, contextos, conceptos, fecha)
+        fecha_del_campo = fecha_flujo if campo in CAMPOS_FLUJO else fecha
+        valor, concepto = _buscar(hechos, contextos, conceptos, fecha_del_campo)
         origen_concepto[campo] = concepto
         # `ingresos` es el flujo de referencia: su contexto es el que dice si
         # el estado de resultados de este informe va acumulado o por trimestre.
@@ -459,7 +489,7 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
     }
 
     # EBITDA sigue siendo derivado -- no es una línea NIIF, es métrica no-NIIF.
-    depreciacion, _ = _buscar(hechos, contextos, CONCEPTO_DEPRECIACION, fecha)
+    depreciacion, _ = _buscar(hechos, contextos, CONCEPTO_DEPRECIACION, fecha_flujo)
     operacional = campos["utilidad_operacional"]["valor"]
     if operacional is not None and depreciacion is not None:
         campos["ebitda"] = {
@@ -528,4 +558,4 @@ def periodos_disponibles(ruta_xbrl) -> list:
     """(indice, anio) de los períodos que trae el archivo — el del informe y su
     comparativo. Sirve para aprovechar los dos de una sola descarga."""
     contextos = _leer_contextos(ET.parse(str(ruta_xbrl)).getroot())
-    return [(i, int(f[:4])) for i, f in enumerate(_fechas_de_cierre(contextos), start=1)]
+    return [(i, int(f["saldo"][:4])) for i, f in enumerate(_fechas_de_cierre(contextos), start=1)]
