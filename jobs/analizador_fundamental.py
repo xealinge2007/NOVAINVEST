@@ -34,6 +34,7 @@ import csv
 import io
 import sys
 from collections import defaultdict
+from datetime import date, timedelta
 from pathlib import Path
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
@@ -351,16 +352,31 @@ def costo_patrimonio_capm(beta: float, sup: dict[str, float]) -> float:
     return libre_riesgo_cop + beta * prima_total
 
 
+def _cierre(p: dict) -> float | None:
+    """Cierre AJUSTADO (dividendos, escisiones) con respaldo al cierre crudo
+    si `cierre_ajustado` viene vacío en esa fila. Sin esto, un dividendo o la
+    escisión Sura/Argos se ve como una caída de precio que nunca ocurrió,
+    y contamina el retorno diario que alimenta el beta."""
+    return p.get("cierre_ajustado") if p.get("cierre_ajustado") is not None else p.get("cierre")
+
+
 def _retornos_diarios(precios_activo: list[dict]) -> dict[str, float]:
     """{fecha: retorno_simple} a partir de una serie ordenada por fecha ascendente."""
     ordenados = sorted(precios_activo, key=lambda p: p["fecha"])
     retornos = {}
     anterior = None
     for p in ordenados:
-        if anterior and anterior["cierre"]:
-            retornos[p["fecha"]] = (p["cierre"] - anterior["cierre"]) / anterior["cierre"]
+        c = _cierre(p)
+        if anterior and _cierre(anterior):
+            retornos[p["fecha"]] = (c - _cierre(anterior)) / _cierre(anterior)
         anterior = p
     return retornos
+
+
+VENTANA_BETA_DIAS = 365 * 3  # 3 años -- el beta describe el riesgo VIGENTE del
+# emisor, no toda su historia. Con el backfill a 10 años para la correlación
+# fundamentales-vs-precio (F4n), sin este tope el beta mezclaría en un mismo
+# número el régimen de hace una década con el de hoy.
 
 
 RETORNO_DIARIO_MAXIMO = 0.30
@@ -495,10 +511,12 @@ def main():
     print(f"Supuestos macro: TES {sup['tes_10a']:.2%}, default spread {sup['default_spread_colombia']:.2%}, "
           f"prima madura {sup['prima_mercado_maduro']:.2%}, prima país {sup['prima_riesgo_pais']:.2%}")
 
+    fecha_min_beta = (date.today() - timedelta(days=VENTANA_BETA_DIAS)).isoformat()
     activo_icolcap = next((a["id"] for a in cliente.table("activos").select("id,ticker").eq("ticker", "ICOLCAP.CL").execute().data), None)
     retornos_icolcap: dict[str, float] = {}
     if activo_icolcap:
-        serie = cliente.table("precios").select("fecha,cierre").eq("activo_id", activo_icolcap).order("fecha").limit(3000).execute().data
+        serie = cliente.table("precios").select("fecha,cierre,cierre_ajustado").eq(
+            "activo_id", activo_icolcap).gte("fecha", fecha_min_beta).order("fecha").execute().data
         retornos_icolcap = _retornos_diarios(serie)
     else:
         print("AVISO: no se encontró ICOLCAP.CL en `activos` -- no se puede calcular beta ni WACC para nadie.")
@@ -572,8 +590,8 @@ def main():
         if not elegido or not retornos_icolcap:
             motivo_sin_roic = "sin ticker con precio o sin serie de COLCAP"
         else:
-            serie_activo = cliente.table("precios").select("fecha,cierre").eq(
-                "activo_id", elegido[0]["activo_id"]).order("fecha").limit(3000).execute().data
+            serie_activo = cliente.table("precios").select("fecha,cierre,cierre_ajustado").eq(
+                "activo_id", elegido[0]["activo_id"]).gte("fecha", fecha_min_beta).order("fecha").execute().data
             retornos_activo = _retornos_diarios(serie_activo)
             beta = beta_vs_indice(retornos_activo, retornos_icolcap)
             if beta is None:
