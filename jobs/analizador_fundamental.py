@@ -151,7 +151,21 @@ def desacumular(filas: list[dict]) -> list[dict]:
     return salida
 
 
-def ttm(filas_desacumuladas: list[dict], campo: str) -> tuple[float | None, str]:
+SIN_EXTENSION_TTM = {
+    # GRUPO_CIBEST_BANCOLOMBIA: desde 2025-T2 la serie trimestral pasó al
+    # perímetro de Grupo Cibest (17-31% más grande que Bancolombia S.A. solo
+    # -- ver EMISORES_SERIE_PARALELA_REEMPLAZA en extraer_xbrl.py), pero
+    # 2025-ANUAL sigue siendo el perímetro viejo (no hay versión "Cibest" del
+    # anual). Extender el TTM restaría un trimestre 2025 del perímetro NUEVO
+    # contra un anual del perímetro VIEJO -- un salto de perímetro
+    # disfrazado de variación real. Se prefiere el anual solo, desactualizado
+    # pero consistente, hasta que exista un ANUAL 2026 ya en el perímetro
+    # nuevo de punta a punta.
+    "GRUPO_CIBEST_BANCOLOMBIA",
+}
+
+
+def ttm(filas_desacumuladas: list[dict], campo: str, emisor_slug: str | None = None) -> tuple[float | None, str]:
     """(valor TTM, cómo se obtuvo). Prefiere el ANUAL más reciente -- es la cifra
     auditada y no depende de que estén los cuatro trimestres -- pero lo
     EXTIENDE con trimestres sueltos más nuevos si ya los hay: real
@@ -167,7 +181,8 @@ def ttm(filas_desacumuladas: list[dict], campo: str) -> tuple[float | None, str]
     que 2026-T1 fue pérdida y 2026-T2 tibio; el TTM real (extendido a
     2026-T2) es 601,4, la mitad. Si falta CUALQUIER trimestre del año base
     para restar, no se extiende ese tramo -- mejor quedarse en el anual
-    (dato real, aunque más viejo) que inventar un TTM con un hueco.
+    (dato real, aunque más viejo) que inventar un TTM con un hueco. Tampoco
+    se extiende si el emisor está en `SIN_EXTENSION_TTM` -- ver por qué ahí.
 
     Si no hay ANUAL, suma los cuatro últimos trimestres sueltos consecutivos."""
     anuales = [f for f in filas_desacumuladas if f["periodo"] == "ANUAL" and f.get(campo) is not None]
@@ -178,15 +193,16 @@ def ttm(filas_desacumuladas: list[dict], campo: str) -> tuple[float | None, str]
     if anuales:
         base = max(anuales, key=lambda f: f["anio"])
         anio, valor, fuente = base["anio"], base[campo], f"anual {base['anio']}"
-        while True:
-            siguiente = anio + 1
-            trims_siguiente = sorted(t for (a, t) in trims_por_clave if a == siguiente)
-            if not trims_siguiente or not all((anio, t) in trims_por_clave for t in trims_siguiente):
-                break
-            for t in trims_siguiente:
-                valor = valor - trims_por_clave[(anio, t)] + trims_por_clave[(siguiente, t)]
-            fuente = f"anual {base['anio']} extendido a {siguiente}-{trims_siguiente[-1]}"
-            anio = siguiente
+        if emisor_slug not in SIN_EXTENSION_TTM:
+            while True:
+                siguiente = anio + 1
+                trims_siguiente = sorted(t for (a, t) in trims_por_clave if a == siguiente)
+                if not trims_siguiente or not all((anio, t) in trims_por_clave for t in trims_siguiente):
+                    break
+                for t in trims_siguiente:
+                    valor = valor - trims_por_clave[(anio, t)] + trims_por_clave[(siguiente, t)]
+                fuente = f"anual {base['anio']} extendido a {siguiente}-{trims_siguiente[-1]}"
+                anio = siguiente
         return round(valor, 3), fuente
 
     trims = sorted(
@@ -436,10 +452,10 @@ def main():
             acumulado, evidencia = detectar_acumulado(filas)
         desac = desacumular(filas) if acumulado else filas
 
-        ingresos, fuente_ing = ttm(desac, "ingresos")
-        utilidad, fuente_ut = ttm(desac, "utilidad_neta")
-        operacional, _ = ttm(desac, "utilidad_operacional")
-        ebitda, _ = ttm(desac, "ebitda")
+        ingresos, fuente_ing = ttm(desac, "ingresos", em["slug"])
+        utilidad, fuente_ut = ttm(desac, "utilidad_neta", em["slug"])
+        operacional, _ = ttm(desac, "utilidad_operacional", em["slug"])
+        ebitda, _ = ttm(desac, "ebitda", em["slug"])
         patrimonio, fecha_pat = ultimo_saldo(filas, "patrimonio")
         activos, _ = ultimo_saldo(filas, "activos_totales")
         deuda, _ = ultimo_saldo(filas, "deuda_financiera")

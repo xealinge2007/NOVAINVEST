@@ -90,6 +90,20 @@ MINIMO_CAMPOS_CONTRASTE = 2
 SECTORES_FINANCIEROS = {"banca", "holding_financiero"}
 CAMPOS_NO_APLICABLES_FINANCIEROS = ("ingresos", "utilidad_operacional", "ebitda")
 
+# Emisores donde la serie paralela (sufijo `-XBRL-<SERIE>.xbrl`) reemplaza a
+# la principal, en vez de ignorarse. GRUPO_CIBEST_BANCOLOMBIA: desde 2025-T2
+# el emisor radica DOS XBRL por trimestre -- el original (Bancolombia S.A.,
+# perímetro angosto) y uno con sufijo "-CIBEST" (Grupo Cibest S.A., el nuevo
+# holding que reemplazó a Bancolombia como matriz cotizada; perímetro ~17-31%
+# más grande: activos 2026-T2 363.082 vs 311.296, patrimonio 38.124 vs
+# 29.080). El ticker CIBEST.CL cotiza acciones del grupo NUEVO, así que su
+# serie es la que describe lo que un accionista posee hoy -- se prefiere esa.
+#
+# El salto de perímetro entre 2025-ANUAL (viejo, sin versión "-CIBEST") y
+# 2025-T1..2026-T2 (nuevo) NO es crecimiento real. `analizador_fundamental.py`
+# lo sabe y no extiende el TTM de este emisor más allá del ANUAL por eso.
+EMISORES_SERIE_PARALELA_REEMPLAZA = {"GRUPO_CIBEST_BANCOLOMBIA"}
+
 
 def _hash(ruta: Path) -> str:
     h = hashlib.sha256()
@@ -204,6 +218,24 @@ def main():
         if not archivos:
             continue
 
+        if slug in EMISORES_SERIE_PARALELA_REEMPLAZA:
+            # Para estos emisores la serie paralela ES la vigente -- se
+            # descarta el archivo principal de cada (año, período) que tenga
+            # contraparte paralela, para no procesar ambos.
+            claves_con_paralela = set()
+            for a in archivos:
+                if PATRON_SERIE_PARALELA.search(a.name):
+                    mm = PATRON_NOMBRE.match(a.name)
+                    if mm:
+                        claves_con_paralela.add((mm.group(1), mm.group(2).upper()))
+            archivos = [
+                a for a in archivos
+                if PATRON_SERIE_PARALELA.search(a.name) or (
+                    (mm := PATRON_NOMBRE.match(a.name)) is None
+                    or (mm.group(1), mm.group(2).upper()) not in claves_con_paralela
+                )
+            ]
+
         escala, aviso = escala_del_emisor(archivos)
         if aviso:
             avisos.append(f"{slug}: {aviso}")
@@ -215,7 +247,7 @@ def main():
                 resumen["nombre_no_parseable"] += 1
                 continue
             paralela = PATRON_SERIE_PARALELA.search(arch.name)
-            if paralela:
+            if paralela and slug not in EMISORES_SERIE_PARALELA_REEMPLAZA:
                 paralelas.append(f"{slug}/{arch.name} (serie '{paralela.group(1)}')")
                 resumen["serie_paralela_no_cargada"] += 1
                 continue
