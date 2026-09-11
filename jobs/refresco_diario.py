@@ -59,6 +59,42 @@ def _obtener_precios_con_fallback(activo: DefinicionActivo, desde: date, hasta: 
     return precios, fuente_usada
 
 
+UMBRAL_SALTO_SOSPECHOSO = 0.30
+
+
+def _filtrar_saltos_espurios(precios, ticker: str):
+    """Descarta un cierre si se aparta más de 30% del día anterior Y el día
+    SIGUIENTE vuelve a estar cerca de ese mismo día anterior -- una ida y
+    vuelta de un solo día, la firma de un dato malo de la fuente y no de un
+    movimiento de mercado real (que no "revierte" al día siguiente).
+
+    Verificado real: ENKA.CL trajo de Yahoo 19,5 -> 0,0103 -> 19,7 los días
+    2025-09-01/02/03 -- un factor de ~1.900x en un día y de vuelta al
+    siguiente. Sin este filtro, ese 0,0103 se usaba como retorno diario para
+    el beta (salía en 51 en vez de ~0,13) y quedaba como el cierre oficial de
+    ese día en `precios`.
+
+    El primer y el último día de la serie no se pueden confirmar (falta un
+    vecino) y se dejan tal cual -- mejor no filtrar por falta de evidencia
+    que inventar una regla sin poder verificarla."""
+    ordenados = sorted(precios, key=lambda p: p.fecha)
+    descartar = set()
+    for i in range(1, len(ordenados) - 1):
+        anterior, actual, siguiente = ordenados[i - 1], ordenados[i], ordenados[i + 1]
+        if not (anterior.cierre and actual.cierre and siguiente.cierre):
+            continue
+        salto_ida = abs(actual.cierre / anterior.cierre - 1)
+        salto_vuelta = abs(siguiente.cierre / anterior.cierre - 1)
+        if salto_ida > UMBRAL_SALTO_SOSPECHOSO and salto_vuelta <= UMBRAL_SALTO_SOSPECHOSO:
+            descartar.add(actual.fecha)
+            print(f"  [{ticker}] AVISO: cierre descartado en {actual.fecha} "
+                  f"({anterior.cierre:.4g} -> {actual.cierre:.4g} -> {siguiente.cierre:.4g}) "
+                  f"-- ida y vuelta de un solo día, dato de la fuente, no de mercado")
+    if not descartar:
+        return precios
+    return [p for p in precios if p.fecha not in descartar]
+
+
 def _upsert_supabase(activo: DefinicionActivo, precios, fuente_usada: str):
     from app.database import cliente_servicio
 
@@ -143,6 +179,7 @@ def main():
     for activo in universo:
         try:
             precios, fuente_usada = _obtener_precios_con_fallback(activo, desde, hasta)
+            precios = _filtrar_saltos_espurios(precios, activo.ticker)
             if en_supabase:
                 n = _upsert_supabase(activo, precios, fuente_usada)
             else:
