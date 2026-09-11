@@ -31,3 +31,22 @@ async def detalle_fundamental(slug: str, usuario: UsuarioActual = Depends(get_cu
     if not resp.data:
         raise HTTPException(404, f"No hay análisis para {slug}")
     return resp.data[0]
+
+
+@router.get("/{slug}/evolucion")
+async def evolucion_fundamental(slug: str, usuario: UsuarioActual = Depends(get_current_usuario)):
+    """Serie histórica (TTM en cada punto) vs. precio, contemporáneo y con
+    rezago de 45 días, más su correlación y efectividad direccional -- F4n.
+    No aplica a bancos/holdings financieros (ver `jobs/evolucion_fundamental.py`)."""
+    cliente = cliente_supabase_de(usuario)
+    emisor = cliente.table("emisores").select("id").eq("slug", slug).execute().data
+    if not emisor:
+        raise HTTPException(404, f"No existe el emisor {slug}")
+    emisor_id = emisor[0]["id"]
+    serie = cliente.table("evolucion_fundamental_serie").select("*").eq(
+        "emisor_id", emisor_id).order("fecha_cierre").execute().data
+    estadisticas = cliente.table("evolucion_fundamental_estadisticas").select("*").eq(
+        "emisor_id", emisor_id).execute().data
+    if not serie:
+        raise HTTPException(404, f"No hay evolución calculada para {slug} -- no aplica (financiero) o sin datos suficientes")
+    return {"serie": serie, "estadisticas": estadisticas}

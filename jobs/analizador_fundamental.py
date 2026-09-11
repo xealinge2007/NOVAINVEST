@@ -218,6 +218,41 @@ def ttm(filas_desacumuladas: list[dict], campo: str, emisor_slug: str | None = N
     )
 
 
+def serie_ttm_historica(filas_desacumuladas: list[dict], campo: str, emisor_slug: str | None = None) -> dict[tuple[int, str], float]:
+    """{(año, período): TTM} en CADA punto de la historia -- no solo el más
+    reciente como `ttm()`. Necesario para F4n (evolución fundamental vs.
+    precio): para correlacionar hace falta una serie completa, no un solo
+    número de hoy.
+
+    Mismo principio que `ttm()`: cada ANUAL ya ES un TTM (año completo) sin
+    tocar. Para un trimestre (año Y, Tn con n=1,2,3): TTM = ANUAL(Y-1) -
+    Σ T1..Tn de (Y-1) + Σ T1..Tn de (Y) -- desplaza la ventana de 12 meses
+    desde el cierre del año base hasta ese trimestre. Exige el ANUAL del año
+    INMEDIATAMENTE anterior y todos los trimestres T1..Tn de ambos años; si
+    falta alguno, ese punto se omite -- no se inventa un TTM con un hueco.
+    Respeta `SIN_EXTENSION_TTM` igual que `ttm()`."""
+    anuales = {f["anio"]: f[campo] for f in filas_desacumuladas if f["periodo"] == "ANUAL" and f.get(campo) is not None}
+    trims = {
+        (f["anio"], f["periodo"]): f[campo]
+        for f in filas_desacumuladas if f["periodo"] != "ANUAL" and f.get(campo) is not None
+    }
+    resultado = {(anio, "ANUAL"): valor for anio, valor in anuales.items()}
+    if emisor_slug in SIN_EXTENSION_TTM:
+        return resultado
+    for (anio, periodo) in trims:
+        n = TRIMESTRES.index(periodo) + 1
+        anio_base = anio - 1
+        if anio_base not in anuales:
+            continue
+        claves_resta = [(anio_base, TRIMESTRES[i]) for i in range(n)]
+        claves_suma = [(anio, TRIMESTRES[i]) for i in range(n)]
+        if not all(k in trims for k in claves_resta + claves_suma):
+            continue
+        valor = anuales[anio_base] - sum(trims[k] for k in claves_resta) + sum(trims[k] for k in claves_suma)
+        resultado[(anio, periodo)] = round(valor, 3)
+    return resultado
+
+
 def ultimo_saldo(filas: list[dict], campo: str) -> tuple[float | None, str]:
     """Último valor de un campo de saldo (balance): la foto más reciente."""
     con = [f for f in filas if f.get(campo) is not None]
@@ -516,7 +551,7 @@ def main():
     retornos_icolcap: dict[str, float] = {}
     if activo_icolcap:
         serie = cliente.table("precios").select("fecha,cierre,cierre_ajustado").eq(
-            "activo_id", activo_icolcap).gte("fecha", fecha_min_beta).order("fecha").execute().data
+            "activo_id", activo_icolcap).gte("fecha", fecha_min_beta).order("fecha").limit(2000).execute().data
         retornos_icolcap = _retornos_diarios(serie)
     else:
         print("AVISO: no se encontró ICOLCAP.CL en `activos` -- no se puede calcular beta ni WACC para nadie.")
@@ -591,7 +626,7 @@ def main():
             motivo_sin_roic = "sin ticker con precio o sin serie de COLCAP"
         else:
             serie_activo = cliente.table("precios").select("fecha,cierre,cierre_ajustado").eq(
-                "activo_id", elegido[0]["activo_id"]).gte("fecha", fecha_min_beta).order("fecha").execute().data
+                "activo_id", elegido[0]["activo_id"]).gte("fecha", fecha_min_beta).order("fecha").limit(2000).execute().data
             retornos_activo = _retornos_diarios(serie_activo)
             beta = beta_vs_indice(retornos_activo, retornos_icolcap)
             if beta is None:

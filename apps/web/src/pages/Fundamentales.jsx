@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { getFundamentales, getSupuestosMacro } from "../api/client";
+import { getFundamentales, getSupuestosMacro, getEvolucionFundamental } from "../api/client";
+import EvolucionChart from "../components/EvolucionChart";
+
+const METRICAS_EVOLUCION = [
+  { campo: "ebitda_ttm", etiqueta: "EBITDA (TTM)" },
+  { campo: "margen_ebitda", etiqueta: "Margen EBITDA", unidad: "%" },
+  { campo: "margen_operacional", etiqueta: "Margen operacional", unidad: "%" },
+  { campo: "margen_neto", etiqueta: "Margen neto", unidad: "%" },
+  { campo: "valor_patrimonial_accion", etiqueta: "Valor patrimonial / acción" },
+];
 
 const ETIQUETA_MACRO = {
   tes_10a: "TES 10 años",
@@ -184,6 +193,7 @@ export default function Fundamentales() {
                         )}
                         {f.alerta_multiplos && <p className="text-xs text-amber-700 mt-2">⚠ {f.alerta_multiplos}</p>}
                         {f.motivo_sin_roic && <p className="text-xs text-slate-400 mt-2">Sin ROIC/WACC: {f.motivo_sin_roic}</p>}
+                        <EvolucionSeccion slug={f.slug} />
                       </td>
                     </tr>
                   )}
@@ -193,6 +203,52 @@ export default function Fundamentales() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function EvolucionSeccion({ slug }) {
+  const [datos, setDatos] = useState(undefined); // undefined = cargando, null = error/no-aplica
+  useEffect(() => {
+    getEvolucionFundamental(slug).then(setDatos).catch(() => setDatos(null));
+  }, [slug]);
+
+  if (datos === undefined) return <p className="text-xs text-slate-400 mt-3">Cargando evolución…</p>;
+  if (datos === null) return null; // financiero o sin datos -- no se muestra sección, sin ruido
+
+  const statsPorMetrica = Object.fromEntries(
+    datos.estadisticas.filter((e) => e.metrica.endsWith("__rezagado")).map((e) => [e.metrica.replace("__rezagado", ""), e])
+  );
+
+  return (
+    <div className="mt-4 pt-3 border-t">
+      <h4 className="text-sm font-semibold text-slate-700 mb-1">Evolución fundamental vs. precio</h4>
+      <p className="text-xs text-slate-500 mb-3">
+        TTM en cada trimestre, indexado junto al precio. La estadística usa el precio <strong>45 días después</strong> del
+        cierre de cada período (el mercado no conocía la cifra antes de que se radicara) — describe
+        correlación, no garantiza que se repita. Con pocos trimestres de historia, léelo como indicio, no como certeza.
+      </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {METRICAS_EVOLUCION.map(({ campo, etiqueta, unidad }) => {
+          const puntos = datos.serie.map((p) => ({
+            fecha_cierre: p.fecha_cierre, valor: p[campo], precio: p.precio_rezagado,
+          }));
+          const st = statsPorMetrica[campo];
+          return (
+            <div key={campo}>
+              <EvolucionChart puntos={puntos} etiquetaMetrica={etiqueta} unidadMetrica={unidad} />
+              {st && st.r2 !== null && (
+                <p className="text-xs text-slate-400 mt-1">
+                  R² {st.r2.toFixed(2)} · efectividad {st.efectividad_pct}% (base {st.tasa_base_alza_pct}%) · n={st.n}
+                  {st.p_valor_vs_azar !== null && st.p_valor_vs_azar < 0.1 && (
+                    <span className="text-emerald-700 font-medium"> · p={st.p_valor_vs_azar} (fuera del azar)</span>
+                  )}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
