@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getFundamentales, getSupuestosMacro, getEvolucionFundamental } from "../api/client";
 import EvolucionChart from "../components/EvolucionChart";
 
@@ -29,12 +29,17 @@ function fmt(v, dec = 1) {
   return Number(v).toLocaleString("es-CO", { maximumFractionDigits: dec, minimumFractionDigits: 0 });
 }
 
+const MAX_COMPARACION = 3;
+const FILTROS_INICIALES = { busqueda: "", sector: "", soloEstrellas: false, peMax: "", spreadMin: "" };
+
 export default function Fundamentales() {
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [expandido, setExpandido] = useState(null);
   const [macro, setMacro] = useState([]);
+  const [filtros, setFiltros] = useState(FILTROS_INICIALES);
+  const [seleccionados, setSeleccionados] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -48,6 +53,31 @@ export default function Fundamentales() {
     })();
     getSupuestosMacro().then(setMacro).catch(() => setMacro([]));
   }, []);
+
+  const sectores = useMemo(
+    () => [...new Set(filas.map((f) => f.sector).filter(Boolean))].sort(),
+    [filas]
+  );
+
+  const filasFiltradas = useMemo(() => {
+    const q = filtros.busqueda.trim().toLowerCase();
+    return filas.filter((f) => {
+      if (q && !`${f.nombre} ${f.ticker}`.toLowerCase().includes(q)) return false;
+      if (filtros.sector && f.sector !== filtros.sector) return false;
+      if (filtros.soloEstrellas && !esEstrella(f)) return false;
+      if (filtros.peMax !== "" && (f.per === null || f.per > Number(filtros.peMax))) return false;
+      if (filtros.spreadMin !== "" && (f.spread_valor === null || f.spread_valor < Number(filtros.spreadMin))) return false;
+      return true;
+    });
+  }, [filas, filtros]);
+
+  function alternarSeleccion(emisorId) {
+    setSeleccionados((actual) => {
+      if (actual.includes(emisorId)) return actual.filter((id) => id !== emisorId);
+      if (actual.length >= MAX_COMPARACION) return actual;
+      return [...actual, emisorId];
+    });
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 flex flex-col gap-6">
@@ -109,10 +139,77 @@ export default function Fundamentales() {
       )}
 
       {filas.length > 0 && (
+        <div className="flex flex-wrap items-end gap-3 text-sm border rounded-lg p-3 bg-slate-50">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500">Buscar</label>
+            <input
+              type="text" placeholder="Nombre o ticker" value={filtros.busqueda}
+              onChange={(e) => setFiltros((f) => ({ ...f, busqueda: e.target.value }))}
+              className="border rounded px-2 py-1 text-sm w-40"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500">Sector</label>
+            <select
+              value={filtros.sector} onChange={(e) => setFiltros((f) => ({ ...f, sector: e.target.value }))}
+              className="border rounded px-2 py-1 text-sm"
+            >
+              <option value="">Todos</option>
+              {sectores.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500">P/E máximo</label>
+            <input
+              type="number" placeholder="ej. 15" value={filtros.peMax}
+              onChange={(e) => setFiltros((f) => ({ ...f, peMax: e.target.value }))}
+              className="border rounded px-2 py-1 text-sm w-24"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500">Spread mín. (pp)</label>
+            <input
+              type="number" placeholder="ej. 0" value={filtros.spreadMin}
+              onChange={(e) => setFiltros((f) => ({ ...f, spreadMin: e.target.value }))}
+              className="border rounded px-2 py-1 text-sm w-24"
+            />
+          </div>
+          <label className="flex items-center gap-1.5 text-sm pb-1.5">
+            <input
+              type="checkbox" checked={filtros.soloEstrellas}
+              onChange={(e) => setFiltros((f) => ({ ...f, soloEstrellas: e.target.checked }))}
+            />
+            Solo estrellas
+          </label>
+          <button
+            onClick={() => setFiltros(FILTROS_INICIALES)}
+            className="text-xs text-slate-500 underline pb-1.5"
+          >
+            Limpiar filtros
+          </button>
+          <span className="text-xs text-slate-400 ml-auto pb-1.5">
+            {filasFiltradas.length} de {filas.length} emisores
+          </span>
+        </div>
+      )}
+
+      {seleccionados.length >= 2 && (
+        <Comparador
+          filas={filas.filter((f) => seleccionados.includes(f.emisor_id))}
+          onQuitar={alternarSeleccion}
+        />
+      )}
+
+      {filas.length > 0 && filasFiltradas.length === 0 && (
+        <p className="text-sm text-slate-500">Ningún emisor cumple estos filtros.</p>
+      )}
+
+      {filasFiltradas.length > 0 && (
         <div className="overflow-x-auto border rounded-lg">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
+                <th className="px-3 py-2"></th>
                 <th className="px-3 py-2"></th>
                 <th className="px-3 py-2">Emisor</th>
                 <th className="px-3 py-2">Sector</th>
@@ -129,13 +226,22 @@ export default function Fundamentales() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((f) => (
+              {filasFiltradas.map((f) => (
                 <>
                   <tr
                     key={f.emisor_id}
                     className="border-t hover:bg-slate-50 cursor-pointer"
                     onClick={() => setExpandido(expandido === f.emisor_id ? null : f.emisor_id)}
                   >
+                    <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.includes(f.emisor_id)}
+                        disabled={!seleccionados.includes(f.emisor_id) && seleccionados.length >= MAX_COMPARACION}
+                        onChange={() => alternarSeleccion(f.emisor_id)}
+                        title={`Comparar (máx. ${MAX_COMPARACION})`}
+                      />
+                    </td>
                     <td className="px-3 py-2 text-center text-amber-500">
                       {f.ranking_estrella ? (esEstrella(f) ? `⭐${f.ranking_estrella}` : `#${f.ranking_estrella}`) : ""}
                     </td>
@@ -164,7 +270,7 @@ export default function Fundamentales() {
                   </tr>
                   {expandido === f.emisor_id && (
                     <tr key={`${f.emisor_id}-detalle`} className="border-t bg-slate-50/60">
-                      <td colSpan={13} className="px-3 py-3">
+                      <td colSpan={14} className="px-3 py-3">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                           <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
                           <Dato etiqueta="Utilidad neta TTM" valor={fmt(f.utilidad_neta_ttm)} />
@@ -300,6 +406,65 @@ function BandaPercentil({ datos }) {
         <span>máx {maximo}</span>
       </div>
       <div className="text-slate-400 mt-0.5">n={n} trimestres</div>
+    </div>
+  );
+}
+
+const FILAS_COMPARADOR = [
+  { etiqueta: "Precio", valor: (f) => fmt(f.precio, 0) },
+  { etiqueta: "Capitalización (MMM)", valor: (f) => fmt(f.capitalizacion_mmm) },
+  { etiqueta: "P/E", valor: (f) => fmt(f.per) },
+  { etiqueta: "P/VL", valor: (f) => fmt(f.precio_valor_libro) },
+  { etiqueta: "EV/EBITDA", valor: (f) => fmt(f.ev_ebitda, 2) },
+  { etiqueta: "Deuda/EBITDA", valor: (f) => fmt(f.deuda_ebitda, 2) },
+  { etiqueta: "Margen neto", valor: (f) => (f.margen_neto === null ? "—" : `${fmt(f.margen_neto)}%`) },
+  { etiqueta: "ROE", valor: (f) => (f.roe === null ? "—" : `${fmt(f.roe)}%`) },
+  { etiqueta: "Deuda/Patrimonio", valor: (f) => fmt(f.deuda_patrimonio, 2) },
+  { etiqueta: "ROIC", valor: (f) => (f.roic === null ? "—" : `${fmt(f.roic)}%`) },
+  { etiqueta: "WACC / Ke", valor: (f) => (f.wacc === null ? "—" : `${fmt(f.wacc)}%`) },
+  { etiqueta: "Spread de valor", valor: (f) => (f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`) },
+  { etiqueta: "Dividend yield", valor: (f) => (f.dividend_yield_pct === null ? "—" : `${fmt(f.dividend_yield_pct)}%`) },
+  { etiqueta: "Beta vs. COLCAP", valor: (f) => fmt(f.beta, 2) },
+  { etiqueta: "Correlación vs. dólar", valor: (f) => fmt(f.correlacion_dolar, 2) },
+];
+
+function Comparador({ filas, onQuitar }) {
+  return (
+    <div className="border rounded-lg overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-50">
+          <tr>
+            <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Comparador</th>
+            {filas.map((f) => (
+              <th key={f.emisor_id} className="px-3 py-2 text-left">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-medium text-slate-800">{f.nombre}</div>
+                    <div className="text-xs text-slate-400">{f.ticker}</div>
+                  </div>
+                  <button
+                    onClick={() => onQuitar(f.emisor_id)}
+                    className="text-slate-400 hover:text-slate-600 text-xs"
+                    title="Quitar de la comparación"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {FILAS_COMPARADOR.map((fila) => (
+            <tr key={fila.etiqueta} className="border-t">
+              <td className="px-3 py-1.5 text-xs text-slate-500">{fila.etiqueta}</td>
+              {filas.map((f) => (
+                <td key={f.emisor_id} className="px-3 py-1.5 text-sm">{fila.valor(f)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
