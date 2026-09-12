@@ -179,6 +179,14 @@ export default function Fundamentales() {
                           <Dato etiqueta="Costo de deuda (dt)" valor={f.costo_deuda_dt === null ? "—" : `${fmt(f.costo_deuda_dt)}%`} />
                           <Dato etiqueta="EVA (MMM)" valor={fmt(f.eva_mmm)} />
                           <Dato etiqueta="Método de valor" valor={f.metodo_valor || "—"} />
+                          <Dato etiqueta="EV (MMM, sin netear caja)" valor={fmt(f.ev_mmm)} />
+                          <Dato etiqueta="EV/EBITDA" valor={fmt(f.ev_ebitda, 2)} />
+                          <Dato etiqueta="Deuda/EBITDA" valor={fmt(f.deuda_ebitda, 2)} />
+                          <Dato etiqueta="Q de Tobin (aprox.)" valor={fmt(f.q_tobin, 2)} />
+                          <Dato etiqueta="Último dividendo (MMM)" valor={fmt(f.dividendo_reciente_mmm)} />
+                          <Dato etiqueta="Payout" valor={f.payout_pct === null ? "—" : `${fmt(f.payout_pct)}%`} />
+                          <Dato etiqueta="Dividend yield" valor={f.dividend_yield_pct === null ? "—" : `${fmt(f.dividend_yield_pct)}%`} />
+                          <Dato etiqueta="Correlación vs. dólar (TRM)" valor={fmt(f.correlacion_dolar, 2)} />
                           <Dato etiqueta="Clase de precio" valor={f.clase_precio || "—"} />
                           <Dato etiqueta="Serie de resultados" valor={f.serie_resultados || "—"} />
                           <Dato etiqueta="Fuente resultados" valor={f.fuente_resultados || "—"} />
@@ -214,14 +222,30 @@ function EvolucionSeccion({ slug }) {
   }, [slug]);
 
   if (datos === undefined) return <p className="text-xs text-slate-400 mt-3">Cargando evolución…</p>;
-  if (datos === null) return null; // financiero o sin datos -- no se muestra sección, sin ruido
+  if (datos === null) return null; // sin datos suficientes -- no se muestra sección, sin ruido
 
   const statsPorMetrica = Object.fromEntries(
     datos.estadisticas.filter((e) => e.metrica.endsWith("__rezagado")).map((e) => [e.metrica.replace("__rezagado", ""), e])
   );
 
   return (
-    <div className="mt-4 pt-3 border-t">
+    <div className="mt-4 pt-3 border-t flex flex-col gap-5">
+      {datos.percentiles.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-slate-700 mb-1">Bandas de valoración (percentil, últimos ~5 años)</h4>
+          <p className="text-xs text-slate-500 mb-3">
+            Dónde está el múltiplo de hoy frente a su propia historia — no un veredicto de "caro/barato": un
+            percentil alto puede reflejar una mejora real, no solo sobrevaloración.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {datos.percentiles.map((p) => (
+              <BandaPercentil key={p.multiplo} datos={p} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
       <h4 className="text-sm font-semibold text-slate-700 mb-1">Evolución fundamental vs. precio</h4>
       <p className="text-xs text-slate-500 mb-3">
         TTM en cada trimestre, indexado junto al precio. La estadística usa el precio <strong>45 días después</strong> del
@@ -249,6 +273,33 @@ function EvolucionSeccion({ slug }) {
           );
         })}
       </div>
+      </div>
+    </div>
+  );
+}
+
+const ETIQUETA_MULTIPLO = {
+  per: "P/E", precio_valor_libro: "P/VL", ev_ebitda: "EV/EBITDA", deuda_ebitda: "Deuda/EBITDA",
+};
+
+function BandaPercentil({ datos }) {
+  const { multiplo, valor_actual, percentil, minimo, maximo, mediana, n } = datos;
+  const color = percentil >= 80 ? "bg-red-400" : percentil <= 20 ? "bg-emerald-400" : "bg-amber-400";
+  return (
+    <div className="text-xs border rounded px-3 py-2">
+      <div className="flex justify-between items-baseline mb-1">
+        <span className="font-medium text-slate-700">{ETIQUETA_MULTIPLO[multiplo] || multiplo}</span>
+        <span className="text-slate-500">{valor_actual} · percentil {percentil}%</span>
+      </div>
+      <div className="relative h-1.5 bg-slate-100 rounded-full">
+        <div className={`absolute top-0 h-1.5 w-1.5 rounded-full -mt-0 ${color}`} style={{ left: `calc(${percentil}% - 3px)` }} />
+      </div>
+      <div className="flex justify-between text-slate-400 mt-1">
+        <span>mín {minimo}</span>
+        <span>mediana {mediana}</span>
+        <span>máx {maximo}</span>
+      </div>
+      <div className="text-slate-400 mt-0.5">n={n} trimestres</div>
     </div>
   );
 }

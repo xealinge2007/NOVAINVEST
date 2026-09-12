@@ -32,6 +32,7 @@ Uso:
 import argparse
 import csv
 import io
+import math
 import sys
 from collections import defaultdict
 from datetime import date, timedelta
@@ -444,6 +445,29 @@ def beta_vs_indice(retornos_activo: dict[str, float], retornos_indice: dict[str,
     return cov / var_i
 
 
+def correlacion_pearson(retornos_a: dict[str, float], retornos_b: dict[str, float]) -> float | None:
+    """Correlación (r, con signo -- a diferencia de beta_vs_indice, aquí
+    importa la dirección: positiva = se mueve CON el dólar, negativa = en
+    contra) entre dos series de retornos diarios, sobre las fechas en común.
+    Mismo filtro de saltos >30% que `beta_vs_indice`, mismo mínimo de 60
+    observaciones."""
+    fechas = sorted(
+        f for f in set(retornos_a) & set(retornos_b)
+        if abs(retornos_a[f]) <= RETORNO_DIARIO_MAXIMO and abs(retornos_b[f]) <= RETORNO_DIARIO_MAXIMO
+    )
+    if len(fechas) < 60:
+        return None
+    xa = [retornos_a[f] for f in fechas]
+    xb = [retornos_b[f] for f in fechas]
+    ma, mb = sum(xa) / len(xa), sum(xb) / len(xb)
+    cov = sum((a - ma) * (b - mb) for a, b in zip(xa, xb))
+    va = sum((a - ma) ** 2 for a in xa)
+    vb = sum((b - mb) ** 2 for b in xb)
+    if va == 0 or vb == 0:
+        return None
+    return cov / math.sqrt(va * vb)
+
+
 def costo_capital(beta: float, capitalizacion: float, deuda: float, sup: dict[str, float]) -> tuple[float, float, float]:
     """(costo_patrimonio, costo_deuda_despues_de_impuesto, wacc) vía CAPM +
     estructura de capital a valor de mercado (deuda a valor en libros, que es
@@ -556,6 +580,19 @@ def main():
     else:
         print("AVISO: no se encontró ICOLCAP.CL en `activos` -- no se puede calcular beta ni WACC para nadie.")
 
+    # TRM (USDCOP) para la sensibilidad al dólar (F4n Fase 3) -- responde con
+    # un número por emisor la pregunta de si el dólar influye, en vez de una
+    # explicación general: positivo = el emisor se mueve CON la devaluación
+    # (exportadores como Ecopetrol/Mineros), negativo = en contra.
+    activo_usdcop = next((a["id"] for a in cliente.table("activos").select("id,ticker").eq("ticker", "USDCOP").execute().data), None)
+    retornos_usdcop: dict[str, float] = {}
+    if activo_usdcop:
+        serie_trm = cliente.table("precios").select("fecha,cierre,cierre_ajustado").eq(
+            "activo_id", activo_usdcop).gte("fecha", fecha_min_beta).order("fecha").limit(2000).execute().data
+        retornos_usdcop = _retornos_diarios(serie_trm)
+    else:
+        print("AVISO: no se encontró USDCOP en `activos` -- no se puede calcular la sensibilidad al dólar.")
+
     por_emisor: dict = defaultdict(list)
     for f in fundamentales:
         if f["emisor_id"] in emisores:
@@ -612,6 +649,37 @@ def main():
         if precio is not None and acciones:
             capitalizacion = round(precio * acciones / 1_000_000_000, 3)
 
+        # EV sin netear caja: no se extrae efectivo del XBRL/PDF (no está en
+        # `fundamentales_reportados`), así que EV = capitalización + deuda es
+        # una aproximación por exceso, no el EV real. Se documenta, no se
+        # inventa un valor de caja.
+        ev = round(capitalizacion + (deuda or 0), 3) if capitalizacion is not None else None
+        # Con EBITDA <= 0 el múltiplo sale negativo y parece "barato" cuando
+        # en realidad el denominador está roto -- verificado real en
+        # GRUPO_SURA (ebitda_ttm -1.271,9, la misma limitación de holdings ya
+        # documentada en ROIC/WACC: la utilidad operacional consolidada no
+        # recoge el método de participación de sus filiales). Sin múltiplo
+        # en vez de uno negativo que se lea como señal de compra.
+        ebitda_valido = ebitda is not None and ebitda > 0
+        ev_ebitda = _r(_div(ev, ebitda)) if ebitda_valido else None
+        deuda_ebitda = _r(_div(deuda, ebitda)) if ebitda_valido else None
+        # Q de Tobin aproximada (Chung-Pruitt): EV / activos totales, en vez
+        # del costo de reposición real que no se tiene.
+        q_tobin = _r(_div(ev, activos), 2)
+
+        # Dividendo: NO es un TTM -- `dividendos_decretados` no está en
+        # CAMPOS_FLUJO (se declara una vez al año en la asamblea, no se
+        # acumula trimestre a trimestre como ingresos/utilidad), así que
+        # desacumular() lo deja intacto. Se usa el último valor reportado tal
+        # cual, sin sumar ni promediar periodos.
+        con_dividendo = sorted(
+            (f for f in filas if f.get("dividendos_decretados")), key=lambda f: _orden(f["anio"], f["periodo"])
+        )
+        dividendo_reciente = con_dividendo[-1]["dividendos_decretados"] if con_dividendo else None
+        payout = _pct(_div(dividendo_reciente, utilidad))
+        dividendo_por_accion = _div(dividendo_reciente * 1_000_000_000 if dividendo_reciente is not None else None, acciones)
+        dividend_yield = _pct(_div(dividendo_por_accion, precio))
+
         # Creación de valor. No financieras: ROIC vs. WACC. Bancos y holdings
         # financieros: ROE vs. Ke -- su "deuda" son depósitos de clientes,
         # materia prima del negocio y no financiación, así que capital
@@ -621,6 +689,7 @@ def main():
         financiero = em["sector"] in SECTORES_FINANCIEROS
         metodo_valor = "ROE-Ke" if financiero else "ROIC-WACC"
         beta = costo_patrimonio = costo_deuda_dt = wacc = roic = eva = spread = None
+        correlacion_dolar = None
         motivo_sin_roic = ""
         if not elegido or not retornos_icolcap:
             motivo_sin_roic = "sin ticker con precio o sin serie de COLCAP"
@@ -628,6 +697,8 @@ def main():
             serie_activo = cliente.table("precios").select("fecha,cierre,cierre_ajustado").eq(
                 "activo_id", elegido[0]["activo_id"]).gte("fecha", fecha_min_beta).order("fecha").limit(2000).execute().data
             retornos_activo = _retornos_diarios(serie_activo)
+            if retornos_usdcop:
+                correlacion_dolar = correlacion_pearson(retornos_activo, retornos_usdcop)
             beta = beta_vs_indice(retornos_activo, retornos_icolcap)
             if beta is None:
                 motivo_sin_roic = "menos de 60 pregones en común con COLCAP para estimar beta"
@@ -702,6 +773,14 @@ def main():
             "spread_valor": _pct(spread),
             "metodo_valor": metodo_valor if spread is not None else None,
             "motivo_sin_roic": motivo_sin_roic,
+            "ev_mmm": ev,
+            "ev_ebitda": ev_ebitda,
+            "deuda_ebitda": deuda_ebitda,
+            "q_tobin": q_tobin,
+            "dividendo_reciente_mmm": dividendo_reciente,
+            "payout_pct": payout,
+            "dividend_yield_pct": dividend_yield,
+            "correlacion_dolar": _r(correlacion_dolar, 2),
             "clase_precio": clase_precio,
             "serie_resultados": evidencia,
             "filas_descartadas_por_escala": " | ".join(avisos_escala),

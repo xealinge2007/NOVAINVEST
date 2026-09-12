@@ -3,8 +3,16 @@ metodológica de cruzar métricas fundamentales contra el precio en el tiempo
 (no en código ni fórmulas de ningún tercero): correlación y "efectividad"
 direccional, por emisor.
 
-Fases 1 y 2 del plan F4n. Requiere Fase 0 ya aplicada: `precios` con 10 años
-de historia (`refresco_diario.py --anios 10`) y `cierre_ajustado`.
+Fases 1, 2 y 3 del plan F4n. Requiere Fase 0 ya aplicada: `precios` con 10
+años de historia (`refresco_diario.py --anios 10`) y `cierre_ajustado`.
+
+**Fase 3 (F4o/F4p):** además de la correlación, este job calcula bandas de
+valoración por percentil histórico (P/E, P/VL, EV/EBITDA, Deuda/EBITDA) --
+dónde está el múltiplo de HOY frente a los últimos ~20 trimestres del propio
+emisor. A diferencia de las Fases 1-2, esto SÍ corre para bancos y holdings
+financieros: P/E y P/VL son válidos para ellos (usan utilidad_neta y
+patrimonio, no ingresos/EBITDA, que sí se excluyen para ese sector desde la
+extracción).
 
 **Por qué con rezago, y no solo "contemporáneo":**
 Correlacionar la cifra del trimestre con el precio EN LA FECHA DE CIERRE de
@@ -164,6 +172,38 @@ def _filtrar_saltos_espurios_serie(precios: list[dict]) -> list[dict]:
 
 METRICAS = ["ebitda_ttm", "margen_ebitda", "margen_operacional", "margen_neto", "valor_patrimonial_accion"]
 
+VENTANA_PERCENTIL_PERIODOS = 20  # ~5 años de trimestres -- lo que se le prometió a Alex como banda histórica
+MULTIPLOS_PERCENTIL = ["per", "precio_valor_libro", "ev_ebitda", "deuda_ebitda"]
+
+
+def percentil_de(valor_actual: float, historicos: list[float]) -> float:
+    """% de valores históricos <= valor_actual. Método estándar (rango
+    percentil empírico), sin interpolar -- con ~18-20 puntos, interpolar no
+    aporta precisión real."""
+    return round(sum(1 for v in historicos if v <= valor_actual) / len(historicos) * 100, 1)
+
+
+def calcular_percentiles(serie_multiplos: dict[str, list[float]]) -> dict[str, dict]:
+    """Para cada múltiplo: dónde está el valor MÁS RECIENTE frente a su
+    propia distribución de los últimos `VENTANA_PERCENTIL_PERIODOS`. Un
+    percentil alto no es necesariamente malo (podría ser porque mejoró de
+    verdad) -- se reporta el rango, no un veredicto."""
+    resultado = {}
+    for multiplo, valores in serie_multiplos.items():
+        vals = [v for v in valores if v is not None][-VENTANA_PERCENTIL_PERIODOS:]
+        if len(vals) < 6:
+            continue
+        actual = vals[-1]
+        resultado[multiplo] = {
+            "valor_actual": round(actual, 3),
+            "percentil": percentil_de(actual, vals),
+            "minimo": round(min(vals), 3),
+            "maximo": round(max(vals), 3),
+            "mediana": round(sorted(vals)[len(vals) // 2], 3),
+            "n": len(vals),
+        }
+    return resultado
+
 
 def calcular_evolucion(filas: list[dict], precios: list[dict], acciones: float | None, emisor_slug: str) -> tuple[list[dict], dict[str, dict]]:
     """(serie, estadisticas). `precios` ya viene ordenado por fecha con
@@ -182,6 +222,7 @@ def calcular_evolucion(filas: list[dict], precios: list[dict], acciones: float |
     operacional_ttm = serie_ttm_historica(desac, "utilidad_operacional", emisor_slug)
     utilidad_ttm = serie_ttm_historica(desac, "utilidad_neta", emisor_slug)
     patrimonio_por_clave = {(f["anio"], f["periodo"]): f["patrimonio"] for f in filas if f.get("patrimonio") is not None}
+    deuda_por_clave = {(f["anio"], f["periodo"]): f["deuda_financiera"] for f in filas if f.get("deuda_financiera") is not None}
 
     claves = sorted(
         set(ebitda_ttm) | set(ingresos_ttm) | set(operacional_ttm) | set(utilidad_ttm) | set(patrimonio_por_clave),
@@ -204,6 +245,23 @@ def calcular_evolucion(filas: list[dict], precios: list[dict], acciones: float |
         fila["precio_contemporaneo"] = _precio_en_o_despues(precios, fecha_cierre, VENTANA_BUSQUEDA_PRECIO_DIAS)
         fila["precio_rezagado"] = _precio_en_o_despues(
             precios, fecha_cierre + timedelta(days=LAG_RADICACION_DIAS), VENTANA_BUSQUEDA_PRECIO_DIAS)
+
+        # Múltiplos por período -- para las bandas de percentil (describen
+        # dónde ha cotizado el emisor frente a sí mismo, no predicen), usan
+        # el precio CONTEMPORÁNEO: no hay sesgo de anticipación que evitar
+        # aquí, es una foto de la valoración de mercado en ese momento, no
+        # una correlación contra un resultado que el mercado no conocía.
+        cap_periodo = fila["precio_contemporaneo"] * acciones / 1_000_000_000 if fila["precio_contemporaneo"] and acciones else None
+        ut = utilidad_ttm.get((anio, periodo))
+        pat = patrimonio_por_clave.get((anio, periodo))
+        deu = deuda_por_clave.get((anio, periodo))
+        eb = ebitda_ttm.get((anio, periodo))
+        fila["per"] = round(cap_periodo / ut, 2) if cap_periodo and ut and ut > 0 else None
+        fila["precio_valor_libro"] = round(cap_periodo / pat, 2) if cap_periodo and pat and pat > 0 else None
+        ev_periodo = round(cap_periodo + (deu or 0), 3) if cap_periodo is not None else None
+        fila["ev_ebitda"] = round(ev_periodo / eb, 2) if ev_periodo is not None and eb and eb > 0 else None
+        fila["deuda_ebitda"] = round(deu / eb, 2) if deu is not None and eb and eb > 0 else None
+
         serie.append(fila)
 
     estadisticas = {}
@@ -236,12 +294,17 @@ def main():
         if f["emisor_id"] in emisores:
             por_emisor[f["emisor_id"]].append(f)
 
-    filas_serie, filas_stats = [], []
+    filas_serie, filas_stats, filas_percentiles = [], [], []
     procesados, sin_ticker, sin_acciones = 0, 0, 0
     for emisor_id, filas in por_emisor.items():
         em = emisores[emisor_id]
-        if em["sector"] in SECTORES_FINANCIEROS:
-            continue  # margen_operacional/ebitda no aplican (mismo criterio del analizador)
+        # Bancos/holdings financieros SÍ entran (F4o): P/E y P/VL son válidos
+        # para ellos (usan utilidad_neta y patrimonio, no ingresos/EBITDA).
+        # Lo que no aplica -- margen_ebitda, margen_operacional, EV/EBITDA,
+        # Deuda/EBITDA -- ya sale en None solo, porque ingresos/utilidad
+        # operacional/ebitda se dejan sin poblar DESDE LA EXTRACCIÓN para
+        # estos sectores (CAMPOS_NO_APLICABLES_FINANCIEROS en
+        # extraer_xbrl.py), no hace falta un guard aparte aquí.
         propios = [i for i in instrumentos if i["emisor_id"] == emisor_id]
         ordinarias = [i for i in propios if not i["ticker"].startswith("PF")]
         elegido = (ordinarias or propios)
@@ -269,6 +332,10 @@ def main():
             filas_serie.append({"emisor_id": emisor_id, **fila})
         for metrica_sufijo, valores in stats.items():
             filas_stats.append({"emisor_id": emisor_id, "metrica": metrica_sufijo, **valores})
+
+        series_multiplos = {m: [f[m] for f in serie] for m in MULTIPLOS_PERCENTIL}
+        for multiplo, datos_percentil in calcular_percentiles(series_multiplos).items():
+            filas_percentiles.append({"emisor_id": emisor_id, "multiplo": multiplo, **datos_percentil})
         procesados += 1
 
     if filas_serie:
@@ -279,9 +346,13 @@ def main():
         cliente.table("evolucion_fundamental_estadisticas").delete().neq("emisor_id", 0).execute()
         for i in range(0, len(filas_stats), 500):
             cliente.table("evolucion_fundamental_estadisticas").insert(filas_stats[i:i + 500]).execute()
+    if filas_percentiles:
+        cliente.table("valoracion_percentiles").delete().neq("emisor_id", 0).execute()
+        for i in range(0, len(filas_percentiles), 500):
+            cliente.table("valoracion_percentiles").insert(filas_percentiles[i:i + 500]).execute()
 
     print(f"Emisores procesados: {procesados} (sin ticker: {sin_ticker}, sin acciones: {sin_acciones})")
-    print(f"Filas de serie: {len(filas_serie)}, filas de estadística: {len(filas_stats)}")
+    print(f"Filas de serie: {len(filas_serie)}, filas de estadística: {len(filas_stats)}, filas de percentil: {len(filas_percentiles)}")
 
     print(f"\n{'emisor_id':>10} {'métrica':<28} {'n':>4} {'R²':>6} {'efect%':>7} {'base%':>7} {'p':>7}")
     destacadas = sorted(
