@@ -10,6 +10,13 @@ const METRICAS_EVOLUCION = [
   { campo: "valor_patrimonial_accion", etiqueta: "Valor patrimonial / acción" },
 ];
 
+const TIPOS_GRAFICO = [
+  { valor: "linea", etiqueta: "Línea" },
+  { valor: "area", etiqueta: "Área" },
+  { valor: "barras", etiqueta: "Barras" },
+];
+const CLAVE_TIPO_GRAFICO = "novainvest:tipo-grafico-evolucion";
+
 const ETIQUETA_MACRO = {
   tes_10a: "TES 10 años",
   default_spread_colombia: "Default spread Colombia",
@@ -323,9 +330,26 @@ export default function Fundamentales() {
 
 function EvolucionSeccion({ slug }) {
   const [datos, setDatos] = useState(undefined); // undefined = cargando, null = error/no-aplica
+  const [tipoGrafico, setTipoGrafico] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_TIPO_GRAFICO) || "linea";
+    } catch {
+      return "linea";
+    }
+  });
   useEffect(() => {
     getEvolucionFundamental(slug).then(setDatos).catch(() => setDatos(null));
   }, [slug]);
+
+  function elegirTipoGrafico(valor) {
+    setTipoGrafico(valor);
+    try {
+      localStorage.setItem(CLAVE_TIPO_GRAFICO, valor);
+    } catch {
+      // localStorage puede fallar (ventana privada, cuota) -- la preferencia
+      // simplemente no persiste entre sesiones, no es un error que mostrar.
+    }
+  }
 
   if (datos === undefined) return <p className="text-xs text-slate-400 mt-3">Cargando evolución…</p>;
   if (datos === null) return null; // sin datos suficientes -- no se muestra sección, sin ruido
@@ -352,7 +376,20 @@ function EvolucionSeccion({ slug }) {
       )}
 
       <div>
-      <h4 className="text-sm font-semibold text-slate-700 mb-1">Evolución fundamental vs. precio</h4>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+        <h4 className="text-sm font-semibold text-slate-700">Evolución fundamental vs. precio</h4>
+        <div className="flex items-center gap-1 text-xs border rounded overflow-hidden">
+          {TIPOS_GRAFICO.map(({ valor, etiqueta }) => (
+            <button
+              key={valor}
+              onClick={() => elegirTipoGrafico(valor)}
+              className={`px-2.5 py-1 ${tipoGrafico === valor ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}
+            >
+              {etiqueta}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="text-xs text-slate-500 mb-3">
         TTM en cada trimestre, indexado junto al precio. La estadística usa el precio <strong>45 días después</strong> del
         cierre de cada período (el mercado no conocía la cifra antes de que se radicara) — describe
@@ -366,7 +403,7 @@ function EvolucionSeccion({ slug }) {
           const st = statsPorMetrica[campo];
           return (
             <div key={campo}>
-              <EvolucionChart puntos={puntos} etiquetaMetrica={etiqueta} unidadMetrica={unidad} />
+              <EvolucionChart puntos={puntos} etiquetaMetrica={etiqueta} unidadMetrica={unidad} tipo={tipoGrafico} />
               {st && st.r2 !== null && (
                 <p className="text-xs text-slate-400 mt-1">
                   R² {st.r2.toFixed(2)} · efectividad {st.efectividad_pct}% (base {st.tasa_base_alza_pct}%) · n={st.n}

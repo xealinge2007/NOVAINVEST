@@ -20,7 +20,7 @@ function fmtFecha(iso) {
   return `${["T1", "T1", "T1", "T2", "T2", "T2", "T3", "T3", "T3", "T4", "T4", "T4"][Number(m) - 1]}-${y.slice(2)}`;
 }
 
-export default function EvolucionChart({ puntos, etiquetaMetrica, unidadMetrica = "" }) {
+export default function EvolucionChart({ puntos, etiquetaMetrica, unidadMetrica = "", tipo = "linea" }) {
   const [hover, setHover] = useState(null);
 
   const datos = useMemo(() => {
@@ -52,6 +52,16 @@ export default function EvolucionChart({ puntos, etiquetaMetrica, unidadMetrica 
   const y = (v) => MARGEN.top + altoUtil - ((v - y0) / (y1 - y0)) * altoUtil;
 
   const linea = (campo) => datos.map((d, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(d[campo])}`).join(" ");
+
+  // El área y las barras se anclan en 100 (el punto de partida indexado), no
+  // en cero -- para una serie indexada, "cero" no tiene significado (sería
+  // ocultar toda diferencia real bajo una escala enorme); el 100 sí lo tiene:
+  // es la referencia contra la que se lee todo lo demás.
+  const area = (campo) =>
+    `${linea(campo)} L${x(datos.length - 1)},${y(100)} L${x(0)},${y(100)} Z`;
+
+  const pasoX = datos.length > 1 ? anchoUtil / (datos.length - 1) : anchoUtil;
+  const anchoBarra = Math.max(2, Math.min(14, pasoX * 0.32));
 
   function alMover(e) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -86,8 +96,33 @@ export default function EvolucionChart({ puntos, etiquetaMetrica, unidadMetrica 
         onMouseLeave={() => setHover(null)}
       >
         <line x1={MARGEN.left} y1={y(100)} x2={ANCHO - MARGEN.right} y2={y(100)} stroke={GRID} strokeWidth="1" />
-        <path d={linea("idxPrecio")} fill="none" stroke={COLOR_PRECIO} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={linea("idxValor")} fill="none" stroke={COLOR_METRICA} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {tipo === "area" && (
+          <>
+            <path d={area("idxPrecio")} fill={COLOR_PRECIO} fillOpacity="0.18" stroke="none" />
+            <path d={area("idxValor")} fill={COLOR_METRICA} fillOpacity="0.18" stroke="none" />
+          </>
+        )}
+        {tipo === "barras" &&
+          datos.map((d, i) => (
+            <g key={`barra-${i}`}>
+              <rect
+                x={x(i) - anchoBarra} y={Math.min(y(d.idxPrecio), y(100))}
+                width={anchoBarra} height={Math.max(1, Math.abs(y(d.idxPrecio) - y(100)))}
+                fill={COLOR_PRECIO} fillOpacity="0.85"
+              />
+              <rect
+                x={x(i)} y={Math.min(y(d.idxValor), y(100))}
+                width={anchoBarra} height={Math.max(1, Math.abs(y(d.idxValor) - y(100)))}
+                fill={COLOR_METRICA} fillOpacity="0.85"
+              />
+            </g>
+          ))}
+        {tipo !== "barras" && (
+          <>
+            <path d={linea("idxPrecio")} fill="none" stroke={COLOR_PRECIO} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={linea("idxValor")} fill="none" stroke={COLOR_METRICA} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        )}
         {datos.map((d, i) => (
           <text key={i} x={x(i)} y={ALTO - 6} fontSize="9" fill={INK_MUTED} textAnchor="middle">
             {i % Math.ceil(datos.length / 8) === 0 ? fmtFecha(d.fecha_cierre) : ""}
