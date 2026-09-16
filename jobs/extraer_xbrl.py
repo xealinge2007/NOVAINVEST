@@ -300,6 +300,24 @@ def main():
                         resumen["no_contrastable"] += 1
                     nota = detalle
 
+                # Un mismo período se lee dos veces: una vez como período propio
+                # de su archivo, otra como comparativo dentro del archivo del
+                # período siguiente. El comparativo suele traer menos campos
+                # (el contexto de "flujo" del año anterior no siempre está
+                # completo). Fusionar en vez de reemplazar evita que la segunda
+                # lectura, más pobre, borre con `None` lo que la primera ya
+                # había extraído bien -- verificado real en TERPEL 2025-T1
+                # (11 campos desde su propio archivo, reducido a 5 al procesar
+                # 2026-T1 como comparativo, en la misma corrida).
+                campos_previos_xbrl = (
+                    {c: previa.get(c) for c in CAMPOS_NUMERICOS}
+                    if previa and previa.get("metodo_validacion") in ("xbrl_radicado", "doble_extraccion")
+                    else {}
+                )
+                campos_fusionados = {**campos_previos_xbrl, **campos}
+                if len(campos) < sum(1 for v in campos_previos_xbrl.values() if v is not None):
+                    resumen["comparativo_mas_pobre_fusionado"] += 1
+
                 fila = {
                     "emisor_id": emisor_id, "anio": anio, "periodo": periodo, "consolidado": True,
                     "origen": "reportado", "metodo_validacion": metodo,
@@ -307,14 +325,15 @@ def main():
                     **({"acumulado": r["xbrl"].get("acumulado"),
                         "dias_periodo": r["xbrl"].get("dias_periodo")} if hay_periodicidad else {}),
                     **{c: None for c in CAMPOS_NUMERICOS},
-                    **campos,
+                    **campos_fusionados,
                 }
                 if not args.dry_run:
                     cliente.table("fundamentales_reportados").upsert(
                         fila, on_conflict="emisor_id,anio,periodo,consolidado"
                     ).execute()
+                previas[(emisor_id, anio, periodo)] = {**(previa or {}), **fila}
                 resumen[metodo] += 1
-                print(f"  {slug:26s} {anio}-{periodo:5s} {len(campos):2d} campos  {metodo}"
+                print(f"  {slug:26s} {anio}-{periodo:5s} {len(campos_fusionados):2d} campos  {metodo}"
                       + (f"  [{nota[:70]}]" if nota else ""))
 
     print("\n" + "=" * 76)
