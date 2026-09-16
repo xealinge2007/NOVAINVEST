@@ -483,6 +483,43 @@ def costo_capital(beta: float, capitalizacion: float, deuda: float, sup: dict[st
     return costo_patrimonio, costo_deuda_dt, wacc
 
 
+def revisar_consistencia_ingresos(filas: list[dict]) -> str:
+    """Aviso cuando el ANUAL declara menos ingresos que un trimestre
+    acumulado del mismo año -- matemáticamente imposible si ambos son
+    acumulados del mismo concepto (los ingresos no son negativos). No se
+    corrige adivinando cuál de los dos vale: se marca y se excluye del
+    ranking, igual que `revisar_multiplos`.
+
+    Verificado real en CELSIA: el XBRL 2025-ANUAL declara `Revenue` en el
+    contexto plano (mismo tag, misma convención de duración que el resto del
+    corpus, sin dimensiones -- no es un error de selección de contexto) por
+    2.097,75, mientras que 2025-T3 (acumulado enero-septiembre, 9 meses)
+    declara 4.063,92 para el mismo concepto. Es un defecto de la propia
+    radicación del emisor, no del extractor."""
+    por_anio = {}
+    for f in filas:
+        if f.get("periodo") == "ANUAL" or f.get("ingresos") is None:
+            continue
+        if f.get("acumulado") is not True:
+            continue
+        por_anio.setdefault(f["anio"], []).append(f)
+    avisos = []
+    for f in filas:
+        if f.get("periodo") != "ANUAL" or f.get("ingresos") is None:
+            continue
+        trimestres = por_anio.get(f["anio"], [])
+        if not trimestres:
+            continue
+        peor = max(trimestres, key=lambda t: t["ingresos"])
+        if peor["ingresos"] > f["ingresos"] * 1.001:
+            avisos.append(
+                f"ingresos {f['anio']}-ANUAL ({f['ingresos']:,.0f}) menores que "
+                f"{f['anio']}-{peor['periodo']} acumulado ({peor['ingresos']:,.0f}) — "
+                "el propio XBRL del emisor es inconsistente, revisar con el emisor antes de usarlo"
+            )
+    return " | ".join(avisos)
+
+
 PVL_IMPLAUSIBLE = 8.0
 PER_IMPLAUSIBLE = 60.0
 
@@ -615,6 +652,7 @@ def main():
         else:
             acumulado, evidencia = detectar_acumulado(filas)
         desac = desacumular(filas) if acumulado else filas
+        alerta_consistencia = revisar_consistencia_ingresos(filas)
 
         ingresos, fuente_ing = ttm(desac, "ingresos", em["slug"])
         utilidad, fuente_ut = ttm(desac, "utilidad_neta", em["slug"])
@@ -762,8 +800,10 @@ def main():
             "eps_cop": _r(_div(utilidad * 1_000_000_000 if utilidad is not None else None, acciones), 2),
             "per": _r(_div(capitalizacion, utilidad)),
             "precio_valor_libro": _r(_div(capitalizacion, patrimonio)),
-            "alerta_multiplos": revisar_multiplos(
-                _r(_div(capitalizacion, utilidad)), _r(_div(capitalizacion, patrimonio)), ticker),
+            "alerta_multiplos": " | ".join(filter(None, [
+                revisar_multiplos(_r(_div(capitalizacion, utilidad)), _r(_div(capitalizacion, patrimonio)), ticker),
+                alerta_consistencia,
+            ])),
             "beta": _r(beta, 2),
             "costo_patrimonio": _pct(costo_patrimonio),
             "costo_deuda_dt": _pct(costo_deuda_dt),

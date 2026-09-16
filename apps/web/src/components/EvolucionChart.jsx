@@ -62,6 +62,7 @@ export default function EvolucionChart({ puntos, etiquetaMetrica, unidadMetrica 
 
   const pasoX = datos.length > 1 ? anchoUtil / (datos.length - 1) : anchoUtil;
   const anchoBarra = Math.max(2, Math.min(14, pasoX * 0.32));
+  const anchoBarraSola = Math.max(3, Math.min(22, pasoX * 0.5));
 
   function alMover(e) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -117,11 +118,20 @@ export default function EvolucionChart({ puntos, etiquetaMetrica, unidadMetrica 
               />
             </g>
           ))}
-        {tipo !== "barras" && (
-          <>
-            <path d={linea("idxPrecio")} fill="none" stroke={COLOR_PRECIO} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d={linea("idxValor")} fill="none" stroke={COLOR_METRICA} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </>
+        {tipo === "mixto" &&
+          datos.map((d, i) => (
+            <rect
+              key={`barra-mixto-${i}`}
+              x={x(i) - anchoBarraSola / 2} y={Math.min(y(d.idxValor), y(100))}
+              width={anchoBarraSola} height={Math.max(1, Math.abs(y(d.idxValor) - y(100)))}
+              fill={COLOR_METRICA} fillOpacity="0.75"
+            />
+          ))}
+        {(tipo === "linea" || tipo === "area" || tipo === "mixto") && (
+          <path d={linea("idxPrecio")} fill="none" stroke={COLOR_PRECIO} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+        {(tipo === "linea" || tipo === "area") && (
+          <path d={linea("idxValor")} fill="none" stroke={COLOR_METRICA} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         )}
         {datos.map((d, i) => (
           <text key={i} x={x(i)} y={ALTO - 6} fontSize="9" fill={INK_MUTED} textAnchor="middle">

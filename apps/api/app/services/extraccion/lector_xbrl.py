@@ -449,6 +449,18 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
         return _vacio(motivos, evidencia_escala)
     divisor = PESOS_POR_MIL_MILLONES / escala
 
+    # Cuando el emisor no tagea ningún conteo directo de acciones -- BVC no
+    # trae `NumberOfSharesOutstanding` ni `NumberOfSharesIssued` en ningún
+    # contexto, ni siquiera en cero -- se reconstruye con la misma identidad
+    # que ya usa `_escala_del_archivo` para validar la escala: utilidad /
+    # utilidad-por-acción = acciones. Verificado real: para BVC 2025-ANUAL da
+    # ~65,8 millones, del orden de magnitud público conocido del emisor -- no
+    # es una invención, es la cifra que el propio informe ya implica con sus
+    # otras dos cifras, solo que no la tagea aparte.
+    if not acciones and utilidad_bruta and por_accion:
+        acciones = round(utilidad_bruta * escala / por_accion)
+        concepto_acc = f"{CONCEPTOS['utilidad_neta'][-1]} / {CONCEPTO_UTILIDAD_POR_ACCION[0]} (derivado, sin conteo directo tageado)"
+
     campos = {}
     origen_concepto = {}
     dias_flujo = None

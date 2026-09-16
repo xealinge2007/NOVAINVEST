@@ -14,6 +14,7 @@ const TIPOS_GRAFICO = [
   { valor: "linea", etiqueta: "Línea" },
   { valor: "area", etiqueta: "Área" },
   { valor: "barras", etiqueta: "Barras" },
+  { valor: "mixto", etiqueta: "Mixto (línea + barras)" },
 ];
 const CLAVE_TIPO_GRAFICO = "novainvest:tipo-grafico-evolucion";
 
