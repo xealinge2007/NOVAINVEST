@@ -163,6 +163,12 @@ MINIMO_NUMEROS_TABLA = 20  # calibrado contra CIBEST 2025-T2: la página de pros
 # una tabla real más chica.
 MARGEN_PAGINAS_DESPUES = 2  # una tabla puede seguir a la vuelta de la página
 MINIMO_PAGINAS_BLOQUE_ESCANEADO = 3  # una portada/firma escaneada aislada no son los estados financieros
+UMBRAL_CARACTERES_PAGINA_ESCANEADA = 100  # una pagina de tabla escaneada como imagen conserva un
+# residuo de texto real (numero de pagina, encabezado de membrete) -- exigir string vacio la dejaba
+# fuera de "sin texto" y el triage la trataba como si tuviera contenido legible. Calibrado contra
+# GRUPO_SURA/2023-T1 paginas 56-62 (el balance e income statement reales, 22-51 caracteres cada una,
+# solo el numero de pagina) contra un muestreo de 80 documentos reales: ninguna pagina real con
+# contenido legible (titulo de seccion, tabla, prosa) cayo entre 50 y 150 caracteres.
 
 
 def _primera_posicion(texto_normalizado: str, alternativas: list[str]) -> int | None:
@@ -349,7 +355,10 @@ def triage_documento(ruta_pdf, pdf_abierto=None) -> dict:
             _es_pagina_indice(c) and not _tiene_tabla_real(crudo)
             for c, crudo in zip(cabeceras, textos_crudos)
         ]
-        paginas_sin_texto = [i for i, t in enumerate(textos_crudos) if not t.strip()]
+        paginas_sin_texto = [
+            i for i, t in enumerate(textos_crudos)
+            if len(t.strip()) < UMBRAL_CARACTERES_PAGINA_ESCANEADA
+        ]
 
         def _leer(_i: int) -> None:
             return None

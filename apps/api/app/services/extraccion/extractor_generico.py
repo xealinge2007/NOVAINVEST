@@ -163,6 +163,11 @@ MARCADOR_MILLONES = "millones de pesos"
 MARCADOR_MILES = "miles de pesos"  # verificado real: PEI (patrimonio autónomo
 # inmobiliario) reporta en miles, no millones -- "milesdepesos" no es substring de
 # "milesdemillonesdepesos" ni de "millonesdepesos", así que no colisiona con los otros dos.
+MARCADOR_MILES_DE_MILLONES_SIN_MONEDA = "miles de millones"  # GRUPO_AVAL declara la
+# unidad sin la palabra "pesos": "Informacion reportada en miles de millones y bajo
+# NIIF" (verificado real en 2023-T4, 2024-T4, 2025-T1, 2025-T2). Se acepta esta frase
+# mas laxa SOLO cuando el emisor no menciona dolares en el mismo membrete -- un
+# reporte en USD lo dice explicito ("miles de dolares", visto en TERPEL/convenciones).
 
 
 def _detectar_factor_unidad(texto_pagina: str) -> tuple[float, str] | None:
@@ -192,6 +197,8 @@ def _factor_de_texto(texto: str) -> tuple[float, str] | None:
         return 0.001, "miles_de_millones"
     if normalizar(MARCADOR_MILES) in t:
         return 0.000001, "miles_de_millones"
+    if normalizar(MARCADOR_MILES_DE_MILLONES_SIN_MONEDA) in t and "dolar" not in t:
+        return 1.0, "miles_de_millones"
     return None
 
 

@@ -100,6 +100,15 @@ for texto, esperado in [
     r = eg._detectar_factor_unidad(NL.join(["TITULO LARGO DEL EMISOR", "Al 31 de diciembre", texto]))
     revisar(f"membrete {texto[:40]!r}", r[0] if r else None, esperado)
 
+# --- GRUPO_AVAL declara la unidad sin "pesos" (16-sep-2026, caso real) -------
+# Literal de GRUPO_AVAL/2025-T1_Informe-Periodico-Trimestral.pdf, pagina 6.
+for texto, esperado in [
+    ("Informacion reportada en miles de millones y bajo NIIF, salvo informacion por accion", 1.0),
+    ("Cifras expresadas en miles de millones de dolares", None),  # guardia: no confundir con USD
+]:
+    r = eg._detectar_factor_unidad(NL.join(["Reporte de resultados consolidados para 1T2025", texto]))
+    revisar(f"membrete laxo {texto[:40]!r}", r[0] if r else None, esperado)
+
 print()
 if fallos:
     print(f"{len(fallos)} prueba(s) fallaron: {fallos}")
