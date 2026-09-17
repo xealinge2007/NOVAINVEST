@@ -59,11 +59,11 @@ Este documento reporta solo lo verificable localmente; no se inventa cobertura d
 **Cobertura por período (no por archivo — un período cuenta cubierto si AL MENOS UN archivo de ese
 período pasó la extracción):**
 
-| | Antes de esta sesión | Después (16/17-sep-2026) |
+| | Antes de esta sesión | Después (16/17-sep-2026, 4 correcciones) |
 |---|---:|---:|
-| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **195/315 (61,9 %)** |
-| Archivos-fuente OK | 195/412 | **203/412** |
-| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo en cada uno de los 3 cambios |
+| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **202/315 (64,1 %)** |
+| Archivos-fuente OK | 195/412 | **216/412** |
+| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo en cada una de las 4 correcciones |
 
 **Cobertura de los 5 holdings del MVP W3a (la que importa para arrancar):**
 
@@ -71,16 +71,16 @@ período pasó la extracción):**
 |---|---:|---:|
 | GRUPO_ARGOS | 14/15 | 93,3 % |
 | GRUPO_AVAL | 7/8 | 87,5 % (era 0/8 antes de esta sesión) |
-| CORFICOLOMBIANA | 11/16 | 68,8 % |
+| CORFICOLOMBIANA | 13/16 | 81,2 % (era 68,8 %) |
 | GEB | 2/4 | 50,0 % |
 | GRUPO_SURA | 7/19 | 36,8 % |
 
 **Veredicto de W0 (actualizado): el MVP arranca con GRUPO_ARGOS, GRUPO_AVAL y CORFICOLOMBIANA**
-(cobertura suficiente para un NAV con historial). **GEB y GRUPO_SURA no tienen datos suficientes
-todavía** — se declara "historial insuficiente" en esos dos hasta que la cola de huecos de abajo
-baje. Esto no es una limitación del motor: es la regla de honestidad que ya rige todo el proyecto
-(`§3.7` del plan v3: "ningún emisor muestra valor justo si no alcanza el mínimo de trimestres
-validados").
+(cobertura suficiente para un NAV con historial, los tres por encima del 80 %). **GEB y GRUPO_SURA
+no tienen datos suficientes todavía** — se declara "historial insuficiente" en esos dos hasta que
+la cola de huecos de abajo baje. Esto no es una limitación del motor: es la regla de honestidad que
+ya rige todo el proyecto (`§3.7` del plan v3: "ningún emisor muestra valor justo si no alcanza el
+mínimo de trimestres validados").
 
 ## 4. Lo que se corrigió en esta sesión (código, verificado, sin regresión)
 
@@ -121,38 +121,51 @@ regla del proyecto de comparar archivo por archivo que ningún OK se vuelva no-O
    el principio (verificado con `triage_documento()` directamente); el bug estaba en el extractor,
    no en el triage. Prueba nueva: `jobs/test_etiqueta_moneda.py`.
 
+4. **`extractor_generico.py` — encabezado de fecha con los caracteres intercalados entre columnas
+   (`_indice_columna_por_coordenadas`, nuevo respaldo).** CORFICOLOMBIANA renderiza el encabezado
+   de fecha ("Al 31 de marzo de 2026" / "Al 31 de diciembre de 2025") en glifos cuyo orden de
+   lectura de pdfplumber los intercala letra por letra entre las dos columnas — verificado que ni
+   `extract_text()` ni `extract_text(layout=True)` lo resuelven, ambos siguen el mismo orden.
+   Nuevo respaldo que agrupa las **palabras por coordenada** (`extract_words()`, x0/top) en vez de
+   texto plano: ancla hacia arriba desde la primera cifra bien formada de la tabla (evita el error
+   de un primer intento que caminaba desde una banda fija de página y se quedaba atascado en la
+   segunda fila de datos, porque el interlineado normal de la tabla es del mismo orden de magnitud
+   que el salto real hacia el título), agrupa por columna con un umbral de separación horizontal, y
+   descarta las columnas sin dígitos (etiquetas sueltas como "Activos"/"Nota") antes de numerar,
+   para que el índice devuelto caiga en la misma convención que usa `_valor_en_columna` (el N-ésimo
+   número real de cada fila de datos, no la N-ésima columna visual de la página). **Efecto medido,
+   mucho mayor al esperado — generalizó a varios emisores con el mismo problema de fondo, no solo
+   a Corficolombiana**: 3 períodos de CORFICOLOMBIANA (2025-ANUAL, 2026-T1, T2), 6 de ECOPETROL,
+   3 de PEI y 1 de DAVIVIENDA_GROUP pasan a `OK` — 13 períodos en total, la corrección de mayor
+   impacto de la sesión. Verificado también end-to-end con `extraer()` completo (no solo la función
+   aislada): `cuadra_balance=True` en CORFICOLOMBIANA 2026-T1. Prueba nueva:
+   `jobs/test_columna_por_coordenadas.py` (abre el PDF real del corpus; se salta con aviso si no
+   está disponible en la máquina).
+
 ## 5. Lo que queda — priorizado por canal, no por emisor
 
-La cola de 315-195=120 períodos sin cubrir se separa en tres canales que necesitan trabajo
+La cola de 315-202=113 períodos sin cubrir se separa en tres canales que necesitan trabajo
 **distinto**, siguiendo la disciplina ya establecida en `db/DECISION_ARQUITECTURA_EXTRACCION.md`.
 No se puede llegar al 100 % solo con código: una parte es descarga (de Alex) y otra es lectura
 manual del subagente (por archivo, no por commit).
 
 | Canal | Qué es | Volumen | Quién lo resuelve |
 |---|---|---:|---|
-| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 13), etiquetas no reconocidas (`SIN_ETIQUETAS`, 4), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 47 — la clase más grande que queda tras el fix de "Ps."), balance que no cuadra (`BALANCE_NO_CUADRA`, 3), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~123 | Sesión de código futura. Candidato a revisar primero: repetir sobre `BANCO_DE_BOGOTA` (33,3 %, el peor del universo) y `CORFICOLOMBIANA` el mismo método que resolvió Aval — inspeccionar directo con `pdfplumber` (no con PyMuPDF, que rompe líneas distinto) la página real del balance antes de teorizar la causa. |
-
-**Bug nuevo encontrado y NO corregido esta sesión (para no repetir la investigación):**
-`CORFICOLOMBIANA/2026-T1` y `2026-T2` (y probablemente `2025-ANUAL`) fallan `PARCIAL_SIN_BALANCE`
-con "no se pudo resolver la columna". Causa raíz verificada: el encabezado de fecha de la columna
-se extrae **con los caracteres intercalados entre las dos columnas** —
-`"Al 31 d\n2\ne\n0 2\nm\n6\na rzo de Al 31\nd\nd\ne\ne\n2\nd\n0\n2\n5\nic\ni\ne mbre"` en vez de "Al
-31 de marzo de 2026" / "Al 31 de diciembre de 2025". Es un problema de **orden de lectura de
-pdfplumber** sobre un encabezado de fecha partido en varias líneas angostas de dos columnas
-adyacentes, no de las etiquetas de fila (esas sí se leen bien, ver la muestra en el propio
-diagnóstico). `_indice_columna_actual` busca la fecha como frase legible y nunca la encuentra así.
-Posible arreglo: extraer esa franja del encabezado por coordenadas (como ya hace `triage.py` para
-la banda superior) en vez de por texto plano, o un fallback tolerante a fecha fragmentada
-(buscar año y mes como tokens sueltos en la ventana, no como frase). No intentado esta sesión —
-distinto de raíz a los dos bugs de arriba, mayor riesgo de regresión sin más tiempo de calibrado.
-| **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética | 59 | Trabajo por sesión, no automatizable por decisión ya tomada. Prioridad: los períodos de GRUPO_SURA 2023-2024 que bloquean el MVP W3a. |
+| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 9 — bajó de 13 con el fix de coordenadas, quedan los que ni siquiera esa vía resuelve), etiquetas no reconocidas (`SIN_ETIQUETAS`, 4), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 38 — sigue siendo la clase más grande), balance que no cuadra (`BALANCE_NO_CUADRA`, 3), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~110 | Sesión de código futura. `BANCO_DE_BOGOTA` sigue siendo el peor del universo con datos reales (33,3 %, tras CONSTRUCTORA_CONCONCRETO y GRUPO_NUTRESA en 0 %) — candidato a revisar primero con el mismo método que funcionó las 3 veces esta sesión: inspeccionar directo con `pdfplumber` (nunca con PyMuPDF, que rompe líneas distinto) el PDF real antes de teorizar la causa. |
+| **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética | 59 | Trabajo por sesión, no automatizable por decisión ya tomada. Prioridad: los períodos de GRUPO_SURA 2023-2024 que bloquean el cuarto holding del MVP. |
 | **C — Descarga (Alex)** | Archivo con estados financieros que genuinamente no existe todavía en `SIMEV_BVC`, o el existente es un informe narrativo que remite a los EEFF radicados aparte (`archivo_sin_estados`, patrón ya documentado con GRUPO_NUTRESA/ISA/PEI en la sesión del 08-sep) | Sin medir en esta sesión (requiere Supabase inalcanzable — ver §3) | Alex descarga del SIMEV/relación con inversionistas. |
 
+**Lección metodológica de esta sesión, para la próxima**: de los 4 bugs corregidos, los dos que
+más rindieron (el de "Ps." y el de coordenadas) partieron de una **teoría inicial equivocada**
+("el título queda debajo de la tabla") que solo se descartó al inspeccionar el PDF real con
+`pdfplumber` en vez de razonar sobre el síntoma reportado por el diagnóstico. **Verificar contra
+el archivo real antes de proponer una causa** — el diagnóstico dice el síntoma (`PARCIAL_SIN_
+BALANCE`, `SIN_COLUMNA`), nunca la causa.
+
 **Siguiente paso concreto, en orden de valor esperado:**
-1. Investigar el bug del canal A en GRUPO_AVAL/CORFICOLOMBIANA (título de tabla después de la
-   tabla, no antes) — mismo patrón probablemente en BANCO_DE_BOGOTA (33,3 % de cobertura, el peor
-   del universo tras CONSTRUCTORA_CONCONCRETO y GRUPO_NUTRESA).
-2. Canal B sobre GRUPO_SURA 2023-2024 (desbloquea el tercer holding del MVP).
+1. Repetir el método de esta sesión sobre `BANCO_DE_BOGOTA` (33,3 % de cobertura, el peor del
+   universo con datos reales) — probablemente comparte alguno de los 4 patrones ya resueltos.
+2. Canal B sobre GRUPO_SURA 2023-2024 (desbloquea el cuarto holding del MVP).
 3. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar
    canal C (descarga) de lo que ya está medido aquí, y verificar cobertura real del canal XBRL
    (que esta sesión no pudo confirmar).

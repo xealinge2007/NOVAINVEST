@@ -388,12 +388,20 @@ def _detectar_factor_unidad_por_simbolo(
                     return factor
     return None
 
-def _indice_columna_actual(texto_pagina: str, anio: int, periodo: str) -> int | None:
+def _indice_columna_actual(
+    texto_pagina: str, anio: int, periodo: str, pagina_pdfplumber=None
+) -> int | None:
     """Busca en las primeras ~12 líneas de la página (el encabezado, antes de
     cualquier fila de datos) las fechas de cada columna y devuelve la
     posición (0-based) que corresponde a (anio, periodo). None si no se
     encuentra ninguna fecha reconocible -- mejor no adivinar que arriesgar
     la columna equivocada.
+
+    `pagina_pdfplumber` es opcional: si se pasa y el texto plano no alcanza
+    (las tres estrategias de abajo devuelven None), se intenta el respaldo
+    por coordenadas `_indice_columna_por_coordenadas` sobre esa página antes
+    de rendirse. Ver su docstring -- resuelve encabezados donde el orden de
+    lectura de pdfplumber intercala los caracteres de dos columnas.
 
     Tolerante a un espacio insertado entre dígitos: verificado real, el
     encabezado en negrita de ECOPETROL 2022-ANUAL llega como
@@ -470,6 +478,106 @@ def _indice_columna_actual(texto_pagina: str, anio: int, periodo: str) -> int | 
     if len(anios_bloque) >= 2 and anios_bloque.count(str(anio)) == 1:
         return anios_bloque.index(str(anio))
 
+    if pagina_pdfplumber is not None:
+        return _indice_columna_por_coordenadas(pagina_pdfplumber, anio, periodo)
+
+    return None
+
+
+# Numero "bien formado" (separador de miles coma O punto) para anclar donde
+# EMPIEZA la primera fila de datos reales -- misma idea que ya usa el resto
+# del extractor (exigir separador de miles evita confundir un numero de nota
+# al pie con una cifra real). Sirve para acotar el encabezado de fecha por
+# arriba de esa ancla, no para parsear el valor.
+PATRON_NUMERO_ANCLA_FILA_DATOS = re.compile(r"^\(?-?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?\)?$")
+
+# Ventana (puntos, hacia arriba desde la primera fila de datos) donde se
+# buscan las palabras del encabezado de fecha. Calibrado contra
+# CORFICOLOMBIANA 2026-T1 (tamano carta, 792pt): la primera cifra real
+# ("4,902,760") esta en top=169.7 y las tres filas del encabezado de fecha
+# ("Al 31 de marzo de"/"Al 31 de diciembre", "Nota", los anios) en
+# 132.8-140.9 -- a 28.8-36.9 puntos de esa ancla. El titulo del estado
+# ("Estado Consolidado...") esta a 86.3 puntos, bien afuera de la ventana.
+VENTANA_ENCABEZADO_ANTES_DE_DATOS = 45.0
+
+# Separacion horizontal minima (puntos) entre palabras para considerarlas de
+# columnas distintas. Calibrado contra el mismo caso: el hueco real entre
+# "de" (x1=453.1, columna izquierda) y "Al" (x0=477.2, columna derecha) es de
+# 24.1 puntos; el espacio entre palabras de una misma columna (ej. "31"->"de")
+# es de 2-4 puntos. 15 separa limpio ambos casos reales.
+GAP_MINIMO_COLUMNA = 15.0
+
+
+def _indice_columna_por_coordenadas(pagina_pdfplumber, anio: int, periodo: str) -> int | None:
+    """Respaldo por COORDENADAS cuando ni el texto plano ni el bloque
+    concatenado (arriba) resuelven la columna -- verificado real,
+    CORFICOLOMBIANA 2026-T1: el encabezado de fecha se renderiza en dos
+    "renglones" de texto que no coinciden con las dos fechas reales (uno con
+    "Al 31 de marzo de"/"Al 31 de diciembre", el otro con los dígitos del año,
+    desalineado del primero), y el orden de lectura de pdfplumber los
+    intercala letra por letra entre las dos columnas: 'Al 31 d', '0 2',
+    'a rzo de Al 31', 'e mbre'. Ni `extract_text()` ni `extract_text(layout=
+    True)` lo resuelven -- ambos siguen el mismo orden de lectura. Solo
+    agrupar las PALABRAS individuales (`extract_words`, con su propia
+    coordenada x0/top) por columna reconstruye el texto real.
+
+    El encabezado se aisla ANCLANDO hacia arriba desde la primera cifra bien
+    formada de la tabla (`PATRON_NUMERO_ANCLA_FILA_DATOS`), no con una banda
+    fija de página ni caminando fila por fila: un intento anterior caminaba
+    desde el final de una banda amplia y se quedaba atascado en la SEGUNDA
+    fila de datos (el salto entre renglones de una tabla normal, ~14-15pt, es
+    del mismo orden que el salto real hacia el título -- no hay un umbral que
+    separe ambos caminando desde abajo sin saber dónde empiezan los datos).
+
+    Sobre las palabras de esa ventana, un salto horizontal >= `GAP_MINIMO_
+    COLUMNA` (con la lista ya ordenada por x0) abre columna nueva; dentro de
+    cada columna se ordena por (top, x0) antes de unir el texto -- así
+    "Al 31 de marzo de" (top=132.8) y "2026" (top=140.9, mismo x0
+    aproximado) quedan en el orden correcto aunque pdfplumber los haya
+    entregado en renglones distintos.
+
+    Mismo criterio de seguridad que el resto de la función: la fecha buscada
+    tiene que aparecer en UNA sola columna reconstruida, o no se resuelve."""
+    todas = pagina_pdfplumber.extract_words()
+    tops_datos = [w["top"] for w in todas if PATRON_NUMERO_ANCLA_FILA_DATOS.match(w["text"])]
+    if not tops_datos:
+        return None
+    primer_dato = min(tops_datos)
+
+    palabras = sorted(
+        (w for w in todas if primer_dato - VENTANA_ENCABEZADO_ANTES_DE_DATOS <= w["top"] < primer_dato),
+        key=lambda w: w["x0"],
+    )
+    if not palabras:
+        return None
+
+    columnas: list[list[dict]] = [[palabras[0]]]
+    for palabra in palabras[1:]:
+        if palabra["x0"] - columnas[-1][-1]["x0"] < GAP_MINIMO_COLUMNA:
+            columnas[-1].append(palabra)
+        else:
+            columnas.append([palabra])
+
+    # Etiquetas sueltas como "Activos" o "Nota" quedan aisladas como su propia
+    # columna (su x0 esta lejos de cualquier fecha) pero NO son columnas de
+    # valor -- `_valor_en_columna` cuenta el indice sobre los NUMEROS de cada
+    # fila de datos, nunca sobre estas etiquetas. Se descartan antes de
+    # numerar para que el indice devuelto caiga en la misma convencion.
+    textos_columna = [
+        " ".join(w["text"] for w in sorted(columna, key=lambda w: (round(w["top"]), w["x0"])))
+        for columna in columnas
+    ]
+    textos_columna = [t for t in textos_columna if re.search(r"\d", t)]
+
+    if periodo in PERIODO_A_MES_TRIMESTRE:
+        codigo_corto = f"{PERIODO_A_MES_TRIMESTRE[periodo]}T{str(anio)[2:]}"
+        coincidencias = [i for i, t in enumerate(textos_columna) if codigo_corto in re.sub(r"\s", "", t)]
+        if len(coincidencias) == 1:
+            return coincidencias[0]
+
+    coincidencias = [i for i, t in enumerate(textos_columna) if str(anio) in re.sub(r"\s", "", t)]
+    if len(coincidencias) == 1:
+        return coincidencias[0]
     return None
 
 
@@ -671,7 +779,10 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             )
         if pagina_balance is not None:
             texto = _texto(pagina_balance)
-            indice_col = _indice_columna_actual(texto, anio, periodo)
+            indice_col = _indice_columna_actual(
+                texto, anio, periodo,
+                pdf.pages[pagina_balance] if pagina_balance < len(pdf.pages) else None,
+            )
             deteccion = _detectar_factor_unidad(texto)
             if deteccion is None:
                 deteccion = _detectar_factor_unidad_por_simbolo(texto, _texto, pagina_balance)
@@ -697,7 +808,9 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 # continuación no suele repetir su propio encabezado de fechas.
                 if (pasivos is None or patrimonio is None) and pagina_balance + 1 < len(pdf.pages):
                     texto_siguiente = _texto(pagina_balance + 1)
-                    indice_siguiente = _indice_columna_actual(texto_siguiente, anio, periodo)
+                    indice_siguiente = _indice_columna_actual(
+                        texto_siguiente, anio, periodo, pdf.pages[pagina_balance + 1]
+                    )
                     if indice_siguiente is None:
                         indice_siguiente = indice_col
                     patron_sig, parser_sig = detectar_formato_numero(texto_siguiente)
@@ -738,7 +851,10 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             pueden variar por tabla dentro del mismo documento (ver Ecopetrol:
             balance a 2 columnas, resultados/flujos a 3 -- el índice hay que
             recalcularlo por página, la unidad casi siempre es la misma."""
-            indice_local = _indice_columna_actual(texto_pagina, anio, periodo)
+            indice_local = _indice_columna_actual(
+                texto_pagina, anio, periodo,
+                pdf.pages[pagina] if pagina is not None and pagina < len(pdf.pages) else None,
+            )
             if indice_local is None:
                 return None
             deteccion_local = _detectar_factor_unidad(texto_pagina)
