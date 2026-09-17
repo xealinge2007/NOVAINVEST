@@ -507,6 +507,17 @@ VENTANA_ENCABEZADO_ANTES_DE_DATOS = 45.0
 # es de 2-4 puntos. 15 separa limpio ambos casos reales.
 GAP_MINIMO_COLUMNA = 15.0
 
+# x_tolerance (puntos) de pdfplumber para el respaldo de "kerning ancho" --
+# ver el uso en `extraer()`. El default de pdfplumber es 3; algunos PDF de
+# BANCO_DE_BOGOTA (verificado real, 2024-T3 y 2026-T2) usan un font cuyo
+# espaciado natural entre letras SUPERA ese umbral, así que cada letra sale
+# como "palabra" aparte ("E s ta d o..."). Probado 3/5/8/10/15 contra el
+# archivo real: 5 ya reconstruye las palabras del título pero deja pares
+# sueltos en el cuerpo ("am ortizado"); 8 reconstruye TODO limpio (títulos,
+# etiquetas de fila y cifras) sin fusionar palabras que deberían seguir
+# separadas. No se usa como default global -- ver el guard en `extraer()`.
+TOLERANCIA_X_LETRA_ESPACIADA = 8.0
+
 
 def _indice_columna_por_coordenadas(pagina_pdfplumber, anio: int, periodo: str) -> int | None:
     """Respaldo por COORDENADAS cuando ni el texto plano ni el bloque
@@ -758,7 +769,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
         anclas = triage.get("anclas_encontradas", {})
         textos_paginas: list[str] = triage.get("textos_paginas") or []
 
-        def _texto(indice: int) -> str:
+        def _texto(indice: int, x_tolerance: float | None = None) -> str:
             """SIEMPRE pdfplumber, nunca el texto del triage. El triage ahora
             lee con PyMuPDF porque es ~60x mas rapido para recorrer 200-475
             paginas (ver `triage._textos_del_documento`), pero TODO el
@@ -766,9 +777,15 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             de columna por fecha, deteccion de unidad por membrete -- esta
             hecho contra el texto de pdfplumber. Mezclar las dos fuentes aqui
             cambiaria en silencio cifras ya verificadas. Son 3-5 paginas por
-            documento: el costo es despreciable y la garantia es total."""
+            documento: el costo es despreciable y la garantia es total.
+
+            `x_tolerance` (opcional): ver `TOLERANCIA_X_LETRA_ESPACIADA` mas
+            abajo -- el respaldo para paginas donde el kerning del PDF rompe
+            hasta el match de etiqueta."""
             if not (0 <= indice < len(pdf.pages)):
                 return ""
+            if x_tolerance is not None:
+                return pdf.pages[indice].extract_text(x_tolerance=x_tolerance) or ""
             return pdf.pages[indice].extract_text() or ""
 
         pagina_balance = anclas.get("situacion_financiera")
@@ -800,6 +817,28 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 pasivos = _valor_en_columna(texto, SINONIMOS_PASIVOS, indice_col, patron, parser)
                 patrimonio = _valor_en_columna(texto, SINONIMOS_PATRIMONIO, indice_col, patron, parser)
                 deuda = _suma_todas_ocurrencias(texto, SINONIMOS_DEUDA, indice_col, patron, parser)
+
+                # Respaldo por kerning ancho (SIN_ETIQUETAS): verificado real,
+                # BANCO_DE_BOGOTA 2024-T3 y 2026-T2 -- el PDF usa un font/
+                # kerning donde pdfplumber corta CADA letra como palabra
+                # aparte ("E s ta d o d e s itu a c i�n..."), y ninguna
+                # etiqueta de SINONIMOS_* iguala nunca. El indice de columna
+                # y la unidad YA se resolvieron arriba con el texto normal
+                # (los regex que los buscan toleran un espacio insertado
+                # entre digitos, ver `_indice_columna_actual`) -- lo unico
+                # que rompe es el match EXACTO de etiqueta. Se reintenta con
+                # `x_tolerance` mas ancho (agrupa letras con mas separacion
+                # como una sola palabra) SOLO cuando los cuatro campos
+                # salieron None, para no tocar el 99% de paginas que ya
+                # funcionan con la tolerancia por defecto de pdfplumber.
+                if activos is None and pasivos is None and patrimonio is None and deuda is None:
+                    texto_ancho = _texto(pagina_balance, x_tolerance=TOLERANCIA_X_LETRA_ESPACIADA)
+                    if texto_ancho and texto_ancho != texto:
+                        patron_ancho, parser_ancho = detectar_formato_numero(texto_ancho)
+                        activos = _valor_en_columna(texto_ancho, SINONIMOS_ACTIVOS, indice_col, patron_ancho, parser_ancho)
+                        pasivos = _valor_en_columna(texto_ancho, SINONIMOS_PASIVOS, indice_col, patron_ancho, parser_ancho)
+                        patrimonio = _valor_en_columna(texto_ancho, SINONIMOS_PATRIMONIO, indice_col, patron_ancho, parser_ancho)
+                        deuda = _suma_todas_ocurrencias(texto_ancho, SINONIMOS_DEUDA, indice_col, patron_ancho, parser_ancho)
 
                 # El balance a veces se parte en 2 páginas físicas (verificado real:
                 # CIBEST 2025-T2 -- activo en una página, "Total pasivo"/patrimonio

@@ -951,9 +951,10 @@ Estado real, medido con `jobs/diagnostico_extraccion.py` contra los 412 archivos
 (no contra Supabase — inalcanzable desde este entorno, `SSLCertVerificationError`):
 
 - Cobertura por período (un período cuenta si algún archivo suyo pasó): **187/315 (59,4%) →
-  202/315 (64,1%)** tras cuatro correcciones de código, cada una verificada archivo por archivo
-  sin ninguna regresión (0 casos OK → no-OK en ninguna de las cuatro).
-- **Cuatro bugs reales corregidos** en `apps/api/app/services/extraccion/`:
+  203/315 (64,4%)** tras cinco correcciones de código, cada una verificada archivo por archivo
+  sin ninguna regresión (0 casos OK → no-OK en ninguna de las cinco).
+- **Cuatro bugs reales corregidos, uno diagnosticado y dejado pendiente a propósito**, en
+  `apps/api/app/services/extraccion/`:
   1. `triage.py`: el umbral de "página sin texto" exigía string vacío; una página de balance
      escaneada con solo el número de página impreso (22-51 caracteres) nunca se marcaba como
      candidata a canal B. Nuevo umbral de 100 caracteres, calibrado contra 80 documentos reales.
@@ -967,7 +968,10 @@ Estado real, medido con `jobs/diagnostico_extraccion.py` contra los 412 archivos
      (CORFICOLOMBIANA). Nuevo respaldo `_indice_columna_por_coordenadas` que agrupa las palabras
      por coordenada x0/top (`pdfplumber.extract_words()`) en vez de texto plano, anclado hacia
      arriba desde la primera cifra real de la tabla.
-  Las dos que más rindieron (3 y 4) partieron de una **teoría inicial equivocada** ("el título de
+  5. `extractor_generico.py`: kerning ancho en BANCO_DE_BOGOTA — cada letra sale como "palabra"
+     aparte con la tolerancia por defecto de pdfplumber. Respaldo con `x_tolerance=8`, solo cuando
+     los cuatro campos del balance salen `None` con el texto normal.
+  Los dos que más rindieron (3 y 4) partieron de una **teoría inicial equivocada** ("el título de
   la tabla queda debajo, no encima") que solo se descartó inspeccionando el PDF real con
   `pdfplumber` en vez de razonar sobre el síntoma del diagnóstico — lección para la próxima sesión,
   anotada en `db/DOCTRINA_VALOR.md` §5.
@@ -975,8 +979,18 @@ Estado real, medido con `jobs/diagnostico_extraccion.py` contra los 412 archivos
   generalizó mucho más allá de Corficolombiana: también desbloqueó 6 períodos de ECOPETROL, 3 de
   PEI y 1 de DAVIVIENDA_GROUP — 13 períodos en una sola corrección, la de mayor impacto de la
   sesión.
-- **El 100% no se alcanza en una sesión.** La cola restante (113 períodos) se separó por canal en
-  `db/DOCTRINA_VALOR.md` §5: ~110 son bugs de código por investigar (canal A — `PARCIAL_SIN_BALANCE`
+- **Un sexto bug real de BANCO_DE_BOGOTA se diagnosticó y se dejó A PROPÓSITO sin corregir**: un
+  dígito suelto (la cifra de centenas de mil) queda separado del resto del número por un hueco real
+  del documento — `"1 49,583.6"` en vez de "149,583.6" — y desaparece en silencio porque el patrón
+  de número exige separador de miles. Se descartó que fuera el mismo bug del kerning (probado
+  `x_tolerance` hasta 25, no lo resuelve). No se arregló por regex porque un dígito suelto antes de
+  una cifra real casi siempre es una referencia de nota al pie en este corpus (patrón ya
+  establecido y protegido en el código) — ensancharlo arriesgaba corromper cifras que hoy se leen
+  bien en todo el corpus. Necesita la misma técnica por coordenadas del bug #4, no un regex más
+  laxo. Nota positiva: la red de seguridad funcionó — `cuadra_balance=False` lo atrapó, no se
+  publicó ningún número incorrecto.
+- **El 100% no se alcanza en una sesión.** La cola restante (112 períodos) se separó por canal en
+  `db/DOCTRINA_VALOR.md` §5: ~109 son bugs de código por investigar (canal A — `PARCIAL_SIN_BALANCE`
   sigue siendo el más grande con 38 casos), 59 son páginas genuinamente escaneadas que le tocan al
   subagente (canal B, arquitectura ya decidida en `db/DECISION_ARQUITECTURA_EXTRACCION.md`), y el
   resto son descargas que solo Alex puede resolver (canal C, sin medir esta sesión por falta de
@@ -987,9 +1001,9 @@ CORFICOLOMBIANA (81,2%)** — los tres por encima del 80%. GEB y GRUPO_SURA qued
 insuficiente" hasta que bajen sus huecos — no es una limitación del motor, es la regla de
 honestidad que ya rige el proyecto.
 
-**Siguiente paso concreto**: `BANCO_DE_BOGOTA` sigue siendo el peor del universo con datos reales
-(33,3%) — repetir ahí el mismo método (inspeccionar con `pdfplumber` antes de teorizar) que resolvió
-los 4 bugs de esta sesión; canal B sobre GRUPO_SURA 2023-2024 para desbloquear el cuarto holding; y
-cuando Supabase sea alcanzable, correr `jobs/matriz_huecos_fundamentales.py --csv` para separar el
-canal C real y confirmar la cobertura del canal XBRL (primario según la memoria del proyecto, no
-verificable desde este entorno).
+**Siguiente paso concreto**: el bug del dígito suelto en BANCO_DE_BOGOTA (ya diagnosticado, subió
+de 33,3% a 40,0% esta sesión y sigue siendo el peor emisor con datos reales) necesita una versión
+por coordenadas del mismo patrón del bug #4; canal B sobre GRUPO_SURA 2023-2024 para desbloquear el
+cuarto holding; y cuando Supabase sea alcanzable, correr `jobs/matriz_huecos_fundamentales.py --csv`
+para separar el canal C real y confirmar la cobertura del canal XBRL (primario según la memoria del
+proyecto, no verificable desde este entorno).
