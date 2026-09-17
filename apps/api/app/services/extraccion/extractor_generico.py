@@ -427,10 +427,26 @@ def _indice_columna_actual(
     lineas_significativas = [l for l in texto_pagina.split("\n") if len(l.strip()) > 2]
     ventana = lineas_significativas[:15]
 
+    # "PF" (cifras proforma) señala una fila de encabezado bancario que NO
+    # respeta el orden visual de las columnas en el texto plano -- verificado
+    # real y necesario dos veces, BANCO_DE_BOGOTA 2026-T1 y 2026-T2. El
+    # encabezado envuelve en dos líneas por columna ("PF" en una, la fecha en
+    # otra), y pdfplumber concatena las etiquetas sueltas fuera de orden: en
+    # 2026-T1 el código de columna real (T1-2026) aparece TERCERO en el texto
+    # pero es la columna 2 visual, no la 0 ni la 1 que da leer en ese orden;
+    # en 2026-T2 pasa lo mismo con "1T26 2T26 P F 2T25" (el objetivo real,
+    # 2T26, es la columna 2 visual, no la 1 que da el texto). Ninguno de los
+    # dos filtros de abajo, aplicados solos, alcanza a corregirlo -- cambian
+    # el índice devuelto pero lo siguen dando mal con la misma confianza que
+    # un caso correcto. El espacio insertado ("P F") es kerning del mismo PDF
+    # (ver `TOLERANCIA_X_LETRA_ESPACIADA`), así que el filtro tiene que
+    # tolerar un espacio suelto, no un "PF" literal.
+    PATRON_PROFORMA = re.compile(r"P\s?F")
+
     if periodo in PERIODO_A_MES_TRIMESTRE:
         codigo_corto = f"{PERIODO_A_MES_TRIMESTRE[periodo]}T{str(anio)[2:]}"
         for linea in ventana:
-            if "%" in linea or "/" in linea:
+            if "%" in linea or "/" in linea or PATRON_PROFORMA.search(linea):
                 continue
             codigos_crudos = re.findall(r"\d\s?T\s?\d\s?\d", linea)
             codigos = [re.sub(r"\s", "", c) for c in codigos_crudos]
@@ -438,7 +454,18 @@ def _indice_columna_actual(
                 return codigos.index(codigo_corto)
 
     for linea in ventana:
-        if "%" in linea:
+        # Mismo filtro de "/" que el bloque de arriba, y por la misma razon:
+        # una fila de VARIACION repite el periodo actual dos veces sin ser un
+        # encabezado real de columnas. Verificado real, BANCO_DE_BOGOTA
+        # 2026-T1: "△ T1-2026 / △ T1-2026 /" (las dos columnas de variacion,
+        # "T1-2026 vs PF T1-2025" y "T1-2026 vs T4-2025") aparece ANTES del
+        # encabezado real en la ventana, con exactamente dos "2026" -- sin
+        # este filtro, `anios_encontrados.index(str(anio))` devolvia 0 con
+        # total confianza, y esa columna 0 es en realidad "PF T1-2025" del
+        # año anterior. Mejor no devolver nada aqui (cae al respaldo por
+        # coordenadas, y si ese tampoco puede, a revision) que devolver un
+        # indice con la misma confianza que un caso correcto.
+        if "%" in linea or "/" in linea or PATRON_PROFORMA.search(linea):
             continue
         anios_crudos = re.findall(r"2\s?0\s?\d\s?\d", linea)
         anios_encontrados = [re.sub(r"\s", "", a) for a in anios_crudos]
@@ -465,7 +492,30 @@ def _indice_columna_actual(
     # fecha buscada tiene que aparecer UNA sola vez en el bloque -- si
     # aparece repetida no se puede saber cual columna es y se prefiere no
     # extraer antes que arriesgar la equivocada.
-    limpias = [l for l in ventana if "%" not in l and "/" not in l]
+    #
+    # Mismo filtro de "PF" que los dos bloques de arriba, y por la misma
+    # razon -- verificado real y necesario, BANCO_DE_BOGOTA 2026-T2: sin
+    # este filtro, la fila "1T 2 6 2 T 2 6 P F 2 T 2 5" (que SI se cuela
+    # aqui porque no tiene "%" ni "/") aporta ['1T26','2T26','2T25'] al
+    # bloque concatenado, "2T26" aparece UNA sola vez (pasa el chequeo de
+    # unicidad) y devuelve el indice 1 -- que es la columna real "1T26" de
+    # comparacion, no la "2T26" que se estaba buscando. La unicidad sola no
+    # protege de esto: una fila puede traer el codigo correcto exactamente
+    # una vez y en la posicion equivocada.
+    # La PRIMERA línea significativa se excluye aparte, solo de este bloque
+    # concatenado: es sistemáticamente el título del documento ("...al 31 de
+    # marzo de 2026", verificado en cada balance leído esta sesión), nunca un
+    # encabezado de columna real -- pero excluir ese patrón de TODO el
+    # documento (probado) rompe casos legítimos donde la fecha comparativa
+    # real SÍ trae "al DD de MES de AAAA y AAAA" en una línea que no es la
+    # primera (verificado real, ISA: "Al 31 de diciembre de 2022 y 2021" es
+    # la línea 3, el encabezado real de columnas). Excluir solo por POSICIÓN
+    # (la primera línea, nunca por contenido) evita ese choque: verificado
+    # real, BANCO_DE_BOGOTA 2026-T1 -- sin esto, el título ("...2026") se
+    # concatenaba con una etiqueta suelta y ajena ("T1-2025", sobrante de la
+    # fila ya excluida por "PF") y el par de años sin relación entre sí
+    # pasaba el chequeo de unicidad, devolviendo la columna equivocada.
+    limpias = [l for l in ventana[1:] if "%" not in l and "/" not in l and not PATRON_PROFORMA.search(l)]
     bloque = " ".join(limpias)
 
     if periodo in PERIODO_A_MES_TRIMESTRE:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Prueba del respaldo de "digito pegado" en `extraer()` (F4a, 17-sep-2026).
+"""Prueba de `_texto_con_digito_pegado_reparado` (F4a, 17-sep-2026).
 
 Sin pytest a proposito -- correrse solo: `python jobs/test_digito_pegado.py`.
 
@@ -7,20 +7,29 @@ Necesita el PDF real (el bug es de kerning/espaciado de fuente, no reproducible
 con texto sintetico simple) -- se salta con aviso si `C:\\Proyectos\\BVC\\
 SIMEV_BVC` no esta disponible en esta maquina.
 
-Caso real: BANCO_DE_BOGOTA/2026-T1_..., pagina 9 (indice 8). El PDF pone las
-centenas de mil ("1") a un cuarto de punto de distancia del resto del numero
-("49,583.6"), y pdfplumber los separa en dos palabras -- "Total activos 1
-49,583.6 1 56,164.4 1 42,238.3" en vez de "149,583.6 156,164.4 142,238.3".
-El patron de numero exige separador de miles, asi que el "1" solo nunca
-matchea y desaparece en silencio: el activo total se leia 100.000 unidades
-mas chico. Antes de esta sesion el archivo quedaba en BALANCE_NO_CUADRA."""
+Prueba SOLO la reparacion de texto, no el pipeline completo de `extraer()`:
+BANCO_DE_BOGOTA/2026-T1_..., pagina 9 (indice 8), es el caso real que expuso
+el bug ("Total activos 1 49,583.6 1 56,164.4 1 42,238.3" en vez de
+"149,583.6 156,164.4 142,238.3" -- el digito de las centenas de mil se pierde
+porque el patron de numero exige separador de miles). La reparacion en si
+misma es correcta y esta verificada aqui: las tres cifras de la fila quedan
+bien pegadas.
+
+**No se prueba `extraer()` end-to-end contra este archivo**: el mismo
+documento tiene un bug DISTINTO y sin resolver en la resolucion de columna
+(el encabezado tiene columnas "PF" -- proforma -- que no respetan el orden
+visual en el texto plano; ver DOCTRINA_VALOR.md). Verificado que aunque la
+reparacion de digito pegado es correcta, `extraer()` sobre este archivo
+todavia no puede resolver CUAL de las tres columnas reparadas es T1-2026,
+y devuelve `None` (correcto -- mejor no resolver que resolver mal, que es
+lo que pasaba antes de detectar ese segundo bug)."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
 
-from app.services.extraccion.extractor_generico import extraer  # noqa: E402
+from app.services.extraccion.extractor_generico import _texto_con_digito_pegado_reparado  # noqa: E402
 
 RUTA = Path(
     r"C:\Proyectos\BVC\SIMEV_BVC\BANCO_DE_BOGOTA"
@@ -30,6 +39,8 @@ RUTA = Path(
 if not RUTA.exists():
     print(f"AVISO: {RUTA} no existe en esta maquina -- prueba saltada, no falla.")
     sys.exit(0)
+
+import pdfplumber  # noqa: E402
 
 fallos = []
 
@@ -41,13 +52,15 @@ def revisar(nombre, obtenido, esperado):
         fallos.append(nombre)
 
 
-r = extraer(RUTA, sector="financiero", anio=2026, periodo="T1")
-campos = r["campos"]
+with pdfplumber.open(RUTA) as pdf:
+    texto = _texto_con_digito_pegado_reparado(pdf.pages[8])
 
-revisar("activos_totales", campos["activos_totales"]["valor"], 149583.6)
-revisar("pasivos_totales", campos["pasivos_totales"]["valor"], 133113.4)
-revisar("patrimonio", campos["patrimonio"]["valor"], 16470.2)
-revisar("cuadra_balance", r["cuadra_balance"], True)
+linea_activos = next((l for l in texto.split("\n") if l.startswith("Total activos")), None)
+revisar(
+    "linea de Total activos reparada",
+    linea_activos.startswith("Total activos 149,583.6 156,164.4 142,238.3") if linea_activos else None,
+    True,
+)
 
 print()
 if fallos:

@@ -1049,17 +1049,52 @@ diferencia, umbral seguro sin riesgo de confundir los dos casos.
 Nuevo respaldo `_texto_con_digito_pegado_reparado`: agrupa palabras por fila (con tolerancia de
 proximidad, no `round()` — la etiqueta en negrita y las cifras de la misma fila difieren 0,27pt de
 línea base) y funde un dígito suelto de 1-3 cifras con el número siguiente solo si el hueco es
-menor a 3pt. Se reintenta solo cuando el balance normal no cuadra (no toca los casos que ya
-funcionan). Efecto: BANCO_DE_BOGOTA 2026-T1 pasa de `BALANCE_NO_CUADRA` a `OK`, verificado
-end-to-end (`cuadra_balance=True`) y con las 3 columnas del documento cuadrando exacto tras la
-reparación. Prueba nueva: `jobs/test_digito_pegado.py`. Sin regresiones en el corpus completo.
+menor a 3pt. La reparación del número en sí es correcta (ver corrección abajo — el error real
+estaba en otro lado).
 
-**Cobertura final de la sesión completa de W0 (16/17-sep-2026, 8 commits)**: universo 187/315
-(59,4%) → **204/315 (64,8%)**, 6 bugs de extracción corregidos, canal B de GRUPO_SURA completo
-(9/9 leído, staging sin cargar por falta de acceso a Supabase). BANCO_DE_BOGOTA: 33,3% → 46,7%
-(quedan 4 períodos escaneados, canal B, mismo método que GRUPO_SURA).
+## Corrección: los dos "arreglos" de BANCO_DE_BOGOTA de esta sesión eran falsos positivos (17-sep-2026)
+
+Alex preguntó por qué no se llega al 100% y si convenía priorizar XBRL sobre seguir leyendo PDF.
+Al verificar la respuesta contra un XBRL ya descargado, **ni BANCO_DE_BOGOTA 2026-T1 (bug #6,
+dígito pegado) ni 2026-T2 (bug #5, kerning ancho) coincidían** con la cifra real. Ambos habían sido
+reportados como `OK` en esta misma sesión.
+
+**Causa**: en una tabla comparativa de 3 columnas, `activos = pasivos + patrimonio` cuadra en
+CUALQUIERA de las tres (cada columna es un balance completo de un período distinto). Los dos
+"arreglos" reparaban bien el NÚMERO pero lo leían de la COLUMNA equivocada — un error invisible
+para la única prueba que se les aplicó. Verificado a ojo contra el PDF: el formato trimestral de
+BANCO_DE_BOGOTA usa columnas "PF" (proforma) cuyo encabezado envuelve en dos líneas, y pdfplumber
+las concatena fuera de orden visual (`PF T1-2025 | T4-2025 | T1-2026` visual se lee `PF T4-2025
+T1-2026 PF T1-2025 T4-2025` en texto plano — ninguna heurística de orden de aparición recupera eso).
+
+Se probaron tres arreglos; el primero (excluir filas con "PF") no bastó; el segundo (excluir toda
+línea con el patrón "al DD de MES de AAAA") **rompió 13 documentos que ya funcionaban** (ISA,
+CELSIA, GRUPO_SURA 2024-ANUAL, donde esa misma frase con "y AAAA" es el encabezado real) y se
+revirtió de inmediato al ver la corrida completa del corpus. El tercero, adoptado: excluir solo la
+PRIMERA línea significativa del bloque concatenado por POSICIÓN, no por contenido — es
+sistemáticamente el título del documento en todos los casos vistos, y nunca lo es en los formatos
+donde la fecha real está más abajo. Verificado con el corpus completo: 0 archivos afectados fuera
+de los 2 que se estaban corrigiendo.
+
+**Resultado honesto**: los dos archivos vuelven a `SIN_COLUMNA` (no resuelto) en vez de publicar con
+falsa confianza. BANCO_DE_BOGOTA cierra la sesión en 5/15 (33,3%) — el mismo punto donde empezó, sin
+ganancia neta de cobertura en ese emisor, pero con dos falsos positivos corregidos y la resolución
+de columna más segura para el resto del corpus.
+
+**Cobertura final corregida de la sesión completa de W0 (16/17-sep-2026, 9 commits)**: universo
+187/315 (59,4%) → **202/315 (64,1%)** (no 204/315 como se reportó antes de esta verificación), 6
+bugs de extracción corregidos netos, canal B de GRUPO_SURA completo (9/9 leído, staging sin cargar
+por falta de acceso a Supabase).
+
+**Lección para cualquier sesión futura, más importante que cualquiera de los bugs individuales**:
+`cuadra_balance=True` prueba consistencia interna, no corrección, en cualquier tabla con más de una
+columna de datos. Verificar contra una fuente independiente (XBRL si existe, o el PDF a ojo) antes
+de reportar una cifra como corregida.
 
 **Explicación dada a Alex sobre por qué no se llega al 100%**: no es solo falta de archivos. El
-hueco se reparte en tres canales — código (bugs de parser, ~108 períodos), páginas escaneadas
+hueco se reparte en tres canales — código (bugs de parser, ~110 períodos), páginas escaneadas
 (necesitan lectura visual, 59 períodos) y descarga real (canal C, sin medir por falta de acceso a
-Supabase). Pedirle a Cowork que descargue solo resuelve el tercero.
+Supabase). Pedirle a Cowork que descargue solo resuelve el tercero. Y ni el canal de código ni el de
+XBRL están libres de bugs propios: el lector de XBRL ya existente falló en dar cualquier cifra para
+BANCO_DE_BOGOTA 2026-T1 por un problema de detección de escala distinto (`lector_xbrl.py`, sin
+tocar esta sesión) — ningún canal es una solución perfecta por sí sola.

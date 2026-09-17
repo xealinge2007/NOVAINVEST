@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Prueba del respaldo de "kerning ancho" en `extraer()` (F4a, 17-sep-2026).
+"""Prueba del respaldo de "kerning ancho" (`TOLERANCIA_X_LETRA_ESPACIADA`,
+F4a, 17-sep-2026).
 
 Sin pytest a proposito -- correrse solo: `python jobs/test_kerning_ancho.py`.
 
@@ -10,17 +11,24 @@ esta disponible en esta maquina.
 Caso real: BANCO_DE_BOGOTA/2026-T2_..., pagina 9 (indice 8). El PDF usa un
 font/kerning donde pdfplumber corta CADA LETRA como palabra aparte con la
 tolerancia por defecto ("E s ta d o d e s itu a c i�n..."), asi que ninguna
-etiqueta de SINONIMOS_* iguala nunca aunque la pagina, la columna y la unidad
-ya se hayan resuelto bien (los regex que las buscan toleran un espacio
-insertado entre digitos). Antes de esta sesion el archivo quedaba en
-SIN_ETIQUETAS pese a que el balance esta completo y cuadra."""
+etiqueta de SINONIMOS_* iguala nunca. Con `x_tolerance=8` la etiqueta se
+reconstruye limpia.
+
+**Prueba SOLO la reconstruccion del texto, no `extraer()` end-to-end**: este
+mismo documento (y su vecino 2026-T1) tienen un bug DISTINTO y sin resolver
+en la resolucion de columna -- el encabezado trae columnas "PF" (proforma)
+que no respetan el orden visual en el texto plano, ni linea por linea ni
+concatenado en bloque (ver DOCTRINA_VALOR.md). Verificado que aunque la
+reconstruccion de kerning es correcta, `extraer()` sobre este archivo
+todavia no puede resolver CUAL columna es T2-2026 y devuelve `None` --
+correcto: mejor no resolver que resolver mal, que es lo que pasaba antes de
+encontrar ese segundo bug (esta sesion publico y luego corrigio un falso
+"OK" para este mismo archivo con el valor de la columna equivocada)."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
-
-from app.services.extraccion.extractor_generico import extraer  # noqa: E402
 
 RUTA = Path(
     r"C:\Proyectos\BVC\SIMEV_BVC\BANCO_DE_BOGOTA"
@@ -30,6 +38,8 @@ RUTA = Path(
 if not RUTA.exists():
     print(f"AVISO: {RUTA} no existe en esta maquina -- prueba saltada, no falla.")
     sys.exit(0)
+
+import pdfplumber  # noqa: E402
 
 fallos = []
 
@@ -41,13 +51,14 @@ def revisar(nombre, obtenido, esperado):
         fallos.append(nombre)
 
 
-r = extraer(RUTA, sector="financiero", anio=2026, periodo="T2")
-campos = r["campos"]
+TOLERANCIA_X_LETRA_ESPACIADA = 8.0
 
-revisar("activos_totales", campos["activos_totales"]["valor"], 142238.3)
-revisar("pasivos_totales", campos["pasivos_totales"]["valor"], 125731.6)
-revisar("patrimonio", campos["patrimonio"]["valor"], 16506.7)
-revisar("cuadra_balance", r["cuadra_balance"], True)
+with pdfplumber.open(RUTA) as pdf:
+    texto_normal = pdf.pages[8].extract_text()
+    texto_ancho = pdf.pages[8].extract_text(x_tolerance=TOLERANCIA_X_LETRA_ESPACIADA)
+
+revisar("'Total activos' NO aparece limpio con tolerancia normal (confirma el bug)", "Total activos" in texto_normal, False)
+revisar("'Total activos' aparece limpio con tolerancia ancha (confirma el arreglo)", "Total activos" in texto_ancho, True)
 
 print()
 if fallos:

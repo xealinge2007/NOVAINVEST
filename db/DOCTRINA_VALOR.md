@@ -59,11 +59,11 @@ Este documento reporta solo lo verificable localmente; no se inventa cobertura d
 **Cobertura por período (no por archivo — un período cuenta cubierto si AL MENOS UN archivo de ese
 período pasó la extracción):**
 
-| | Antes de esta sesión | Después (16/17-sep-2026, 6 correcciones) |
+| | Antes de esta sesión | Después (16/17-sep-2026, 6 correcciones netas — ver §4B) |
 |---|---:|---:|
-| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **204/315 (64,8 %)** |
-| Archivos-fuente OK | 195/412 | **218/412** |
-| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo en cada una de las 6 correcciones |
+| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **202/315 (64,1 %)** |
+| Archivos-fuente OK | 195/412 | **216/412** |
+| Regresiones (OK → no-OK) | — | **0** contra el estado final, verificado con la corrida completa del corpus — dos correcciones intermedias resultaron ser falsos positivos, encontrados y revertidos en la misma sesión (ver §4B) |
 
 **Cobertura de los 5 holdings del MVP W3a (la que importa para arrancar):**
 
@@ -177,20 +177,67 @@ regla del proyecto de comparar archivo por archivo que ningún OK se vuelva no-O
    línea base, así que se agrupa por proximidad (`UMBRAL_MISMA_FILA = 2.0`), no por igualdad. Se
    reintenta con el texto reparado **solo cuando el balance normal no cuadra** (los tres campos
    presentes, la resta falla) — si ya cuadraba, tocar esto no puede mejorar nada y solo arriesga una
-   regresión. **Efecto medido: BANCO_DE_BOGOTA 2026-T1 pasa de `BALANCE_NO_CUADRA` a `OK`.**
-   Verificado también end-to-end (`cuadra_balance=True`), y arithméticamente: las tres columnas del
-   documento cuadran exacto tras la reparación. Prueba nueva: `jobs/test_digito_pegado.py`.
+   regresión. La reparación del número en sí es correcta y sigue siéndolo (ver §4B) — el error real
+   estaba en otro lado. Prueba: `jobs/test_digito_pegado.py`.
+
+## 4B. Corrección — el bug #6 se había reportado mal: `cuadra_balance=True` no prueba que la
+columna sea la correcta (17-sep-2026)
+
+**Esta sesión reportó BANCO_DE_BOGOTA 2026-T1 como corregido (bug #6) y BANCO_DE_BOGOTA 2026-T2
+como corregido (bug #5, kerning ancho). Los dos reportes eran falsos.** Alex preguntó por qué no se
+llega al 100% y si convenía priorizar XBRL sobre seguir leyendo PDF — al verificar la respuesta
+contra un archivo XBRL ya descargado, ninguna de las dos cifras "corregidas" coincidía. La causa:
+**una tabla comparativa de tres columnas cuadra en CUALQUIERA de sus columnas** (cada una es un
+balance completo de un período distinto) — `activos = pasivos + patrimonio` es una condición
+necesaria pero no suficiente para confirmar que se leyó la columna correcta. Los dos "arreglos" de
+esta sesión reparaban el NÚMERO bien pero lo leían de la COLUMNA equivocada, y el resultado se veía
+exactamente igual de confiable que un caso correcto.
+
+**Causa raíz real, verificada visualmente contra el PDF (no contra texto plano, que es precisamente
+lo que falla aquí):** el formato trimestral de BANCO_DE_BOGOTA usa columnas "PF" (proforma) cuyo
+encabezado envuelve en dos líneas por columna, y pdfplumber concatena esas líneas sueltas **fuera
+del orden visual real**. En 2026-T1 el encabezado visual es `PF T1-2025 | T4-2025 | T1-2026`
+(columna 2 = la real), pero el texto plano las entrega en el orden `PF T4-2025 T1-2026 PF T1-2025
+T4-2025` — ninguna heurística de texto en orden de aparición puede recuperar el orden visual de
+ahí. Se probaron y descartaron, cada uno con su propio costo:
+- Excluir las filas con "PF" (con y sin el espacio que el kerning inserta, "P F") — necesario pero
+  no suficiente: quedaba una tercera vía (el bloque concatenado de todas las líneas de la ventana)
+  que combinaba el título del documento (que siempre trae el año del corte) con una etiqueta suelta
+  y ajena, formando un par de años sin relación que pasaba el chequeo de unicidad igual.
+- Excluir toda línea con el patrón "al DD de MES de AAAA" — **rompió 13 documentos que ya
+  funcionaban bien** (ISA, CELSIA, GRUPO_SURA 2024-ANUAL): en esos formatos esa MISMA frase, con
+  "y AAAA" al final ("Al 31 de diciembre de 2022 y 2021"), es el encabezado real y correcto.
+  Revertido de inmediato tras la corrida completa del corpus.
+- **Fix final, adoptado**: excluir solo la PRIMERA línea significativa del bloque concatenado (por
+  posición, nunca por contenido) — es sistemáticamente el título en todos los balances leídos esta
+  sesión, y nunca lo es en los formatos (ISA, CELSIA) donde la fecha real aparece más abajo.
+  Verificado con la corrida completa del corpus: **0 archivos afectados fuera de los 2 de
+  BANCO_DE_BOGOTA que se estaban corrigiendo.**
+
+**Resultado honesto**: los dos archivos vuelven a `SIN_COLUMNA` (no resuelto) — la red de seguridad
+funciona ahora como debía, en vez de publicar con falsa confianza. BANCO_DE_BOGOTA cierra la sesión
+en 5/15 (33,3%), el mismo punto donde empezó — el trabajo de esta sesión sobre este emisor no ganó
+cobertura neta, pero corrigió dos falsos positivos y dejó la resolución de columna más segura para
+el resto del corpus (la exclusión de "PF" y de la primera línea aplican a cualquier documento, no
+solo a Bogotá). **Cobertura final corregida: 202/315 (64,1%)**, no 204/315 como se reportó antes de
+esta verificación.
+
+**Lección para cualquier sesión futura de extracción, más importante que cualquiera de los 6 bugs
+de arriba**: `cuadra_balance=True` prueba consistencia interna, no corrección. En una tabla con más
+de una columna de datos, **verificar contra una fuente independiente** (XBRL si existe, o leer el
+PDF a ojo) antes de reportar una cifra como corregida — exactamente el método que destapó este error
+cuando Alex preguntó por XBRL en esta misma sesión.
 
 ## 5. Lo que queda — priorizado por canal, no por emisor
 
-La cola de 315-204=111 períodos sin cubrir se separa en tres canales que necesitan trabajo
+La cola de 315-202=113 períodos sin cubrir se separa en tres canales que necesitan trabajo
 **distinto**, siguiendo la disciplina ya establecida en `db/DECISION_ARQUITECTURA_EXTRACCION.md`.
 No se puede llegar al 100 % solo con código: una parte es descarga (de Alex) y otra es lectura
 manual del subagente (por archivo, no por commit).
 
 | Canal | Qué es | Volumen | Quién lo resuelve |
 |---|---|---:|---|
-| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 9), etiquetas no reconocidas (`SIN_ETIQUETAS`, 3), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 38 — sigue siendo la clase más grande), balance que no cuadra (`BALANCE_NO_CUADRA`, 2), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~108 | Sesión de código futura. `BANCO_DE_BOGOTA` sigue siendo el peor de los emisores con cobertura de datos reales (46,7 %, subió de 33,3 % esta sesión) — sus 8 fallos restantes son 4 `SIN_ANCLA_ESCANEADO` (canal B, no A) y el resto por revisar caso por caso. |
+| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 11 — sube por los 2 de BANCO_DE_BOGOTA que se devolvieron aquí a propósito, ver §4B), etiquetas no reconocidas (`SIN_ETIQUETAS`, 3), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 38), balance que no cuadra (`BALANCE_NO_CUADRA`, 2), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56) | ~110 | Sesión de código futura. `BANCO_DE_BOGOTA` cierra la sesión en 33,3 % (sin cambio neto — ver §4B): sus 10 fallos son 4 `SIN_ANCLA_ESCANEADO` (canal B) y los 2 de columna PF que necesitan una solución por coordenadas, no por texto (la misma técnica del bug #4, pendiente de construir para este formato de banco). |
 | **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética y por consistencia cruzada entre documentos independientes | 59 | **GRUPO_SURA completo: los 9 períodos candidatos de canal B ya están leídos y verificados** (`db/CANAL_B_GRUPO_SURA_STAGING.md`), pendientes de cargar cuando Supabase sea alcanzable. La consistencia cruzada entre documentos (la comparativa de un trimestre coincide con la cifra "actual" del anterior) atrapó y corrigió un error real de transcripción — ver §3 del staging. Próximo holding candidato para canal B: ninguno de los otros 4 del MVP lo necesita hoy (todos por encima del 80 % o, en el caso de GEB, con huecos que no son de canal B). Trabajo por sesión, no automatizable por decisión ya tomada. |
 | **C — Descarga (Alex)** | Archivo con estados financieros que genuinamente no existe todavía en `SIMEV_BVC`, o el existente es un informe narrativo que remite a los EEFF radicados aparte (`archivo_sin_estados`, patrón ya documentado con GRUPO_NUTRESA/ISA/PEI en la sesión del 08-sep) | Sin medir en esta sesión (requiere Supabase inalcanzable — ver §3) | Alex descarga del SIMEV/relación con inversionistas. |
 
@@ -207,13 +254,22 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
 1. **Cuando Supabase sea alcanzable: cargar los 9 períodos de `db/CANAL_B_GRUPO_SURA_STAGING.md`**
    en `fundamentales_reportados` — es el paso de mayor impacto pendiente, convierte a GRUPO_SURA en
    el cuarto holding del MVP (36,8 % → 84,2 %) sin ningún trabajo adicional de lectura.
-2. Canal B sobre los 4 períodos escaneados de BANCO_DE_BOGOTA (`SIN_ANCLA_ESCANEADO`), mismo método
+2. **Antes de eso, o en paralelo: verificar contra XBRL cualquier cifra de canal B/canal A que se
+   vaya a cargar** — la sesión aprendió por las malas (§4B) que `cuadra_balance=True` no prueba
+   corrección en una tabla de varias columnas. Los 9 períodos de Sura fueron leídos a ojo con
+   cruce entre documentos (`CANAL_B_GRUPO_SURA_STAGING.md` §3), que es un estándar más alto — pero
+   conviene cruzarlos contra XBRL también si hay archivo disponible para esos períodos.
+3. El bug de columna "PF" en BANCO_DE_BOGOTA (2 períodos, `SIN_COLUMNA`, ver §4B) necesita la misma
+   técnica por coordenadas que ya funcionó para el bug #4 — construir un encabezado de columna leyendo
+   `extract_words()` por posición, no por orden de texto, y validado contra el PDF visual antes de
+   confiar en él.
+4. Canal B sobre los 4 períodos escaneados de BANCO_DE_BOGOTA (`SIN_ANCLA_ESCANEADO`), mismo método
    ya usado en GRUPO_SURA.
-3. Pedirle a Alex el EEFF real de GRUPO_SURA 2024-T4 (el archivo descargado es un comunicado de
+5. Pedirle a Alex el EEFF real de GRUPO_SURA 2024-T4 (el archivo descargado es un comunicado de
    prensa sin balance, canal C) y revisar 2022-T4 y 2024-T2 (canal A, no verificados esta sesión).
-4. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar
+6. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar
    canal C (descarga) de lo que ya está medido aquí, y verificar cobertura real del canal XBRL
-   (que esta sesión no pudo confirmar).
+   (que esta sesión no pudo confirmar del lado de la base de datos).
 
 ## 6. Pendiente de este W0 (no completado en esta sesión)
 
