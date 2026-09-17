@@ -1008,25 +1008,32 @@ cuarto holding; y cuando Supabase sea alcanzable, correr `jobs/matriz_huecos_fun
 para separar el canal C real y confirmar la cobertura del canal XBRL (primario según la memoria del
 proyecto, no verificable desde este entorno).
 
-## Canal B: primeras 2 lecturas de GRUPO_SURA (17-sep-2026, staging sin cargar)
+## Canal B completo en GRUPO_SURA: 9 períodos leídos y verificados (17-sep-2026, staging sin cargar)
 
 Alex pidió seguir con el canal B (el subagente lee las páginas escaneadas). Localicé el bloque
 consolidado en los documentos de GRUPO_SURA con un método repetible (buscar el título "ESTADOS
-FINANCIEROS CONSOLIDADOS" y "Hechos posteriores" en el texto plano, confirmar que las páginas entre
-ambos tienen <100 caracteres = imagen, leer ese rango) y transcribí y verifiqué dos períodos:
+FINANCIEROS CONSOLIDADOS" en texto MUY corto (<250 caracteres, para no enganchar menciones de prosa)
+y "Hechos posteriores"/"ESTADOS FINANCIEROS SEPARADOS" como cierre; confirmar <100 caracteres =
+imagen; leer ese rango) y **terminé los 9 períodos candidatos de canal B del emisor**: 2023-T1, T2,
+T3, T4, 2024-T1, T3, 2025-T4, 2026-T1, T2. Los 9 balances cuadran exacto
+(`activos = pasivos + patrimonio`, sin redondeo).
 
-- **2023-T3**: Total activos 94.803.158, Total pasivos 61.678.937, Patrimonio 33.124.221 (millones
-  COP). Verificación exacta: 61.678.937 + 33.124.221 = 94.803.158.
-- **2026-T2**: Total activos 94.574.189, Total pasivos 73.461.561, Patrimonio 21.112.628.
-  Verificación exacta: 73.461.561 + 21.112.628 = 94.574.189.
+**Hallazgo metodológico nuevo, más fuerte que la autoconsistencia sola**: cada balance trae una
+columna comparativa con el cierre anterior. En los 4 pares de períodos que se solapan, la
+comparativa de uno coincidió **exacta, al peso**, con la cifra "actual" leída independientemente en
+el otro documento. Esa cruzada **atrapó un error real de transcripción**: la primera lectura de
+2025-T4 dio un total de pasivos que no coincidía con lo ya leído en 2026-T1/T2 para la misma fecha
+— un dígito mal leído a la resolución normal, corregido con un recorte de alta resolución de la
+celda exacta. Sin la cruzada, ese error habría pasado: el balance seguía cuadrando con el número
+equivocado.
 
-**No se cargaron en Supabase** (inalcanzable desde este entorno, mismo problema de toda la sesión).
-Quedaron en `db/CANAL_B_GRUPO_SURA_STAGING.md`, listas para insertar sin repetir el trabajo de
-lectura. Efecto en GRUPO_SURA una vez cargadas: 7/19 (36,8%) → **9/19 (47,4%)**.
+**No se cargó nada en Supabase** (inalcanzable desde este entorno, mismo problema de toda la
+sesión). Las 9 filas quedaron en `db/CANAL_B_GRUPO_SURA_STAGING.md`, listas para insertar sin
+repetir el trabajo de lectura. **Efecto en GRUPO_SURA una vez cargadas: 7/19 (36,8%) → 16/19
+(84,2%)** — lo pondría por encima de los otros 3 holdings del MVP y lo convertiría en el cuarto con
+datos suficientes.
 
-**Hallazgo importante**: `2024-T4_Comunicado-Resultados.pdf` (el único archivo descargado para ese
-período) **no es canal B, es canal C** — lo leí completo y es un informe de prensa con cifras
-proforma por segmento, sin el Estado de Situación Financiera. Hay que pedirle a Alex el EEFF real
-de ese trimestre; releerlo no sirve.
-
-Quedan 5 períodos de GRUPO_SURA en canal B, mismo método aplicable, documentados en el staging file.
+**Lo que queda de GRUPO_SURA no es canal B**: `2024-T4_Comunicado-Resultados.pdf` (el único archivo
+de ese período, leído completo) es un informe de prensa sin Estado de Situación Financiera — canal
+C, hay que pedirle a Alex el EEFF real. `2022-T4` y `2024-T2` fallan con texto legible (no
+escaneado) — canal A, no verificados esta sesión.
