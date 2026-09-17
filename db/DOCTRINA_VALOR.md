@@ -59,11 +59,11 @@ Este documento reporta solo lo verificable localmente; no se inventa cobertura d
 **Cobertura por período (no por archivo — un período cuenta cubierto si AL MENOS UN archivo de ese
 período pasó la extracción):**
 
-| | Antes de esta sesión | Después (16/17-sep-2026, 5 correcciones) |
+| | Antes de esta sesión | Después (16/17-sep-2026, 6 correcciones) |
 |---|---:|---:|
-| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **203/315 (64,4 %)** |
-| Archivos-fuente OK | 195/412 | **217/412** |
-| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo en cada una de las 5 correcciones |
+| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **204/315 (64,8 %)** |
+| Archivos-fuente OK | 195/412 | **218/412** |
+| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo en cada una de las 6 correcciones |
 
 **Cobertura de los 5 holdings del MVP W3a (la que importa para arrancar):**
 
@@ -156,45 +156,50 @@ regla del proyecto de comparar archivo por archivo que ningún OK se vuelva no-O
    **Efecto medido: BANCO_DE_BOGOTA 2026-T2 pasa de `SIN_ETIQUETAS` a `OK`.** Prueba nueva:
    `jobs/test_kerning_ancho.py`.
 
-**Bug nuevo encontrado y NO corregido esta sesión — más peligroso que los cinco de arriba, requiere
-diseño propio.** BANCO_DE_BOGOTA 2026-T1 cae en `BALANCE_NO_CUADRA` (no en una clase "sin dato": el
-resultado es un **número incorrecto**, no ausente — la red de seguridad de `cuadra_balance` lo
-atrapó como se esperaba, no se publicó nada). Causa raíz verificada: el PDF renderiza el dígito de
-las centenas de mil separado por un hueco real del resto de la cifra —
-`"Total activos 1 49,583.6 1 56,164.4 1 42,238.3"` en vez de "149,583.6 156,164.4 142,238.3" — y
-`PATRON_NUMERO_FINANCIERO` exige separador de miles, así que el "1" suelto no matchea como número y
-desaparece en silencio: la cifra se lee 100.000 unidades más chica. **Confirmado que NO es el mismo
-bug que el #5**: probado `x_tolerance` hasta 25 sobre esta línea exacta y el hueco no se cierra —
-es un espaciado real del documento, no un artefacto de tolerancia. **Por qué no se intentó un
-arreglo ahora**: la forma obvia (aceptar un dígito suelto pegado a un número con separador de miles
-como parte de la misma cifra) choca de frente con un patrón ya establecido y documentado en este
-mismo archivo — un dígito suelto antes de una cifra real casi siempre es una **referencia de nota
-al pie** ("Efectivo... 5 $ 4,902,760"), no parte del valor. Ensanchar el regex sin distinguir los
-dos casos arriesga corromper cifras que hoy se leen bien en todo el corpus, no solo en
-BANCO_DE_BOGOTA. Un arreglo seguro necesita **coordenadas** (como el bug #4): solo tratar el dígito
-suelto como parte del número si está horizontalmente MUY cerca de él (hueco de separador de miles,
-no de nota al pie) — no intentado por falta de tiempo, no por falta de plan.
+6. **`extractor_generico.py` — dígito suelto pegado a un número
+   (`_texto_con_digito_pegado_reparado`, nuevo respaldo).** BANCO_DE_BOGOTA 2026-T1 caía en
+   `BALANCE_NO_CUADRA` (no una clase "sin dato": la red de seguridad de `cuadra_balance` atrapaba
+   un **número incorrecto**, no publicaba nada). Causa raíz: el PDF renderiza el dígito de las
+   centenas de mil a un cuarto de punto del resto de la cifra —
+   `"Total activos 1 49,583.6 1 56,164.4 1 42,238.3"` en vez de "149,583.6 156,164.4 142,238.3" — y
+   `PATRON_NUMERO_FINANCIERO` exige separador de miles, así que el "1" suelto desaparecía en
+   silencio: la cifra se leía 100.000 unidades más chica. **No es el mismo bug que el #5**: probado
+   `x_tolerance` hasta 25 sobre esta línea exacta y el hueco no se cierra — es un espaciado real del
+   documento, no un artefacto de tolerancia. **El riesgo real, y cómo se evitó**: un dígito suelto
+   antes de una cifra real casi siempre es una **referencia de nota al pie**
+   ("Efectivo... 7 Ps. 17,032,857", GRUPO_AVAL) — un regex sobre texto plano que aceptara cualquier
+   dígito suelto pegado a un número arriesgaba corromper esas referencias en todo el corpus. Se
+   resolvió por **coordenadas** (mismo principio que el bug #4): el hueco real de un dígito pegado
+   (0,3pt, calibrado contra Bogotá) y el de una referencia de nota (25,3pt, calibrado contra Aval)
+   están separados por dos órdenes de magnitud — `UMBRAL_GAP_DIGITO_PEGADO = 3.0` distingue ambos
+   con margen amplio de los dos lados. El agrupado por fila tampoco pudo usar `round(top, 1)` como
+   el bug #4: la etiqueta en negrita y las cifras en regular de la MISMA fila difieren 0,27pt de
+   línea base, así que se agrupa por proximidad (`UMBRAL_MISMA_FILA = 2.0`), no por igualdad. Se
+   reintenta con el texto reparado **solo cuando el balance normal no cuadra** (los tres campos
+   presentes, la resta falla) — si ya cuadraba, tocar esto no puede mejorar nada y solo arriesga una
+   regresión. **Efecto medido: BANCO_DE_BOGOTA 2026-T1 pasa de `BALANCE_NO_CUADRA` a `OK`.**
+   Verificado también end-to-end (`cuadra_balance=True`), y arithméticamente: las tres columnas del
+   documento cuadran exacto tras la reparación. Prueba nueva: `jobs/test_digito_pegado.py`.
 
 ## 5. Lo que queda — priorizado por canal, no por emisor
 
-La cola de 315-203=112 períodos sin cubrir se separa en tres canales que necesitan trabajo
+La cola de 315-204=111 períodos sin cubrir se separa en tres canales que necesitan trabajo
 **distinto**, siguiendo la disciplina ya establecida en `db/DECISION_ARQUITECTURA_EXTRACCION.md`.
 No se puede llegar al 100 % solo con código: una parte es descarga (de Alex) y otra es lectura
 manual del subagente (por archivo, no por commit).
 
 | Canal | Qué es | Volumen | Quién lo resuelve |
 |---|---|---:|---|
-| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 9), etiquetas no reconocidas (`SIN_ETIQUETAS`, 3), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 38 — sigue siendo la clase más grande), balance que no cuadra (`BALANCE_NO_CUADRA`, 3 — incluye el dígito-suelto de BANCO_DE_BOGOTA, ver arriba, que necesita arreglo por coordenadas, no por regex), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~109 | Sesión de código futura. `BANCO_DE_BOGOTA` sigue siendo el peor de los emisores con cobertura de datos reales (40,0 %, subió de 33,3 % esta sesión, tras CONSTRUCTORA_CONCONCRETO y GRUPO_NUTRESA en 0 %) — el bug del dígito suelto (arriba) es el siguiente candidato natural, ya diagnosticado. |
+| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 9), etiquetas no reconocidas (`SIN_ETIQUETAS`, 3), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 38 — sigue siendo la clase más grande), balance que no cuadra (`BALANCE_NO_CUADRA`, 2), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~108 | Sesión de código futura. `BANCO_DE_BOGOTA` sigue siendo el peor de los emisores con cobertura de datos reales (46,7 %, subió de 33,3 % esta sesión) — sus 8 fallos restantes son 4 `SIN_ANCLA_ESCANEADO` (canal B, no A) y el resto por revisar caso por caso. |
 | **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética y por consistencia cruzada entre documentos independientes | 59 | **GRUPO_SURA completo: los 9 períodos candidatos de canal B ya están leídos y verificados** (`db/CANAL_B_GRUPO_SURA_STAGING.md`), pendientes de cargar cuando Supabase sea alcanzable. La consistencia cruzada entre documentos (la comparativa de un trimestre coincide con la cifra "actual" del anterior) atrapó y corrigió un error real de transcripción — ver §3 del staging. Próximo holding candidato para canal B: ninguno de los otros 4 del MVP lo necesita hoy (todos por encima del 80 % o, en el caso de GEB, con huecos que no son de canal B). Trabajo por sesión, no automatizable por decisión ya tomada. |
 | **C — Descarga (Alex)** | Archivo con estados financieros que genuinamente no existe todavía en `SIMEV_BVC`, o el existente es un informe narrativo que remite a los EEFF radicados aparte (`archivo_sin_estados`, patrón ya documentado con GRUPO_NUTRESA/ISA/PEI en la sesión del 08-sep) | Sin medir en esta sesión (requiere Supabase inalcanzable — ver §3) | Alex descarga del SIMEV/relación con inversionistas. |
 
-**Lección metodológica de esta sesión, para la próxima**: de los 5 bugs investigados (4 corregidos,
-1 diagnosticado y dejado pendiente a propósito), los dos que más rindieron (el de "Ps." y el de
-coordenadas) partieron de una **teoría inicial equivocada** ("el título queda debajo de la tabla")
-que solo se descartó al inspeccionar el PDF real con `pdfplumber` en vez de razonar sobre el
-síntoma reportado por el diagnóstico. Y el quinto (el dígito suelto de Bogotá) se descartó
-**a propósito** de arreglar apurado por el mismo motivo: un fix por texto/regex ahí arriesgaba
-romper el manejo ya establecido de referencias de nota al pie en todo el corpus. **Verificar contra
+**Lección metodológica de esta sesión, para la próxima**: de los 6 bugs corregidos, los tres que más
+rindieron (el de "Ps.", el de coordenadas de fecha y el del dígito pegado) partieron de una
+**teoría inicial equivocada** ("el título queda debajo de la tabla") o de un riesgo real de romper
+un patrón ya protegido (referencias de nota al pie), y ambos se resolvieron con el mismo método:
+**medir las coordenadas reales del PDF antes de tocar una regex sobre texto**. Ninguno de los dos
+últimos se habría podido arreglar de forma segura solo con texto plano. **Verificar contra
 el archivo real antes de proponer una causa, y no forzar un arreglo por texto cuando el riesgo de
 colisión con un patrón ya establecido es real** — ahí es cuando toca coordenadas, no regex.
 
@@ -202,8 +207,8 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
 1. **Cuando Supabase sea alcanzable: cargar los 9 períodos de `db/CANAL_B_GRUPO_SURA_STAGING.md`**
    en `fundamentales_reportados` — es el paso de mayor impacto pendiente, convierte a GRUPO_SURA en
    el cuarto holding del MVP (36,8 % → 84,2 %) sin ningún trabajo adicional de lectura.
-2. El bug del dígito suelto en BANCO_DE_BOGOTA (`BALANCE_NO_CUADRA`, ya diagnosticado arriba,
-   necesita una versión por coordenadas del mismo patrón del bug #4).
+2. Canal B sobre los 4 períodos escaneados de BANCO_DE_BOGOTA (`SIN_ANCLA_ESCANEADO`), mismo método
+   ya usado en GRUPO_SURA.
 3. Pedirle a Alex el EEFF real de GRUPO_SURA 2024-T4 (el archivo descargado es un comunicado de
    prensa sin balance, canal C) y revisar 2022-T4 y 2024-T2 (canal A, no verificados esta sesión).
 4. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar

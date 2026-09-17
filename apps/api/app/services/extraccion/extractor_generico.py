@@ -592,6 +592,82 @@ def _indice_columna_por_coordenadas(pagina_pdfplumber, anio: int, periodo: str) 
     return None
 
 
+# Separacion horizontal maxima (puntos) entre un digito suelto y el numero que
+# le sigue para considerarlo pegado (mismo numero, digito de las centenas de
+# mil roto por el tokenizado de pdfplumber) en vez de una referencia de nota
+# al pie. Calibrado contra dos casos reales: BANCO_DE_BOGOTA 2026-T1 -- "1" y
+# "49,583.6" quedan a 0.3pt de distancia (practicamente pegados, forman
+# "149,583.6") -- contra GRUPO_AVAL 2022-ANUAL, donde una referencia de nota
+# real ("7" antes de "Ps." antes del valor) esta a 25.3pt. 3.0 separa limpio
+# ambos casos reales con margen amplio de los dos lados.
+UMBRAL_GAP_DIGITO_PEGADO = 3.0
+
+
+def _texto_con_digito_pegado_reparado(pagina_pdfplumber) -> str:
+    """Respaldo por COORDENADAS para BALANCE_NO_CUADRA por un dígito suelto que
+    se perdió -- verificado real, BANCO_DE_BOGOTA 2026-T1: `extract_text()` da
+    "Total activos 1 49,583.6 1 56,164.4 1 42,238.3", donde el "1" (centenas de
+    mil) es en realidad parte del número siguiente -- el hueco real entre
+    ambos es de un cuarto de punto, invisible a simple vista pero suficiente
+    para que pdfplumber los separe en dos "palabras". `PATRON_NUMERO_
+    FINANCIERO` exige separador de miles, así que "1" solo nunca matchea y
+    desaparece en silencio: el activo total se lee 100.000 unidades más chico
+    de lo real. Probado que ensanchar `x_tolerance` NO cierra este hueco
+    (hasta 25pt); es un espaciado real del documento, no un artefacto de
+    tolerancia -- por eso este respaldo es aparte del de kerning ancho.
+
+    Reconstruye el texto agrupando `extract_words()` por FILA (mismo `top`,
+    redondeado) y, dentro de cada fila, uniendo un token de 1-3 dígitos
+    sueltos con el siguiente SOLO si el hueco horizontal entre ambos es menor
+    a `UMBRAL_GAP_DIGITO_PEGADO` -- una referencia de nota al pie real (ej.
+    "Efectivo... 7 Ps. 17,032,857" en GRUPO_AVAL) tiene un hueco de 25+ puntos
+    hasta el valor, muy por encima del umbral, así que nunca se fusiona.
+    Sin este filtro de distancia, cualquier dígito suelto se leería como
+    parte del número siguiente -- exactamente el error que NO se puede
+    cometer con las referencias de nota, que son la mayoría de los casos.
+
+    El agrupado por fila NO puede redondear `top` a un decimal fijo:
+    verificado real, en la misma fila de BANCO_DE_BOGOTA la etiqueta en
+    negrita ("Total activos", top=281.93) y las cifras en regular
+    (top=281.66) difieren 0.27pt por la métrica propia de cada fuente --
+    menos que el interlineado real (~14pt) pero más que la tolerancia de un
+    redondeo a 1 decimal, que las separaba en dos filas y perdía las cifras
+    por completo. Se agrupa por proximidad (`UMBRAL_MISMA_FILA`) en vez de
+    por igualdad exacta."""
+    UMBRAL_MISMA_FILA = 2.0
+    palabras = sorted(pagina_pdfplumber.extract_words(), key=lambda w: w["top"])
+    if not palabras:
+        return ""
+    filas: list[list[dict]] = [[palabras[0]]]
+    for w in palabras[1:]:
+        if w["top"] - filas[-1][-1]["top"] < UMBRAL_MISMA_FILA:
+            filas[-1].append(w)
+        else:
+            filas.append([w])
+
+    lineas = []
+    for fila_sin_ordenar in filas:
+        fila = sorted(fila_sin_ordenar, key=lambda w: w["x0"])
+        piezas = []
+        i = 0
+        while i < len(fila):
+            actual = fila[i]
+            siguiente = fila[i + 1] if i + 1 < len(fila) else None
+            if (
+                siguiente is not None
+                and re.fullmatch(r"\d{1,3}", actual["text"])
+                and re.match(r"^\d", siguiente["text"])
+                and siguiente["x0"] - actual["x1"] < UMBRAL_GAP_DIGITO_PEGADO
+            ):
+                piezas.append(actual["text"] + siguiente["text"])
+                i += 2
+                continue
+            piezas.append(actual["text"])
+            i += 1
+        lineas.append(" ".join(piezas))
+    return "\n".join(lineas)
+
+
 def _valor_en_columna(texto: str, alternativas: list[str], indice_columna: int, patron, parser) -> float | None:
     """Como `buscar_valor_en_texto` de pdf_utils, pero con la columna ya
     resuelta por fecha (`_indice_columna_actual`) en vez de un índice fijo.
@@ -884,6 +960,38 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                     }
                 if activos and pasivos is not None and patrimonio is not None:
                     cuadra_balance = abs(pasivos + patrimonio - activos) / activos <= 0.01
+
+                # Respaldo por digito suelto pegado (BALANCE_NO_CUADRA): verificado
+                # real, BANCO_DE_BOGOTA 2026-T1 -- ver `_texto_con_digito_pegado_
+                # reparado`. Solo se intenta cuando el balance normal SI se pudo
+                # calcular pero NO cuadra (los tres campos presentes, la resta
+                # falla) -- si ya cuadraba, tocar esto no puede mejorar nada y solo
+                # arriesga una regresion; si faltaba algun campo, es otro problema
+                # (PARCIAL_SIN_BALANCE), no este.
+                if cuadra_balance is False and pagina_balance < len(pdf.pages):
+                    texto_reparado = _texto_con_digito_pegado_reparado(pdf.pages[pagina_balance])
+                    if texto_reparado and texto_reparado != texto:
+                        patron_rep, parser_rep = detectar_formato_numero(texto_reparado)
+                        activos_rep = _valor_en_columna(texto_reparado, SINONIMOS_ACTIVOS, indice_col, patron_rep, parser_rep)
+                        pasivos_rep = _valor_en_columna(texto_reparado, SINONIMOS_PASIVOS, indice_col, patron_rep, parser_rep)
+                        patrimonio_rep = _valor_en_columna(texto_reparado, SINONIMOS_PATRIMONIO, indice_col, patron_rep, parser_rep)
+                        if activos_rep and pasivos_rep is not None and patrimonio_rep is not None:
+                            cuadra_reparado = abs(pasivos_rep + patrimonio_rep - activos_rep) / activos_rep <= 0.01
+                            if cuadra_reparado:
+                                activos, pasivos, patrimonio = activos_rep, pasivos_rep, patrimonio_rep
+                                deuda_rep = _suma_todas_ocurrencias(texto_reparado, SINONIMOS_DEUDA, indice_col, patron_rep, parser_rep)
+                                if deuda_rep is not None:
+                                    deuda = deuda_rep
+                                cuadra_balance = True
+                                for campo, valor in [
+                                    ("activos_totales", activos), ("pasivos_totales", pasivos),
+                                    ("patrimonio", patrimonio), ("deuda_financiera", deuda),
+                                ]:
+                                    campos[campo] = {
+                                        "valor": round(valor * factor_documento, 3) if valor is not None else None,
+                                        "pagina": pagina_balance + 1,
+                                        "tabla": "situacion_financiera (generico, digito pegado reparado)",
+                                    }
 
         def _factor_y_columna(texto_pagina: str, pagina: int | None = None) -> tuple[float, int] | None:
             """(factor, índice de columna) de ESTA página -- unidad e índice

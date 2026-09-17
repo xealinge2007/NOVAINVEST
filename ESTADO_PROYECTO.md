@@ -1037,3 +1037,29 @@ datos suficientes.
 de ese período, leído completo) es un informe de prensa sin Estado de Situación Financiera — canal
 C, hay que pedirle a Alex el EEFF real. `2022-T4` y `2024-T2` fallan con texto legible (no
 escaneado) — canal A, no verificados esta sesión.
+
+## Sexto bug de W0: dígito suelto pegado a un número, BANCO_DE_BOGOTA (17-sep-2026)
+
+Volví al bug de `BALANCE_NO_CUADRA` diagnosticado antes (BANCO_DE_BOGOTA 2026-T1: "1 49,583.6" leía
+como 49.583,6 en vez de 149.583,6, un dígito de las centenas de mil se perdía). Confirmé por
+coordenadas que el hueco real entre el "1" y el resto del número es de 0,3pt — comparado con 25,3pt
+para una referencia de nota al pie real (verificado en GRUPO_AVAL) — dos órdenes de magnitud de
+diferencia, umbral seguro sin riesgo de confundir los dos casos.
+
+Nuevo respaldo `_texto_con_digito_pegado_reparado`: agrupa palabras por fila (con tolerancia de
+proximidad, no `round()` — la etiqueta en negrita y las cifras de la misma fila difieren 0,27pt de
+línea base) y funde un dígito suelto de 1-3 cifras con el número siguiente solo si el hueco es
+menor a 3pt. Se reintenta solo cuando el balance normal no cuadra (no toca los casos que ya
+funcionan). Efecto: BANCO_DE_BOGOTA 2026-T1 pasa de `BALANCE_NO_CUADRA` a `OK`, verificado
+end-to-end (`cuadra_balance=True`) y con las 3 columnas del documento cuadrando exacto tras la
+reparación. Prueba nueva: `jobs/test_digito_pegado.py`. Sin regresiones en el corpus completo.
+
+**Cobertura final de la sesión completa de W0 (16/17-sep-2026, 8 commits)**: universo 187/315
+(59,4%) → **204/315 (64,8%)**, 6 bugs de extracción corregidos, canal B de GRUPO_SURA completo
+(9/9 leído, staging sin cargar por falta de acceso a Supabase). BANCO_DE_BOGOTA: 33,3% → 46,7%
+(quedan 4 períodos escaneados, canal B, mismo método que GRUPO_SURA).
+
+**Explicación dada a Alex sobre por qué no se llega al 100%**: no es solo falta de archivos. El
+hueco se reparte en tres canales — código (bugs de parser, ~108 períodos), páginas escaneadas
+(necesitan lectura visual, 59 períodos) y descarga real (canal C, sin medir por falta de acceso a
+Supabase). Pedirle a Cowork que descargue solo resuelve el tercero.
