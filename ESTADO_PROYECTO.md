@@ -1007,3 +1007,26 @@ por coordenadas del mismo patrón del bug #4; canal B sobre GRUPO_SURA 2023-2024
 cuarto holding; y cuando Supabase sea alcanzable, correr `jobs/matriz_huecos_fundamentales.py --csv`
 para separar el canal C real y confirmar la cobertura del canal XBRL (primario según la memoria del
 proyecto, no verificable desde este entorno).
+
+## Canal B: primeras 2 lecturas de GRUPO_SURA (17-sep-2026, staging sin cargar)
+
+Alex pidió seguir con el canal B (el subagente lee las páginas escaneadas). Localicé el bloque
+consolidado en los documentos de GRUPO_SURA con un método repetible (buscar el título "ESTADOS
+FINANCIEROS CONSOLIDADOS" y "Hechos posteriores" en el texto plano, confirmar que las páginas entre
+ambos tienen <100 caracteres = imagen, leer ese rango) y transcribí y verifiqué dos períodos:
+
+- **2023-T3**: Total activos 94.803.158, Total pasivos 61.678.937, Patrimonio 33.124.221 (millones
+  COP). Verificación exacta: 61.678.937 + 33.124.221 = 94.803.158.
+- **2026-T2**: Total activos 94.574.189, Total pasivos 73.461.561, Patrimonio 21.112.628.
+  Verificación exacta: 73.461.561 + 21.112.628 = 94.574.189.
+
+**No se cargaron en Supabase** (inalcanzable desde este entorno, mismo problema de toda la sesión).
+Quedaron en `db/CANAL_B_GRUPO_SURA_STAGING.md`, listas para insertar sin repetir el trabajo de
+lectura. Efecto en GRUPO_SURA una vez cargadas: 7/19 (36,8%) → **9/19 (47,4%)**.
+
+**Hallazgo importante**: `2024-T4_Comunicado-Resultados.pdf` (el único archivo descargado para ese
+período) **no es canal B, es canal C** — lo leí completo y es un informe de prensa con cifras
+proforma por segmento, sin el Estado de Situación Financiera. Hay que pedirle a Alex el EEFF real
+de ese trimestre; releerlo no sirve.
+
+Quedan 5 períodos de GRUPO_SURA en canal B, mismo método aplicable, documentados en el staging file.

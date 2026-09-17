@@ -184,7 +184,7 @@ manual del subagente (por archivo, no por commit).
 | Canal | Qué es | Volumen | Quién lo resuelve |
 |---|---|---:|---|
 | **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 9), etiquetas no reconocidas (`SIN_ETIQUETAS`, 3), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 38 — sigue siendo la clase más grande), balance que no cuadra (`BALANCE_NO_CUADRA`, 3 — incluye el dígito-suelto de BANCO_DE_BOGOTA, ver arriba, que necesita arreglo por coordenadas, no por regex), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~109 | Sesión de código futura. `BANCO_DE_BOGOTA` sigue siendo el peor de los emisores con cobertura de datos reales (40,0 %, subió de 33,3 % esta sesión, tras CONSTRUCTORA_CONCONCRETO y GRUPO_NUTRESA en 0 %) — el bug del dígito suelto (arriba) es el siguiente candidato natural, ya diagnosticado. |
-| **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética | 59 | Trabajo por sesión, no automatizable por decisión ya tomada. Prioridad: los períodos de GRUPO_SURA 2023-2024 que bloquean el cuarto holding del MVP. |
+| **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética | 59 | Trabajo por sesión, no automatizable por decisión ya tomada. **2 de 7 períodos de GRUPO_SURA ya leídos y verificados esta sesión** (2023-T3, 2026-T2 — ver `db/CANAL_B_GRUPO_SURA_STAGING.md`), pendientes de cargar cuando Supabase sea alcanzable. Quedan 5 con el mismo método aplicable, más un sexto (2024-T4) que resultó ser canal C (descarga), no B — el único archivo de ese período es un comunicado de prensa sin balance. |
 | **C — Descarga (Alex)** | Archivo con estados financieros que genuinamente no existe todavía en `SIMEV_BVC`, o el existente es un informe narrativo que remite a los EEFF radicados aparte (`archivo_sin_estados`, patrón ya documentado con GRUPO_NUTRESA/ISA/PEI en la sesión del 08-sep) | Sin medir en esta sesión (requiere Supabase inalcanzable — ver §3) | Alex descarga del SIMEV/relación con inversionistas. |
 
 **Lección metodológica de esta sesión, para la próxima**: de los 5 bugs investigados (4 corregidos,
@@ -200,7 +200,10 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
 **Siguiente paso concreto, en orden de valor esperado:**
 1. El bug del dígito suelto en BANCO_DE_BOGOTA (`BALANCE_NO_CUADRA`, ya diagnosticado arriba,
    necesita una versión por coordenadas del mismo patrón del bug #4).
-2. Canal B sobre GRUPO_SURA 2023-2024 (desbloquea el cuarto holding del MVP).
+2. Terminar canal B sobre los 5 períodos restantes de GRUPO_SURA
+   (`db/CANAL_B_GRUPO_SURA_STAGING.md` tiene el método y qué falta) — llevaría al cuarto holding
+   del MVP de 47,4 % a 73,7 % de cobertura; y pedirle a Alex el EEFF real de 2024-T4 (el archivo
+   descargado es un comunicado de prensa sin balance, canal C).
 3. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar
    canal C (descarga) de lo que ya está medido aquí, y verificar cobertura real del canal XBRL
    (que esta sesión no pudo confirmar).
