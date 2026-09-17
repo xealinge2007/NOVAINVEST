@@ -197,10 +197,14 @@ def separar_etiqueta_y_valores_linea(
     if not m:
         return linea.strip(), []
     etiqueta = linea[: m.start()].strip()
-    # signo de moneda pegado al final de la etiqueta -- verificado real, PEI:
-    # "Total activos $ 7,605,743,284 $ 6,929,937,332" deja la etiqueta como
-    # "Total activos $", que nunca iguala "total activos" en el match exacto.
-    etiqueta = etiqueta.rstrip("$").strip()
+    # signo o abreviatura de moneda pegado al final de la etiqueta -- verificado
+    # real, PEI: "Total activos $ 7,605,743,284 $ 6,929,937,332" deja la etiqueta
+    # como "Total activos $", que nunca iguala "total activos" en el match
+    # exacto. GRUPO_AVAL (16-sep-2026) trae el mismo problema con "Ps." en vez de
+    # "$": "Total activos Ps. 295,591,236 Ps. 366,903,925" -> "Total activos Ps.".
+    # Una sola pasada cubre las dos abreviaturas vistas en el corpus, y admite
+    # que se repita (poco probable, pero barato de cubrir).
+    etiqueta = re.sub(r"(?:\s*(?:\$|[Pp]s\.?|COP\$|US\$))+$", "", etiqueta).strip()
     # nota(s) al pie pegada(s) al final de la etiqueta -- una sola ("...neto 28")
     # o varias separadas por guion ("...amortización 13-14-15-16").
     etiqueta = re.sub(r"\s+[\d]{1,3}(-\d{1,3})*$", "", etiqueta)

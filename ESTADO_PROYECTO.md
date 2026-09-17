@@ -932,7 +932,7 @@ Y una corrección de fondo que no se ve en el conteo: **varios de los "OK" anter
 leyendo la sección SEPARADA** (MINEROS, y por el mismo mecanismo probablemente otros). Ahora
 leen el consolidado.
 
-## W0 del Motor de Valor BVC arrancado (16-sep-2026, sin commitear aún en este archivo)
+## W0 del Motor de Valor BVC arrancado (16/17-sep-2026, commits `b055d6b` + siguiente, sin push)
 
 Primera fase (`W0`) del plan aprobado en sesión de Opus con Alex
 (`C:\Users\Alex\.claude\plans\quiero-que-busques-este-zesty-kettle.md`, no vive en este repo):
@@ -941,43 +941,50 @@ como puerta de seguridad y Greenwald (activos/SOTP + EPV) como núcleo de valora
 ensamble de 15 modelos. Detalle completo en `db/DOCTRINA_VALOR.md`.
 
 **Nota aparte, no de esta sesión**: este archivo (`ESTADO_PROYECTO.md`) no se actualizó entre el
-commit `6a0134e` (08-sep) y hoy — hay 12 commits posteriores (F4i→F4q, Estrellas, F5 screener y
-comparador) que no quedaron reflejados aquí. No se reconcilió en esta sesión (fuera de alcance de
-lo pedido); el estado real de esas fases hay que leerlo del `git log`, no de este documento, hasta
-que alguien lo reconcilie.
+commit `6a0134e` (08-sep) y el 16-sep — hay 12 commits posteriores (F4i→F4q, Estrellas, F5 screener
+y comparador) que no quedaron reflejados aquí. No se reconcilió (fuera de alcance de lo pedido); el
+estado real de esas fases hay que leerlo del `git log`, no de este documento, hasta que alguien lo
+reconcilie.
 
-**Petición de Alex esta sesión: arrancar W0 y avanzar hacia el 100% de extracción de estados
-financieros.** Estado real, medido con `jobs/diagnostico_extraccion.py` contra los 412 archivos de
-`SIMEV_BVC` (no contra Supabase — inalcanzable desde este entorno, `SSLCertVerificationError`):
+**Petición de Alex: arrancar W0 y avanzar hacia el 100% de extracción de estados financieros.**
+Estado real, medido con `jobs/diagnostico_extraccion.py` contra los 412 archivos de `SIMEV_BVC`
+(no contra Supabase — inalcanzable desde este entorno, `SSLCertVerificationError`):
 
 - Cobertura por período (un período cuenta si algún archivo suyo pasó): **187/315 (59,4%) →
-  192/315 (61,0%)** tras dos correcciones de código, verificadas archivo por archivo sin ninguna
-  regresión (0 casos OK → no-OK).
-- **Dos bugs reales corregidos**, ambos en `apps/api/app/services/extraccion/`:
+  195/315 (61,9%)** tras tres correcciones de código, cada una verificada archivo por archivo sin
+  ninguna regresión (0 casos OK → no-OK en ninguna de las tres).
+- **Tres bugs reales corregidos** en `apps/api/app/services/extraccion/`:
   1. `triage.py`: el umbral de "página sin texto" exigía string vacío; una página de balance
      escaneada con solo el número de página impreso (22-51 caracteres) nunca se marcaba como
      candidata a canal B. Nuevo umbral de 100 caracteres, calibrado contra 80 documentos reales.
   2. `extractor_generico.py`: GRUPO_AVAL declara la unidad como "miles de millones" sin la
      palabra "pesos" (nunca coincidía con el marcador exigido). Nuevo marcador laxo, guardado
      contra falsos positivos en reportes en USD ("dolar" en el mismo membrete).
-- **GRUPO_AVAL pasó de 0/8 a 4/8 períodos cubiertos** (más un efecto colateral en
+  3. `pdf_utils.py`: el símbolo de moneda "Ps." pegado al final de la etiqueta ("Total activos
+     Ps." nunca igualaba "total activos") — mismo defecto que ya se sabía de "$" (PEI), generalizado
+     a una expresión regular que cubre "$", "Ps."/"Ps" y "COP$"/"US$". **La teoría inicial de esta
+     sesión sobre este bug (el título de la tabla queda debajo, no encima) era incorrecta** — el
+     triage sí ubicaba bien la página desde el principio; el defecto estaba en el extractor.
+- **GRUPO_AVAL pasó de 0/8 a 7/8 períodos cubiertos** (más un efecto colateral en
   DAVIVIENDA_GROUP: +1 período).
-- **El 100% no se alcanza en una sesión.** La cola restante (123 períodos) se separó por canal en
-  `db/DOCTRINA_VALOR.md` §5: ~126 son bugs de código por investigar (canal A, el más grande:
-  `PARCIAL_SIN_BALANCE` con 50 casos — candidato principal GRUPO_AVAL/CORFICOLOMBIANA, donde el
-  título de la tabla real queda DEBAJO de la tabla, no encima, rompiendo el supuesto de "banda
-  superior" del triage), 59 son páginas genuinamente escaneadas que le tocan al subagente (canal
-  B, arquitectura ya decidida en `db/DECISION_ARQUITECTURA_EXTRACCION.md`), y el resto son
-  descargas que solo Alex puede resolver (canal C, sin medir esta sesión por falta de acceso a
-  Supabase).
+- **El 100% no se alcanza en una sesión.** La cola restante (120 períodos) se separó por canal en
+  `db/DOCTRINA_VALOR.md` §5: ~123 son bugs de código por investigar (canal A — `PARCIAL_SIN_BALANCE`
+  sigue siendo el más grande con 47 casos; se encontró y **no** se corrigió un bug nuevo distinto en
+  CORFICOLOMBIANA 2025-2026: el encabezado de fecha de columna sale con los caracteres intercalados
+  entre las dos columnas, probable problema de orden de lectura de pdfplumber sobre un encabezado
+  partido en varias líneas angostas — mayor riesgo de regresión sin más calibrado), 59 son páginas
+  genuinamente escaneadas que le tocan al subagente (canal B, arquitectura ya decidida en
+  `db/DECISION_ARQUITECTURA_EXTRACCION.md`), y el resto son descargas que solo Alex puede resolver
+  (canal C, sin medir esta sesión por falta de acceso a Supabase).
 
-**MVP W3a (suma de partes de los 5 holdings) arranca con GRUPO_ARGOS (93,3%) y CORFICOLOMBIANA
-(68,8%).** GRUPO_AVAL, GEB y GRUPO_SURA quedan en "historial insuficiente" hasta que bajen sus
-huecos — no es una limitación del motor, es la regla de honestidad que ya rige el proyecto.
+**MVP W3a (suma de partes de los 5 holdings) arranca con GRUPO_ARGOS (93,3%), GRUPO_AVAL (87,5%,
+ya no es el peor del grupo) y CORFICOLOMBIANA (68,8%).** GEB y GRUPO_SURA quedan en "historial
+insuficiente" hasta que bajen sus huecos — no es una limitación del motor, es la regla de
+honestidad que ya rige el proyecto.
 
-**Siguiente paso concreto**: investigar el bug del título-debajo-de-la-tabla en el canal A (afecta
-probablemente también a BANCO_DE_BOGOTA, el peor del universo con 33,3%); canal B sobre
-GRUPO_SURA 2023-2024 para desbloquear el tercer holding del MVP; y cuando Supabase sea alcanzable,
-correr `jobs/matriz_huecos_fundamentales.py --csv` para separar el canal C real y confirmar la
-cobertura del canal XBRL (primario según la memoria del proyecto, no verificable desde este
-entorno).
+**Siguiente paso concreto**: investigar el bug del encabezado de fecha intercalado en
+CORFICOLOMBIANA (probablemente compartido con BANCO_DE_BOGOTA, el peor del universo con 33,3%);
+canal B sobre GRUPO_SURA 2023-2024 para desbloquear el cuarto holding del MVP; y cuando Supabase
+sea alcanzable, correr `jobs/matriz_huecos_fundamentales.py --csv` para separar el canal C real y
+confirmar la cobertura del canal XBRL (primario según la memoria del proyecto, no verificable desde
+este entorno).

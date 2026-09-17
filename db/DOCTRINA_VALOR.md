@@ -59,32 +59,32 @@ Este documento reporta solo lo verificable localmente; no se inventa cobertura d
 **Cobertura por período (no por archivo — un período cuenta cubierto si AL MENOS UN archivo de ese
 período pasó la extracción):**
 
-| | Antes de esta sesión | Después (16-sep-2026) |
+| | Antes de esta sesión | Después (16/17-sep-2026) |
 |---|---:|---:|
-| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **192/315 (61,0 %)** |
-| Archivos-fuente OK | 195/412 | **200/412** |
-| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo |
+| Períodos cubiertos (todo el universo) | 187/315 (59,4 %) | **195/315 (61,9 %)** |
+| Archivos-fuente OK | 195/412 | **203/412** |
+| Regresiones (OK → no-OK) | — | **0**, verificado archivo por archivo en cada uno de los 3 cambios |
 
 **Cobertura de los 5 holdings del MVP W3a (la que importa para arrancar):**
 
 | Emisor | Períodos cubiertos | % |
 |---|---:|---:|
 | GRUPO_ARGOS | 14/15 | 93,3 % |
+| GRUPO_AVAL | 7/8 | 87,5 % (era 0/8 antes de esta sesión) |
 | CORFICOLOMBIANA | 11/16 | 68,8 % |
-| GRUPO_AVAL | 4/8 | 50,0 % (era 0/8 antes de esta sesión) |
 | GEB | 2/4 | 50,0 % |
 | GRUPO_SURA | 7/19 | 36,8 % |
 
-**Veredicto de W0: el MVP arranca con GRUPO_ARGOS y CORFICOLOMBIANA** (cobertura suficiente para
-un NAV con historial). **GRUPO_AVAL, GEB y GRUPO_SURA no tienen datos suficientes todavía** — se
-construye el motor contra los dos primeros y se declara "historial insuficiente" en los otros tres
-hasta que la cola de huecos de abajo baje. Esto no es una limitación del motor: es la regla de
-honestidad que ya rige todo el proyecto (`§3.7` del plan v3: "ningún emisor muestra valor justo si
-no alcanza el mínimo de trimestres validados").
+**Veredicto de W0 (actualizado): el MVP arranca con GRUPO_ARGOS, GRUPO_AVAL y CORFICOLOMBIANA**
+(cobertura suficiente para un NAV con historial). **GEB y GRUPO_SURA no tienen datos suficientes
+todavía** — se declara "historial insuficiente" en esos dos hasta que la cola de huecos de abajo
+baje. Esto no es una limitación del motor: es la regla de honestidad que ya rige todo el proyecto
+(`§3.7` del plan v3: "ningún emisor muestra valor justo si no alcanza el mínimo de trimestres
+validados").
 
 ## 4. Lo que se corrigió en esta sesión (código, verificado, sin regresión)
 
-Dos bugs reales, cada uno confirmado contra el PDF real antes y después del cambio, y contra la
+Tres bugs reales, cada uno confirmado contra el PDF real antes y después del cambio, y contra la
 regla del proyecto de comparar archivo por archivo que ningún OK se vuelva no-OK.
 
 1. **`triage.py` — el umbral de "página sin texto" exigía cero caracteres.**
@@ -94,29 +94,57 @@ regla del proyecto de comparar archivo por archivo que ningún OK se vuelva no-O
    candidatas a canal B (subagente lee imagen) y las trataba como si tuvieran contenido legible.
    Nuevo umbral: `UMBRAL_CARACTERES_PAGINA_ESCANEADA = 100`, calibrado contra un muestreo de 80
    documentos reales del corpus (ninguna página con contenido legible cayó entre 50 y 150
-   caracteres). Resultado: 59→59 `SIN_ANCLA_ESCANEADO` netos con reclasificaciones correctas desde
-   `SIN_ANCLA` en varios trimestres de Sura — antes se veían como bug del triage, ahora se ven
-   (correctamente) como candidatos al canal del subagente.
+   caracteres). Resultado: reclasificaciones correctas desde `SIN_ANCLA` a `SIN_ANCLA_ESCANEADO` en
+   varios trimestres de Sura — antes se veían como bug del triage, ahora se ven (correctamente)
+   como candidatos al canal del subagente.
 
 2. **`extractor_generico.py` — GRUPO_AVAL declara la unidad sin la palabra "pesos".**
    El marcador exigía la frase exacta "miles de millones **de pesos**". Grupo Aval la declara así:
    *"Información reportada en miles de millones y bajo NIIF"* — nunca dice "de pesos" en ningún
    reporte trimestral revisado. Se agregó `MARCADOR_MILES_DE_MILLONES_SIN_MONEDA = "miles de
    millones"`, aceptado solo cuando la palabra "dolar" no aparece en el mismo membrete (para no
-   confundir un reporte en USD — el mismo criterio que ya protegía a TERPEL). **Efecto medido: 4
+   confundir un reporte en USD — el mismo criterio que ya protegía a TERPEL). Efecto medido: 4
    trimestres de GRUPO_AVAL pasan de `SIN_UNIDAD` a `OK`, más un efecto colateral en
-   DAVIVIENDA_GROUP 2026-T2** (mismo patrón de declaración). Cero regresiones.
+   DAVIVIENDA_GROUP 2026-T2 (mismo patrón de declaración).
+
+3. **`pdf_utils.py` — el símbolo de moneda "Ps." pegado al final de la etiqueta.**
+   `separar_etiqueta_y_valores_linea` ya sabía quitar un "$" suelto al final de la etiqueta
+   (caso PEI: `"Total activos $ ..."`). GRUPO_AVAL usa **"Ps."** en su lugar y **pdfplumber sí
+   junta la etiqueta y las dos cifras en una sola línea** (verificado real, página 169 de
+   `2022-ANUAL_...`): `"Total activos Ps. 295,591,236 Ps. 366,903,925"`. La etiqueta resultante,
+   `"Total activos Ps."`, nunca igualaba `"total activos"` en `SINONIMOS_ACTIVOS`. Se generalizó el
+   `rstrip("$")` a una expresión regular que cubre `$`, `Ps.`/`Ps` y `COP$`/`US$` al final de la
+   etiqueta (repetidos, con o sin espacio). **Efecto medido: los 3 anuales de GRUPO_AVAL
+   (2022-2024) pasan de `PARCIAL_SIN_BALANCE` a `OK`.** Nota de investigación para no repetirla:
+   la teoría inicial de esta sesión (el título de la tabla queda *debajo*, no encima, rompiendo la
+   "banda superior" del triage) era **incorrecta** — el triage sí ubicaba bien la página 169 desde
+   el principio (verificado con `triage_documento()` directamente); el bug estaba en el extractor,
+   no en el triage. Prueba nueva: `jobs/test_etiqueta_moneda.py`.
 
 ## 5. Lo que queda — priorizado por canal, no por emisor
 
-La cola de 315-192=123 períodos sin cubrir se separa en tres canales que necesitan trabajo
+La cola de 315-195=120 períodos sin cubrir se separa en tres canales que necesitan trabajo
 **distinto**, siguiendo la disciplina ya establecida en `db/DECISION_ARQUITECTURA_EXTRACCION.md`.
 No se puede llegar al 100 % solo con código: una parte es descarga (de Alex) y otra es lectura
 manual del subagente (por archivo, no por commit).
 
 | Canal | Qué es | Volumen | Quién lo resuelve |
 |---|---|---:|---|
-| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 13), etiquetas no reconocidas (`SIN_ETIQUETAS`, 4), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 50 — la clase más grande que queda), balance que no cuadra (`BALANCE_NO_CUADRA`, 3), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~126 | Sesión de código futura. Candidato #1: el `PARCIAL_SIN_BALANCE` de GRUPO_AVAL anual — la tabla real (`Estado Consolidado de Situación Financiera`) tiene el título **debajo** de la tabla, no encima, rompiendo el supuesto de "banda superior" del triage; probablemente afecta a otros bancos/holdings con el mismo formato de opinión de auditor + tabla + título. |
+| **A — Código (bugs reales del parser)** | El PDF trae la cifra en texto legible pero el extractor no la reconstruye: columnas mal resueltas (`SIN_COLUMNA`, 13), etiquetas no reconocidas (`SIN_ETIQUETAS`, 4), balance partido entre páginas (`PARCIAL_SIN_BALANCE`, 47 — la clase más grande que queda tras el fix de "Ps."), balance que no cuadra (`BALANCE_NO_CUADRA`, 3), anclas que el triage aún no encuentra en texto legible (`SIN_ANCLA`, 56 — hay que revisar caso por caso cuáles son bug real vs. narrativo) | ~123 | Sesión de código futura. Candidato a revisar primero: repetir sobre `BANCO_DE_BOGOTA` (33,3 %, el peor del universo) y `CORFICOLOMBIANA` el mismo método que resolvió Aval — inspeccionar directo con `pdfplumber` (no con PyMuPDF, que rompe líneas distinto) la página real del balance antes de teorizar la causa. |
+
+**Bug nuevo encontrado y NO corregido esta sesión (para no repetir la investigación):**
+`CORFICOLOMBIANA/2026-T1` y `2026-T2` (y probablemente `2025-ANUAL`) fallan `PARCIAL_SIN_BALANCE`
+con "no se pudo resolver la columna". Causa raíz verificada: el encabezado de fecha de la columna
+se extrae **con los caracteres intercalados entre las dos columnas** —
+`"Al 31 d\n2\ne\n0 2\nm\n6\na rzo de Al 31\nd\nd\ne\ne\n2\nd\n0\n2\n5\nic\ni\ne mbre"` en vez de "Al
+31 de marzo de 2026" / "Al 31 de diciembre de 2025". Es un problema de **orden de lectura de
+pdfplumber** sobre un encabezado de fecha partido en varias líneas angostas de dos columnas
+adyacentes, no de las etiquetas de fila (esas sí se leen bien, ver la muestra en el propio
+diagnóstico). `_indice_columna_actual` busca la fecha como frase legible y nunca la encuentra así.
+Posible arreglo: extraer esa franja del encabezado por coordenadas (como ya hace `triage.py` para
+la banda superior) en vez de por texto plano, o un fallback tolerante a fecha fragmentada
+(buscar año y mes como tokens sueltos en la ventana, no como frase). No intentado esta sesión —
+distinto de raíz a los dos bugs de arriba, mayor riesgo de regresión sin más tiempo de calibrado.
 | **B — Subagente lee la imagen** | Páginas genuinamente escaneadas sin capa de texto (`SIN_ANCLA_ESCANEADO`, 59). Arquitectura ya decidida (`db/DECISION_ARQUITECTURA_EXTRACCION.md`): el subagente Claude lee la página como imagen, el parser no puede verificar por falta de texto — se valida por autoconsistencia aritmética | 59 | Trabajo por sesión, no automatizable por decisión ya tomada. Prioridad: los períodos de GRUPO_SURA 2023-2024 que bloquean el MVP W3a. |
 | **C — Descarga (Alex)** | Archivo con estados financieros que genuinamente no existe todavía en `SIMEV_BVC`, o el existente es un informe narrativo que remite a los EEFF radicados aparte (`archivo_sin_estados`, patrón ya documentado con GRUPO_NUTRESA/ISA/PEI en la sesión del 08-sep) | Sin medir en esta sesión (requiere Supabase inalcanzable — ver §3) | Alex descarga del SIMEV/relación con inversionistas. |
 
