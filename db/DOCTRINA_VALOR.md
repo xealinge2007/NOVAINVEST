@@ -254,11 +254,10 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
 1. **Cuando Supabase sea alcanzable: cargar los 9 períodos de `db/CANAL_B_GRUPO_SURA_STAGING.md`**
    en `fundamentales_reportados` — es el paso de mayor impacto pendiente, convierte a GRUPO_SURA en
    el cuarto holding del MVP (36,8 % → 84,2 %) sin ningún trabajo adicional de lectura.
-2. **Antes de eso, o en paralelo: verificar contra XBRL cualquier cifra de canal B/canal A que se
-   vaya a cargar** — la sesión aprendió por las malas (§4B) que `cuadra_balance=True` no prueba
-   corrección en una tabla de varias columnas. Los 9 períodos de Sura fueron leídos a ojo con
-   cruce entre documentos (`CANAL_B_GRUPO_SURA_STAGING.md` §3), que es un estándar más alto — pero
-   conviene cruzarlos contra XBRL también si hay archivo disponible para esos períodos.
+2. ✅ **Hecho (18-sep-2026, §5B): cruzar contra XBRL los 4 períodos de Sura que se solapan con el
+   Bloque 2** (2023-T1/T2/T3, 2024-T1) — `activos_totales`/`pasivos_totales` coinciden exactos con
+   `CANAL_B_GRUPO_SURA_STAGING.md`. Pendiente real ahora: cargar ambas fuentes (Sura staging + Bloque
+   2 completo, 250/258 períodos) a `fundamentales_reportados` en cuanto Supabase sea alcanzable.
 3. El bug de columna "PF" en BANCO_DE_BOGOTA (2 períodos, `SIN_COLUMNA`, ver §4B) necesita la misma
    técnica por coordenadas que ya funcionó para el bug #4 — construir un encabezado de columna leyendo
    `extract_words()` por posición, no por orden de texto, y validado contra el PDF visual antes de
@@ -270,6 +269,44 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
 6. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar
    canal C (descarga) de lo que ya está medido aquí, y verificar cobertura real del canal XBRL
    (que esta sesión no pudo confirmar del lado de la base de datos).
+
+## 5B. Bloque 2 XBRL (2021-2024 T1-T3, 258 archivos) — cruce standalone, 18-sep-2026
+
+Cowork descargó 258 archivos XBRL nuevos (24 emisores, trimestres 2021-2024 T1-T3) directo a
+`C:\Proyectos\BVC\SIMEV_XBRL\<EMISOR>\`. Supabase seguía inalcanzable (§3), así que el cruce se hizo
+**standalone**: `lector_xbrl.leer()` sobre cada archivo nuevo, sin escribir nada — ni en Supabase ni
+en el pipeline. Script: `jobs/cruzar_bloque2_xbrl.py` (no toca red).
+
+**Resultado: 250/258 (96,9 %) devuelven campos con `cuadra_balance=True`.** 8 fallas, todas
+"ningún concepto NIIF de los buscados aparece en el archivo" (no es el bug de escala del §4B de
+BANCO_DE_BOGOTA/2026-T1 — se probó pasando `escala_conocida` a mano y el archivo sigue sin tener los
+conceptos, es un problema del archivo mismo, no de deducción de escala):
+
+| Emisor | Períodos que fallan |
+|---|---|
+| BANCO_DE_BOGOTA | 2023-T1, 2024-T1 |
+| CORFICOLOMBIANA | 2021-T1, 2022-T1, 2022-T2, 2023-T1 |
+| GRUPO_AVAL | 2022-T1, 2024-T1 |
+
+No se investigó la causa raíz esta sesión (bajo volumen, 3,1 % del bloque) — queda en §"Lo que
+queda" si se necesita esa cobertura puntual.
+
+**Verificación de que `cuadra_balance=True` no es el mismo falso positivo del §4B esta vez:**
+cruzado GRUPO_SURA 2023-T1/T2/T3 y 2024-T1 (los 4 períodos que se solapan entre el Bloque 2 y
+`db/CANAL_B_GRUPO_SURA_STAGING.md`, leído a ojo de forma independiente en otra sesión) — `activos_totales`
+y `pasivos_totales` **coinciden exactos, al peso, en los 4 períodos** (ej. 2023-T1: activos
+99.417,052781 XBRL vs 99.417.052 PDF). `patrimonio` NO coincide (XBRL ~34.116.840 vs PDF
+36.235.358 en 2023-T1) — **esto es esperado, no un bug**: el XBRL trae
+`EquityAttributableToOwnersOfParent` (solo controladora) y el PDF trae "Total patrimonio" (incluye
+interés no controlante), la misma distinción ya documentada en `jobs/extraer_xbrl.py`
+(`CAMPOS_CONTRASTABLES` excluye `patrimonio` a propósito por esto). Con esta cruzada, el Bloque 2
+queda razonablemente verificado — no es el mismo tipo de error que produjo los falsos positivos de
+BANCO_DE_BOGOTA en PDF (§4B), porque el fallo de aquí era de resolución de columna en texto, y XBRL
+no tiene ese problema (resuelve por fecha de cierre del contexto, no por orden de texto).
+
+**Todavía sin hacer**: cargar esto a `fundamentales_reportados` (bloqueado por Supabase, §3) y
+correr el contraste automático completo de `jobs/extraer_xbrl.py --dry-run` (que también necesita
+Supabase solo para leer `emisores` y las filas previas — no se puede simular sin red).
 
 ## 6. Pendiente de este W0 (no completado en esta sesión)
 

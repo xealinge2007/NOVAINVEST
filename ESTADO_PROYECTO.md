@@ -1098,3 +1098,27 @@ Supabase). Pedirle a Cowork que descargue solo resuelve el tercero. Y ni el cana
 XBRL están libres de bugs propios: el lector de XBRL ya existente falló en dar cualquier cifra para
 BANCO_DE_BOGOTA 2026-T1 por un problema de detección de escala distinto (`lector_xbrl.py`, sin
 tocar esta sesión) — ningún canal es una solución perfecta por sí sola.
+
+## 18-sep-2026 — Bloque 2 XBRL (258 archivos, 2021-2024 T1-T3) recibido y cruzado
+
+Cowork terminó de descargar el Bloque 2: 258 archivos XBRL para 24 emisores, ya organizados en
+`C:\Proyectos\BVC\SIMEV_XBRL\<EMISOR>\<AÑO>-T<N>_EEFF-Consolidados-XBRL.xbrl` (el árbol pasó de
+~264 a 505 archivos). Se verificó su ubicación directamente en disco (24 archivos en la carpeta
+ECOPETROL, por ejemplo, contra los 11 previos).
+
+Con Supabase todavía inalcanzable (SSL, ver DOCTRINA_VALOR.md §3), se corrió un cruce standalone
+(`jobs/cruzar_bloque2_xbrl.py`, no toca red): **250/258 (96,9%)** de los archivos nuevos devuelven
+campos con `cuadra_balance=True`. 8 fallas (BANCO_DE_BOGOTA 2023-T1/2024-T1, CORFICOLOMBIANA
+2021-T1/2022-T1/2022-T2/2023-T1, GRUPO_AVAL 2022-T1/2024-T1) por archivos sin ningún concepto NIIF
+reconocido — no es el mismo bug de escala de BANCO_DE_BOGOTA/2026-T1, se probó forzando la escala
+y persiste.
+
+Aplicando la lección del §4B (cuadra_balance no prueba columna/cifra correcta), se cruzaron los 4
+períodos donde el Bloque 2 se solapa con `db/CANAL_B_GRUPO_SURA_STAGING.md` (Sura 2023-T1/T2/T3,
+2024-T1, leídos a ojo en otra sesión): `activos_totales` y `pasivos_totales` coinciden **exactos**
+en los 4. `patrimonio` no coincide, pero es la discrepancia YA documentada y esperada en
+`jobs/extraer_xbrl.py` (XBRL trae solo la porción de la controladora, el PDF trae el total con
+interés no controlante) — no es un bug nuevo.
+
+Detalle completo en `db/DOCTRINA_VALOR.md` §5B. Pendiente: cargar Bloque 2 + staging de Sura a
+`fundamentales_reportados` en cuanto Supabase sea alcanzable.
