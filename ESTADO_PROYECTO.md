@@ -1192,3 +1192,21 @@ huecos de descarga:
   descargado -- falla por el mismo bug de deducción de escala del §4B
   (`lector_xbrl.py`), mal clasificado por el job como archivo faltante.
 - PEI 2025-T4: `archivo_sin_estados`, archivo existe, es canal B (página escaneada).
+
+## 18-sep-2026 (cont. 3) — bug real en lector_xbrl.py: duración confundida con instante
+
+El bug de "escala" repetido en varios emisores (Bogotá, Aval) no era de escala:
+`_fechas_de_cierre()` podia elegir un contexto de DURACION en vez del INSTANTE real
+del balance, porque ambos comparten el campo `fecha` internamente y se comparaba
+por texto sin distinguir el tipo. Verificado real en BANCO_DE_BOGOTA 2023-T1: el
+contexto de duracion `YQTD2C` (2023-01-01..2023-06-30) le ganaba por fecha al
+instante real `Q1ENDC` (2023-03-31, donde SI estaba `Assets` etiquetado).
+
+Fix en `apps/api/app/services/extraccion/lector_xbrl.py::_fechas_de_cierre`: la
+fecha de saldo ahora exige `c["instante"]`, no solo `c["fecha"]`. Verificado sin
+regresion contra el corpus completo (508 archivos: 498 OK, 10 sin cifras, 0
+errores) y cargado a Supabase: 5/6 casos conocidos con activos reales, discrepancias
+PDF/XBRL bajaron de 4 a 0. El sexto caso (GRUPO_AVAL 2022-T1) es un bug distinto
+(archivo sin datos suficientes para deducir escala), no perseguido.
+
+Detalle en `db/DOCTRINA_VALOR.md` §5C.

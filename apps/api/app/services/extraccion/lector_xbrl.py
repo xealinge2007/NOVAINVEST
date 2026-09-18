@@ -175,7 +175,22 @@ def _fechas_de_cierre(contextos) -> list:
         if not c["fecha"] or c["dims"]:
             continue
         anio = c["fecha"][:4]
-        if c["fecha"] > por_anio_saldo.get(anio, ""):
+        # El SALDO solo puede venir de un contexto de INSTANTE real -- `c["fecha"]`
+        # mezcla `instante` con el `endDate` de un contexto de DURACIÓN (ver
+        # `_leer_contextos`), y eso rompía el criterio de "la más tardía del año"
+        # cuando el archivo trae, sin dimensiones, una duración que cierra más
+        # tarde que el instante del balance. Verificado real: BANCO_DE_BOGOTA
+        # 2023-T1_EEFF-Consolidados-XBRL.xbrl trae el contexto de instante
+        # `Q1ENDC` (2023-03-31, con `Assets` etiquetado ahí) Y un contexto de
+        # DURACIÓN `YQTD2C` (2023-01-01..2023-06-30, comparativo de flujo
+        # acumulado de otro período que quedó en el mismo archivo) sin ninguna
+        # cifra de balance -- por texto, "2023-06-30" > "2023-03-31" y ganaba el
+        # de duración, así que la fecha de saldo "más reciente" no tenía ningún
+        # concepto de balance etiquetado y el archivo entero salía sin cifras.
+        # El mismo patrón (una duración sin instante propio contaminando la
+        # fecha de saldo) explicaba GRUPO_AVAL 2026-T1 y BANCO_DE_BOGOTA
+        # 2024-T1.
+        if c["instante"] and c["fecha"] > por_anio_saldo.get(anio, ""):
             por_anio_saldo[anio] = c["fecha"]
         if c.get("dias") is not None and c["fecha"] > por_anio_flujo.get(anio, ""):
             por_anio_flujo[anio] = c["fecha"]

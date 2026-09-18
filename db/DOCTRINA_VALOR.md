@@ -338,6 +338,34 @@ no tiene ese problema (resuelve por fecha de cierre del contexto, no por orden d
 correr el contraste automático completo de `jobs/extraer_xbrl.py --dry-run` (que también necesita
 Supabase solo para leer `emisores` y las filas previas — no se puede simular sin red).
 
+## 5C. Bug real corregido en `lector_xbrl.py` — contexto de duración confundido con instante (18-sep-2026)
+
+El bug de "escala" que se venía viendo repetido (BANCO_DE_BOGOTA 2023-T1/2023-T2/2024-T1/2026-T1,
+GRUPO_AVAL 2022-T1/2024-T1/2026-T1) **no era de escala**. `_fechas_de_cierre()` deriva la fecha de
+SALDO tomando, por año, el contexto sin dimensiones con la `fecha` más tardía — pero `fecha` mezcla
+`instante` (una fecha de balance real) con el `endDate` de un contexto de DURACIÓN (`_leer_contextos`
+hace `"fecha": instante or fin`). Cuando el archivo trae, sin dimensiones, una duración que cierra
+más tarde en el año que el instante real del balance, la comparación de texto simple elegía la
+duración -- y ahí no hay ningún concepto de balance (`Assets`, etc.) etiquetado, así que el
+documento entero salía sin cifras, con el motivo engañoso "no se puede deducir la escala".
+
+Verificado real: `BANCO_DE_BOGOTA/2023-T1_EEFF-Consolidados-XBRL.xbrl` trae el contexto de instante
+`Q1ENDC` (2023-03-31, con `Assets = 137.571.914.944`) Y un contexto de DURACIÓN `YQTD2C`
+(2023-01-01..2023-06-30, un comparativo de flujo acumulado que quedó en el mismo archivo, sin
+ninguna cifra de balance) -- por texto, "2023-06-30" > "2023-03-31" y ganaba la duración.
+
+**Fix**: `por_anio_saldo` ahora exige `c["instante"]` (no solo `c["fecha"]`) antes de considerar un
+contexto candidato a fecha de saldo. `por_anio_flujo` no cambia (ya exigía `dias is not None`,
+correcto para duraciones).
+
+**Verificación**: corrida completa del corpus XBRL (508 archivos, `indice_periodo=1`): 498 OK, 10
+sin cifras, 0 errores. Los 6 casos conocidos ahora resuelven correctamente (Bogotá 2026-T1 da
+142.238,27 — coincide exacto con el valor ya verificado contra el PDF, ver §4B). El `dry-run` de
+`jobs/extraer_xbrl.py` pasó de 4 discrepancias PDF↔XBRL a **0**. Cargado a Supabase, verificado por
+consulta directa: 5/6 casos con `activos_totales` real; el sexto (GRUPO_AVAL 2022-T1) es un bug
+DISTINTO (el archivo no tiene ni acciones ni utilidad por acción etiquetadas, y la magnitud sola no
+alcanza para deducir la escala) -- no perseguido esta sesión, bajo impacto (1 archivo).
+
 ## 6. Pendiente de este W0 (no completado en esta sesión)
 
 - Actualizar `PLAN-ASESOR-FINANCIERO.md` §6 y §3.7 para reflejar que el motor de valor es la
