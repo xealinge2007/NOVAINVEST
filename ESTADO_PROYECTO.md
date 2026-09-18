@@ -1210,3 +1210,17 @@ PDF/XBRL bajaron de 4 a 0. El sexto caso (GRUPO_AVAL 2022-T1) es un bug distinto
 (archivo sin datos suficientes para deducir escala), no perseguido.
 
 Detalle en `db/DOCTRINA_VALOR.md` §5C.
+
+## 18-sep-2026 (cont. 4) — W0 cerrado, arranca W1 (esquema del motor de valor)
+
+Con SSL resuelto, Bloque 2 + staging Sura cargados, y el bug de lector_xbrl.py
+corregido, W0 queda cerrado. Se crea `db/migrate_w1_valor.sql` (NO aplicado a
+Supabase todavía -- queda para que Alex lo corra en el SQL editor, como el resto
+de migraciones del proyecto): columna `emisores.arquetipo` + 5 tablas nuevas
+(`participaciones_holding`, `ajustes_nav`, `valor_estimado`, `catalizadores`,
+`score_valor`), con RLS igual al resto del proyecto (lectura autenticados,
+escritura service_role). Detalle de cada tabla y las decisiones de diseño en
+`db/DOCTRINA_VALOR.md` §7.
+
+Siguiente: Alex aplica el DDL, luego W2 (Pilar 1 solidez) o W3a (Ruta H + carga
+de participaciones) -- ambos con esquema ya listo.

@@ -366,6 +366,37 @@ consulta directa: 5/6 casos con `activos_totales` real; el sexto (GRUPO_AVAL 202
 DISTINTO (el archivo no tiene ni acciones ni utilidad por acción etiquetadas, y la magnitud sola no
 alcanza para deducir la escala) -- no perseguido esta sesión, bajo impacto (1 archivo).
 
+## 7. W1 — esquema del motor de 4 pilares (18-sep-2026)
+
+Con W0 cerrado (§5C), se pasó a W1 por decisión de Alex. `db/migrate_w1_valor.sql` — **no aplicado
+a Supabase todavía, queda para que Alex lo corra en el SQL editor** (convención del proyecto: los
+`.sql` de `db/` son DDL manual, no se auto-aplican desde un job).
+
+Contenido:
+- `emisores.arquetipo` (columna nueva) — holding / banco / real / vehiculo_inmobiliario /
+  infraestructura_mercado, siembra pendiente (DOCTRINA_VALOR.md §2 ya tiene la clasificación de los
+  20 emisores; sembrarla es tarea de W2/W3a, no de este DDL).
+- `participaciones_holding` — Ruta H (suma de partes), una fila por (holding, participada, fecha de
+  corte). Guarda NAV-a-mercado y NAV-look-through por separado (plan §6: "dos cifras siempre").
+- `ajustes_nav` — capa de activos de Greenwald: activos/pasivos ocultos, revaluaciones NIIF 13,
+  goodwill descontado. Signo explícito (suma o resta), nunca inferido del tipo.
+- `valor_estimado` — la salida del Pilar 2, una fila por (emisor, año, período). Rango
+  P25/central/P75 siempre, `determinable=false` en vez de inventar una cifra cuando falta un insumo
+  crítico, y `descuento_percentil_historico` (corrige el riesgo §2.3 del plan: "todo está barato").
+- `catalizadores` — Pilar 3 (Greenblatt), puerta de tamaño de posición, no desempate (plan §2.2).
+  Incluye `fraccion_descuento_capturada` para la validación W3b/W6.
+- `score_valor` — la ficha final: los 4-5 cuadrantes del plan §6, incluida la "trampa de descuento"
+  (safe & cheap sin catalizador ni renta sostenible, plan §5B), premisas de refutación y reglas de
+  venta como `jsonb` (estilo Dynamo).
+
+**Decisión de diseño explícita**: no hay fk compuesto entre `valor_estimado`/`score_valor` y
+`participaciones_holding` — la relación es por (emisor_id, anio, periodo), no por una clave única,
+porque varias participaciones arman un solo NAV. Una tabla puente queda pendiente para cuando W3a la
+necesite, no antes (evitar diseñar contra un caso de uso que todavía no existe).
+
+**Siguiente paso**: Alex aplica el DDL en Supabase; luego W2 (Pilar 1, `jobs/solidez_financiera.py`)
+o W3a (Ruta H + `jobs/ingesta_participaciones.py`) — ambos ya tienen esquema esperándolos.
+
 ## 6. Pendiente de este W0 (no completado en esta sesión)
 
 - Actualizar `PLAN-ASESOR-FINANCIERO.md` §6 y §3.7 para reflejar que el motor de valor es la
