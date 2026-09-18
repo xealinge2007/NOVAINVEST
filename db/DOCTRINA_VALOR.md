@@ -83,6 +83,31 @@ insuficiente" hasta que se carguen. **GEB no tiene datos suficientes todavía.**
 limitación del motor: es la regla de honestidad que ya rige todo el proyecto (`§3.7` del plan v3:
 "ningún emisor muestra valor justo si no alcanza el mínimo de trimestres validados").
 
+## 3B. Actualización con Supabase alcanzable — 18-sep-2026
+
+Todo lo de §3 se midió sin poder ver el canal XBRL. Ese día ya pasó: SSL resuelto (commit
+`fcabf87`), Bloque 2 XBRL cargado (871 filas nuevas) y staging de GRUPO_SURA cargado (commit
+`5aec86a`) — ver §5B. Con eso, `jobs/matriz_huecos_fundamentales.py --csv` (que sí necesita
+Supabase) dio el número real, por primera vez en el W0:
+
+| | Medido en §3 (solo canal PDF) | Real, 18-sep-2026 (con XBRL cargado) |
+|---|---:|---:|
+| Emisores elegibles para el ranking (≥12 trimestres con cifras) | no medible | **23/24** |
+| Períodos pendientes de DESCARGA en todo el universo | no medible | **19** (14 `sin_archivo`, 3 `archivo_sin_estados`, 2 `archivo_sin_cifras`) |
+
+**El único emisor no elegible es DAVIVIENDA_GROUP**, y no es un hueco: cotiza desde 2025-T1, solo
+tiene 4 trimestres de existencia. Los 19 períodos pendientes están concentrados en 3 emisores
+(FABRICATO 7, PEI 6, más 2-3 sueltos en BANCO_DE_BOGOTA/CORFICOLOMBIANA/GRUPO_AVAL/DAVIVIENDA) — el
+detalle completo, con qué pedirle a Cowork, quedó en el CSV de esa corrida (no versionado, es una
+lista de pedidos de un momento, no una fuente de verdad — volver a correr el job para uno
+actualizado).
+
+**GRUPO_SURA ya no es un caso especial**: con el staging cargado, tiene cobertura trimestral casi
+completa 2021-2026 (ver commit `5aec86a`) y es elegible junto con los otros 22. La cobertura real
+de "períodos cubiertos" de §3 (202/315, solo canal PDF) queda obsoleta como techo — el canal XBRL
+la superó ampliamente; no se recalculó la cifra exacta combinada porque `matriz_huecos_fundamentales.py`
+mide elegibilidad para el ranking (≥12 trimestres), no el mismo denominador de §3.
+
 ## 4. Lo que se corrigió en esta sesión (código, verificado, sin regresión)
 
 Tres bugs reales, cada uno confirmado contra el PDF real antes y después del cambio, y contra la
@@ -251,24 +276,29 @@ el archivo real antes de proponer una causa, y no forzar un arreglo por texto cu
 colisión con un patrón ya establecido es real** — ahí es cuando toca coordenadas, no regex.
 
 **Siguiente paso concreto, en orden de valor esperado:**
-1. **Cuando Supabase sea alcanzable: cargar los 9 períodos de `db/CANAL_B_GRUPO_SURA_STAGING.md`**
-   en `fundamentales_reportados` — es el paso de mayor impacto pendiente, convierte a GRUPO_SURA en
-   el cuarto holding del MVP (36,8 % → 84,2 %) sin ningún trabajo adicional de lectura.
+1. ✅ **Hecho (18-sep-2026): SSL de Supabase resuelto (commit `fcabf87`), Bloque 2 XBRL cargado
+   (871 filas) y los 9 períodos de `db/CANAL_B_GRUPO_SURA_STAGING.md` cargados (commit `5aec86a`,
+   7 subidos a `doble_extraccion`, 2 insertados como `manual`)** — ver §3B y §5B.
 2. ✅ **Hecho (18-sep-2026, §5B): cruzar contra XBRL los 4 períodos de Sura que se solapan con el
    Bloque 2** (2023-T1/T2/T3, 2024-T1) — `activos_totales`/`pasivos_totales` coinciden exactos con
-   `CANAL_B_GRUPO_SURA_STAGING.md`. Pendiente real ahora: cargar ambas fuentes (Sura staging + Bloque
-   2 completo, 250/258 períodos) a `fundamentales_reportados` en cuanto Supabase sea alcanzable.
+   `CANAL_B_GRUPO_SURA_STAGING.md`.
 3. El bug de columna "PF" en BANCO_DE_BOGOTA (2 períodos, `SIN_COLUMNA`, ver §4B) necesita la misma
    técnica por coordenadas que ya funcionó para el bug #4 — construir un encabezado de columna leyendo
    `extract_words()` por posición, no por orden de texto, y validado contra el PDF visual antes de
-   confiar en él.
+   confiar en él. Puede ya no ser prioritario: BANCO_DE_BOGOTA es elegible para el ranking igual
+   (§3B), el hueco es de precisión puntual, no de cobertura.
 4. Canal B sobre los 4 períodos escaneados de BANCO_DE_BOGOTA (`SIN_ANCLA_ESCANEADO`), mismo método
    ya usado en GRUPO_SURA.
 5. Pedirle a Alex el EEFF real de GRUPO_SURA 2024-T4 (el archivo descargado es un comunicado de
    prensa sin balance, canal C) y revisar 2022-T4 y 2024-T2 (canal A, no verificados esta sesión).
-6. Cuando Supabase sea alcanzable: correr `jobs/matriz_huecos_fundamentales.py --csv` para separar
-   canal C (descarga) de lo que ya está medido aquí, y verificar cobertura real del canal XBRL
-   (que esta sesión no pudo confirmar del lado de la base de datos).
+6. ✅ **Hecho (18-sep-2026, §3B): corrido `jobs/matriz_huecos_fundamentales.py --csv`** con Supabase
+   alcanzable — 23/24 emisores elegibles, solo 19 períodos pendientes de descarga en todo el
+   universo (el único no elegible, DAVIVIENDA_GROUP, no es un hueco: cotiza desde 2025-T1).
+7. Investigar los 4 casos de discrepancia real PDF↔XBRL que quedaron marcados en la carga del
+   Bloque 2 (§5B): BANCO_DE_BOGOTA 2023-T2, BVC 2023-T1 (parece bug de escala, mismo patrón que
+   2026-T1), MINEROS 2023-T2/T3 (posible acumulado vs. trimestre suelto).
+8. Pedirle a Cowork los 19 períodos pendientes de descarga (detalle en el CSV de
+   `matriz_huecos_fundamentales.py`, no versionado — correr de nuevo para una lista actualizada).
 
 ## 5B. Bloque 2 XBRL (2021-2024 T1-T3, 258 archivos) — cruce standalone, 18-sep-2026
 

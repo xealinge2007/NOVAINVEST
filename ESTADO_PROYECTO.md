@@ -1149,3 +1149,17 @@ nuevos (2023-T4, 2025-T4) se insertaron como `manual`. Cero discrepancias.
 Pendiente: el resto de la matriz de huecos (`jobs/matriz_huecos_fundamentales.py`)
 no se ha vuelto a correr con Supabase ya alcanzable -- da el número real de
 cobertura actualizado del universo completo.
+
+## 18-sep-2026 (cont.) — matriz_huecos_fundamentales con Supabase alcanzable
+
+Primera corrida del job con Supabase funcionando desde el inicio del W0. Resultado:
+**23/24 emisores elegibles para el ranking** (≥12 trimestres con cifras) y solo
+**19 períodos pendientes de descarga en todo el universo** (14 sin_archivo, 3
+archivo_sin_estados, 2 archivo_sin_cifras) -- concentrados en FABRICATO (7),
+PEI (6) y sueltos en BANCO_DE_BOGOTA/CORFICOLOMBIANA/GRUPO_AVAL. El único emisor
+no elegible es DAVIVIENDA_GROUP, y no es un hueco de datos: cotiza desde 2025-T1,
+apenas tiene 4 trimestres de existencia.
+
+Con esto, la cobertura del universo (§3 de DOCTRINA_VALOR.md, 202/315 solo canal
+PDF) queda obsoleta como techo -- el canal XBRL, ya cargado, la superó ampliamente.
+Detalle completo en `db/DOCTRINA_VALOR.md` §3B.
