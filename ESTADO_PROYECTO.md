@@ -1122,3 +1122,30 @@ interés no controlante) — no es un bug nuevo.
 
 Detalle completo en `db/DOCTRINA_VALOR.md` §5B. Pendiente: cargar Bloque 2 + staging de Sura a
 `fundamentales_reportados` en cuanto Supabase sea alcanzable.
+
+## 18-sep-2026 — Bloque 2 y staging de GRUPO_SURA cargados a Supabase
+
+SSL resuelto (Avast MITM, ver commit `fcabf87`) y bug de comparativo XBRL corregido
+(mismo commit): el comparativo de balance en un archivo trimestral es el cierre
+ANUAL anterior, no el mismo trimestre -- `extraer_xbrl.py` lo etiquetaba mal.
+
+**Carga real del Bloque 2 (505 archivos) a `fundamentales_reportados`**: 871 filas
+`xbrl_radicado`, 93 confirmadas por doble canal, 38 sin cifras, 26 no contrastables,
+4 discrepancias reales pendientes de revisión (BANCO_DE_BOGOTA 2023-T2, BVC 2023-T1,
+MINEROS 2023-T2/T3 -- bugs aislados de archivo puntual, no el problema sistémico ya
+corregido). Verificado por consulta directa a Supabase (no solo por el log del job):
+CORFICOLOMBIANA 2023-T1/T2/T3 ya no repite el mismo activos_totales en los tres
+trimestres.
+
+**Carga del staging de GRUPO_SURA** (`db/CANAL_B_GRUPO_SURA_STAGING.md`,
+`jobs/cargar_staging_sura_canal_b.py`): de los 9 períodos leídos a ojo, 7 ya tenían
+fila XBRL cargada por el Bloque 2 y coincidieron dentro de ±0,5% -- se subieron a
+`doble_extraccion` en vez de pisar una fuente más completa. Los 2 genuinamente
+nuevos (2023-T4, 2025-T4) se insertaron como `manual`. Cero discrepancias.
+
+**Estado de GRUPO_SURA ahora**: cobertura trimestral casi completa 2021-2026 (solo
+2020-T1/T2/T3 sin cifras). Deja de estar entre los holdings con hueco de datos.
+
+Pendiente: el resto de la matriz de huecos (`jobs/matriz_huecos_fundamentales.py`)
+no se ha vuelto a correr con Supabase ya alcanzable -- da el número real de
+cobertura actualizado del universo completo.
