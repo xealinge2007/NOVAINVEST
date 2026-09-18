@@ -80,6 +80,24 @@ CAMPOS_CONTRASTABLES = ["activos_totales", "pasivos_totales", "ingresos"]
 TOLERANCIA_CONTRASTE = 0.005  # ±0,5%, el que fija db/DECISION_ARQUITECTURA_EXTRACCION.md
 MINIMO_CAMPOS_CONTRASTE = 2
 
+# Bug real encontrado el 18-sep-2026 cruzando el Bloque 2 contra PDF: en un
+# archivo TRIMESTRAL, el comparativo de un campo de BALANCE (activos,
+# pasivos, patrimonio, deuda, acciones en circulacion, dividendos -- todos
+# de "instante", no de "duracion") es el CIERRE ANUAL anterior, no el mismo
+# trimestre del año anterior -- asi lo exige la NIIF para el estado de
+# situacion financiera (el estado de resultados si compara el mismo
+# trimestre, y esos campos SI son correctos). Verificado real: el
+# comparativo de CORFICOLOMBIANA leido desde 2024-T1/T2/T3 da el MISMO
+# activos_totales (57.281,2) en los tres -- es el cierre de 2023-ANUAL
+# (confirmado identico), no marzo/junio/septiembre-2023. Escribirlo como si
+# fuera (2023, T1/T2/T3) corrompe la fila. Por eso estos campos del
+# comparativo se descartan salvo cuando el periodo del archivo YA es ANUAL
+# (ahi el comparativo tambien es un cierre anual, y coincide).
+CAMPOS_INSTANTANEOS_NO_COMPARABLES_TRIMESTRE = {
+    "activos_totales", "pasivos_totales", "patrimonio", "deuda_financiera",
+    "acciones_en_circulacion", "dividendos_decretados",
+}
+
 # Misma limitación aceptada que el canal de PDF (`extractor_generico`): en
 # bancos y holdings financieros no se publica `ingresos` ni
 # `utilidad_operacional`. Un banco no reporta una línea de ingresos comparable
@@ -263,13 +281,24 @@ def main():
                     continue
                 campos = {c: r["campos"][c]["valor"] for c in CAMPOS_NUMERICOS
                           if c in r["campos"] and r["campos"][c]["valor"] is not None}
+                if indice == 2 and periodo != "ANUAL":
+                    for c in CAMPOS_INSTANTANEOS_NO_COMPARABLES_TRIMESTRE:
+                        campos.pop(c, None)
                 if sectores.get(slug) in SECTORES_FINANCIEROS:
                     for c in CAMPOS_NO_APLICABLES_FINANCIEROS:
                         campos.pop(c, None)
                 if not campos:
                     resumen["sin_cifras"] += 1
                     continue
-                if r["cuadra_balance"] is False:
+                # El chequeo de cuadre usa activos/pasivos/patrimonio con la
+                # fecha de BALANCE que trae el archivo -- para el comparativo
+                # de un trimestre eso es el cierre anual anterior (ver el
+                # aviso de CAMPOS_INSTANTANEOS_NO_COMPARABLES_TRIMESTRE
+                # arriba), no lo que se etiqueta como (anio, periodo). Como
+                # esos campos ya se descartaron de `campos` para ese caso, el
+                # chequeo no aplica a lo que realmente se va a escribir.
+                aplica_chequeo_cuadre = not (indice == 2 and periodo != "ANUAL")
+                if aplica_chequeo_cuadre and r["cuadra_balance"] is False:
                     print(f"  {slug} {anio}-{periodo}: el balance no cuadra -- no se escribe")
                     resumen["balance_no_cuadra"] += 1
                     continue

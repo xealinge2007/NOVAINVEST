@@ -8,6 +8,22 @@ contexto de sesión a mano (SET LOCAL) como en un Postgres directo.
 - cliente_para_usuario(jwt): actúa como ese usuario — la RLS decide qué ve.
 """
 
+try:
+    # Verifica TLS contra el almacen de confianza del SISTEMA OPERATIVO en vez
+    # del bundle `certifi` embebido en Python. Necesario en Windows cuando un
+    # antivirus (verificado real: Avast) inspecciona HTTPS y resustituye el
+    # certificado del servidor por uno propio -- ese certificado esta en el
+    # almacen de Windows (porque el antivirus lo instalo ahi) pero no en
+    # certifi, y sin esto cualquier llamada a Supabase falla con
+    # `CERTIFICATE_VERIFY_FAILED` aunque la conexion TCP funcione bien.
+    # `try/except` porque en despliegue (Render) no hace falta y no debe ser
+    # obligatorio si el paquete no esta instalado ahi todavia.
+    import truststore
+
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 from supabase import Client, create_client
 
 from app.config import settings

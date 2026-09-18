@@ -17,3 +17,6 @@ PyPortfolioOpt>=1.5.5
 # Licencia AGPL-3.0: uso interno, no se distribuye el binario.
 PyMuPDF>=1.24
 pdfplumber>=0.11
+# Verifica TLS contra el almacen de confianza del SO en vez del bundle
+# certifi embebido -- ver app/database.py.
+truststore>=0.10
