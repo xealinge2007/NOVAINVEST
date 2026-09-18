@@ -1163,3 +1163,32 @@ apenas tiene 4 trimestres de existencia.
 Con esto, la cobertura del universo (§3 de DOCTRINA_VALOR.md, 202/315 solo canal
 PDF) queda obsoleta como techo -- el canal XBRL, ya cargado, la superó ampliamente.
 Detalle completo en `db/DOCTRINA_VALOR.md` §3B.
+
+## 18-sep-2026 (cont. 2) — 10 de los 17 períodos pedidos a Cowork, cargados
+
+Cowork entregó 10 archivos nuevos + confirmó que 6 no existen en SIMEV (verificado
+contra la API oficial, no es descarga fallida): FABRICATO 2021-T2/T3/T4, 2022-T1/T4
+y DAVIVIENDA_GROUP 2025-T3. FABRICATO 2020-T4 no necesitaba archivo aparte (lo cubre
+el 2020-ANUAL ya existente).
+
+Cargado a Supabase:
+- FABRICATO, DAVIVIENDA_GROUP, GRUPO_AVAL: XBRL nuevo vía `jobs/extraer_xbrl.py`.
+- PEI: 2 archivos (`2023-T1`, `2025-T1`) habían sido re-descargados con contenido
+  distinto bajo el MISMO nombre -- `jobs/ingesta_simev.py` lo detectó por hash y los
+  re-encoló (ya estaban "procesados" con datos de una versión vieja). Re-extraídos.
+  5/6 períodos pedidos de PEI quedaron `OK-GENERICO`; solo 2025-T4 sigue sin
+  resolver (`SIN_TABLAS_RECONOCIDAS` -- el archivo existe, es canal B/escaneado,
+  no un hueco de descarga).
+
+**Matriz de huecos actualizada**: 23/24 emisores elegibles (igual que antes, pero
+ahora con más historial real). Pedidos de descarga bajaron de 19 a 11 filas, de las
+cuales solo quedan genuinamente accionables por Cowork: DAVIVIENDA_GROUP 2025-T3 y
+FABRICATO 2019-T4 (nuevo en el radar, fuera de la ventana 2020+ original, no
+verificado si existe). El resto de las 11 filas son bugs de parser ya conocidos, no
+huecos de descarga:
+- BANCO_DE_BOGOTA / CORFICOLOMBIANA 2026-T1: `archivo_sin_cifras` (bug de columna/
+  escala ya documentado, §4B).
+- GRUPO_AVAL 2026-T1: la matriz lo marca `sin_archivo` pero el XBRL SÍ está
+  descargado -- falla por el mismo bug de deducción de escala del §4B
+  (`lector_xbrl.py`), mal clasificado por el job como archivo faltante.
+- PEI 2025-T4: `archivo_sin_estados`, archivo existe, es canal B (página escaneada).
