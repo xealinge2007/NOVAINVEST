@@ -388,6 +388,34 @@ def _detectar_factor_unidad_por_simbolo(
                     return factor
     return None
 
+
+# "PF" (cifras proforma) señala una fila de encabezado bancario que NO
+# respeta el orden visual de las columnas en el texto plano -- verificado
+# real y necesario dos veces, BANCO_DE_BOGOTA 2026-T1 y 2026-T2. El
+# encabezado envuelve en dos líneas por columna ("PF" en una, la fecha en
+# otra), y pdfplumber concatena las etiquetas sueltas fuera de orden. El
+# espacio insertado ("P F") es kerning del mismo PDF (ver
+# `TOLERANCIA_X_LETRA_ESPACIADA`), así que el patrón tolera un espacio
+# suelto, no exige "PF" literal.
+PATRON_PROFORMA = re.compile(r"P\s?F")
+
+
+def _es_linea_de_encabezado_valida(linea: str) -> bool:
+    """False si `linea` es una fila de VARIACIÓN o PROFORMA, no un
+    encabezado real de columnas -- criterio único usado por las 3 búsquedas
+    de `_indice_columna_actual` (línea a línea, año suelto, bloque
+    concatenado). Antes vivía repetido 3 veces; consolidado para que un
+    cuarto patrón espurio (ya pasó con "%", luego "/", luego "PF") se agregue
+    en un solo lugar en vez de en los tres a mano.
+
+    '%' o '/': una fila de variación repite el período actual sin ser un
+    encabezado real -- verificado real, BANCO_DE_BOGOTA 2026-T1: "△ T1-2026 /
+    △ T1-2026 /" se colaba como si tuviera el año dos veces. CIBEST 2025-T2
+    trae lo mismo con '%': "2T25 / 2T25 / % del" antes del encabezado real.
+    'PF': ver `PATRON_PROFORMA` arriba."""
+    return "%" not in linea and "/" not in linea and not PATRON_PROFORMA.search(linea)
+
+
 def _indice_columna_actual(
     texto_pagina: str, anio: int, periodo: str, pagina_pdfplumber=None
 ) -> int | None:
@@ -427,26 +455,10 @@ def _indice_columna_actual(
     lineas_significativas = [l for l in texto_pagina.split("\n") if len(l.strip()) > 2]
     ventana = lineas_significativas[:15]
 
-    # "PF" (cifras proforma) señala una fila de encabezado bancario que NO
-    # respeta el orden visual de las columnas en el texto plano -- verificado
-    # real y necesario dos veces, BANCO_DE_BOGOTA 2026-T1 y 2026-T2. El
-    # encabezado envuelve en dos líneas por columna ("PF" en una, la fecha en
-    # otra), y pdfplumber concatena las etiquetas sueltas fuera de orden: en
-    # 2026-T1 el código de columna real (T1-2026) aparece TERCERO en el texto
-    # pero es la columna 2 visual, no la 0 ni la 1 que da leer en ese orden;
-    # en 2026-T2 pasa lo mismo con "1T26 2T26 P F 2T25" (el objetivo real,
-    # 2T26, es la columna 2 visual, no la 1 que da el texto). Ninguno de los
-    # dos filtros de abajo, aplicados solos, alcanza a corregirlo -- cambian
-    # el índice devuelto pero lo siguen dando mal con la misma confianza que
-    # un caso correcto. El espacio insertado ("P F") es kerning del mismo PDF
-    # (ver `TOLERANCIA_X_LETRA_ESPACIADA`), así que el filtro tiene que
-    # tolerar un espacio suelto, no un "PF" literal.
-    PATRON_PROFORMA = re.compile(r"P\s?F")
-
     if periodo in PERIODO_A_MES_TRIMESTRE:
         codigo_corto = f"{PERIODO_A_MES_TRIMESTRE[periodo]}T{str(anio)[2:]}"
         for linea in ventana:
-            if "%" in linea or "/" in linea or PATRON_PROFORMA.search(linea):
+            if not _es_linea_de_encabezado_valida(linea):
                 continue
             codigos_crudos = re.findall(r"\d\s?T\s?\d\s?\d", linea)
             codigos = [re.sub(r"\s", "", c) for c in codigos_crudos]
@@ -465,7 +477,7 @@ def _indice_columna_actual(
         # año anterior. Mejor no devolver nada aqui (cae al respaldo por
         # coordenadas, y si ese tampoco puede, a revision) que devolver un
         # indice con la misma confianza que un caso correcto.
-        if "%" in linea or "/" in linea or PATRON_PROFORMA.search(linea):
+        if not _es_linea_de_encabezado_valida(linea):
             continue
         anios_crudos = re.findall(r"2\s?0\s?\d\s?\d", linea)
         anios_encontrados = [re.sub(r"\s", "", a) for a in anios_crudos]
@@ -515,7 +527,7 @@ def _indice_columna_actual(
     # concatenaba con una etiqueta suelta y ajena ("T1-2025", sobrante de la
     # fila ya excluida por "PF") y el par de años sin relación entre sí
     # pasaba el chequeo de unicidad, devolviendo la columna equivocada.
-    limpias = [l for l in ventana[1:] if "%" not in l and "/" not in l and not PATRON_PROFORMA.search(l)]
+    limpias = [l for l in ventana[1:] if _es_linea_de_encabezado_valida(l)]
     bloque = " ".join(limpias)
 
     if periodo in PERIODO_A_MES_TRIMESTRE:
@@ -567,6 +579,19 @@ GAP_MINIMO_COLUMNA = 15.0
 # etiquetas de fila y cifras) sin fusionar palabras que deberían seguir
 # separadas. No se usa como default global -- ver el guard en `extraer()`.
 TOLERANCIA_X_LETRA_ESPACIADA = 8.0
+
+
+def _pagina_segura(pdf, indice: int | None):
+    """La página `pdf.pages[indice]`, o None si `indice` es None o cae fuera
+    de rango. Antes cada llamador armaba este guard a mano con una firma
+    ligeramente distinta -- una de las tres copias (la del respaldo de
+    página siguiente en `extraer()`) confiaba en que el `if` que la envuelve
+    ya garantizaba el rango, una invariante implícita que un lector no podía
+    verificar mirando esa línea sola. Consolidado para que las tres llamadas
+    compartan el mismo chequeo explícito."""
+    if indice is None or indice >= len(pdf.pages):
+        return None
+    return pdf.pages[indice]
 
 
 def _indice_columna_por_coordenadas(pagina_pdfplumber, anio: int, periodo: str) -> int | None:
@@ -871,6 +896,76 @@ def _acciones_desde_utilidad_por_accion(utilidad_neta_mmm, por_accion) -> float 
     return round(acciones)
 
 
+def _respaldo_kerning_ancho(_texto, pagina_balance: int, texto_normal: str, indice_col: int,
+                             activos, pasivos, patrimonio, deuda):
+    """Respaldo por kerning ancho (SIN_ETIQUETAS): verificado real,
+    BANCO_DE_BOGOTA 2024-T3 y 2026-T2 -- el PDF usa un font/kerning donde
+    pdfplumber corta CADA letra como palabra aparte ("E s ta d o d e
+    s itu a c i�n..."), y ninguna etiqueta de SINONIMOS_* iguala nunca. El
+    indice de columna y la unidad YA se resolvieron arriba con el texto
+    normal (los regex que los buscan toleran un espacio insertado entre
+    digitos, ver `_indice_columna_actual`) -- lo unico que rompe es el match
+    EXACTO de etiqueta. Se reintenta con `x_tolerance` mas ancho (agrupa
+    letras con mas separacion como una sola palabra) SOLO cuando los cuatro
+    campos salieron None, para no tocar el 99% de paginas que ya funcionan
+    con la tolerancia por defecto de pdfplumber.
+
+    `_texto` es la clausura de `extraer()` que sabe leer una página del PDF
+    ya abierto -- se pasa tal cual, no se reabre el archivo aquí.
+
+    Devuelve (activos, pasivos, patrimonio, deuda) sin cambios si el
+    respaldo no aplica o el texto ancho no trajo nada distinto."""
+    if not (activos is None and pasivos is None and patrimonio is None and deuda is None):
+        return activos, pasivos, patrimonio, deuda
+    texto_ancho = _texto(pagina_balance, x_tolerance=TOLERANCIA_X_LETRA_ESPACIADA)
+    if not texto_ancho or texto_ancho == texto_normal:
+        return activos, pasivos, patrimonio, deuda
+    patron_ancho, parser_ancho = detectar_formato_numero(texto_ancho)
+    activos = _valor_en_columna(texto_ancho, SINONIMOS_ACTIVOS, indice_col, patron_ancho, parser_ancho)
+    pasivos = _valor_en_columna(texto_ancho, SINONIMOS_PASIVOS, indice_col, patron_ancho, parser_ancho)
+    patrimonio = _valor_en_columna(texto_ancho, SINONIMOS_PATRIMONIO, indice_col, patron_ancho, parser_ancho)
+    deuda = _suma_todas_ocurrencias(texto_ancho, SINONIMOS_DEUDA, indice_col, patron_ancho, parser_ancho)
+    return activos, pasivos, patrimonio, deuda
+
+
+def _respaldo_digito_pegado(pagina_pdfplumber, texto_normal: str, indice_col: int,
+                             activos, pasivos, patrimonio, deuda, cuadra_balance):
+    """Respaldo por digito suelto pegado (BALANCE_NO_CUADRA): verificado
+    real, BANCO_DE_BOGOTA 2026-T1 -- ver `_texto_con_digito_pegado_
+    reparado`. Solo se intenta cuando el balance normal SI se pudo calcular
+    pero NO cuadra (los tres campos presentes, la resta falla) -- si ya
+    cuadraba, tocar esto no puede mejorar nada y solo arriesga una
+    regresion; si faltaba algun campo, es otro problema
+    (PARCIAL_SIN_BALANCE), no este.
+
+    `pagina_pdfplumber` ya viene resuelta por el llamador (`_pagina_segura`)
+    -- None si el índice cae fuera de rango, en cuyo caso este respaldo no
+    aplica.
+
+    Devuelve (activos, pasivos, patrimonio, deuda, cuadra_balance,
+    reparado). `reparado=True` solo si el texto reparado dio un balance que
+    SI cuadra -- ahí los cuatro valores devueltos ya son los reparados y
+    `cuadra_balance=True`; en cualquier otro caso devuelve los valores de
+    entrada sin tocar."""
+    if cuadra_balance is not False or pagina_pdfplumber is None:
+        return activos, pasivos, patrimonio, deuda, cuadra_balance, False
+    texto_reparado = _texto_con_digito_pegado_reparado(pagina_pdfplumber)
+    if not texto_reparado or texto_reparado == texto_normal:
+        return activos, pasivos, patrimonio, deuda, cuadra_balance, False
+    patron_rep, parser_rep = detectar_formato_numero(texto_reparado)
+    activos_rep = _valor_en_columna(texto_reparado, SINONIMOS_ACTIVOS, indice_col, patron_rep, parser_rep)
+    pasivos_rep = _valor_en_columna(texto_reparado, SINONIMOS_PASIVOS, indice_col, patron_rep, parser_rep)
+    patrimonio_rep = _valor_en_columna(texto_reparado, SINONIMOS_PATRIMONIO, indice_col, patron_rep, parser_rep)
+    if not (activos_rep and pasivos_rep is not None and patrimonio_rep is not None):
+        return activos, pasivos, patrimonio, deuda, cuadra_balance, False
+    cuadra_reparado = abs(pasivos_rep + patrimonio_rep - activos_rep) / activos_rep <= 0.01
+    if not cuadra_reparado:
+        return activos, pasivos, patrimonio, deuda, cuadra_balance, False
+    deuda_rep = _suma_todas_ocurrencias(texto_reparado, SINONIMOS_DEUDA, indice_col, patron_rep, parser_rep)
+    deuda = deuda_rep if deuda_rep is not None else deuda
+    return activos_rep, pasivos_rep, patrimonio_rep, deuda, True, True
+
+
 def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
     """Devuelve {"campos": {...}, "unidad": str|None, "cuadra_balance": bool|None,
     "paginas_usadas": {...}}. `campos` sigue el mismo shape que las plantillas
@@ -923,8 +1018,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
         if pagina_balance is not None:
             texto = _texto(pagina_balance)
             indice_col = _indice_columna_actual(
-                texto, anio, periodo,
-                pdf.pages[pagina_balance] if pagina_balance < len(pdf.pages) else None,
+                texto, anio, periodo, _pagina_segura(pdf, pagina_balance),
             )
             deteccion = _detectar_factor_unidad(texto)
             if deteccion is None:
@@ -944,27 +1038,11 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 patrimonio = _valor_en_columna(texto, SINONIMOS_PATRIMONIO, indice_col, patron, parser)
                 deuda = _suma_todas_ocurrencias(texto, SINONIMOS_DEUDA, indice_col, patron, parser)
 
-                # Respaldo por kerning ancho (SIN_ETIQUETAS): verificado real,
-                # BANCO_DE_BOGOTA 2024-T3 y 2026-T2 -- el PDF usa un font/
-                # kerning donde pdfplumber corta CADA letra como palabra
-                # aparte ("E s ta d o d e s itu a c i�n..."), y ninguna
-                # etiqueta de SINONIMOS_* iguala nunca. El indice de columna
-                # y la unidad YA se resolvieron arriba con el texto normal
-                # (los regex que los buscan toleran un espacio insertado
-                # entre digitos, ver `_indice_columna_actual`) -- lo unico
-                # que rompe es el match EXACTO de etiqueta. Se reintenta con
-                # `x_tolerance` mas ancho (agrupa letras con mas separacion
-                # como una sola palabra) SOLO cuando los cuatro campos
-                # salieron None, para no tocar el 99% de paginas que ya
-                # funcionan con la tolerancia por defecto de pdfplumber.
-                if activos is None and pasivos is None and patrimonio is None and deuda is None:
-                    texto_ancho = _texto(pagina_balance, x_tolerance=TOLERANCIA_X_LETRA_ESPACIADA)
-                    if texto_ancho and texto_ancho != texto:
-                        patron_ancho, parser_ancho = detectar_formato_numero(texto_ancho)
-                        activos = _valor_en_columna(texto_ancho, SINONIMOS_ACTIVOS, indice_col, patron_ancho, parser_ancho)
-                        pasivos = _valor_en_columna(texto_ancho, SINONIMOS_PASIVOS, indice_col, patron_ancho, parser_ancho)
-                        patrimonio = _valor_en_columna(texto_ancho, SINONIMOS_PATRIMONIO, indice_col, patron_ancho, parser_ancho)
-                        deuda = _suma_todas_ocurrencias(texto_ancho, SINONIMOS_DEUDA, indice_col, patron_ancho, parser_ancho)
+                # Respaldo por kerning ancho (SIN_ETIQUETAS) -- ver
+                # `_respaldo_kerning_ancho` para el porqué completo.
+                activos, pasivos, patrimonio, deuda = _respaldo_kerning_ancho(
+                    _texto, pagina_balance, texto, indice_col, activos, pasivos, patrimonio, deuda
+                )
 
                 # El balance a veces se parte en 2 páginas físicas (verificado real:
                 # CIBEST 2025-T2 -- activo en una página, "Total pasivo"/patrimonio
@@ -974,7 +1052,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 if (pasivos is None or patrimonio is None) and pagina_balance + 1 < len(pdf.pages):
                     texto_siguiente = _texto(pagina_balance + 1)
                     indice_siguiente = _indice_columna_actual(
-                        texto_siguiente, anio, periodo, pdf.pages[pagina_balance + 1]
+                        texto_siguiente, anio, periodo, _pagina_segura(pdf, pagina_balance + 1)
                     )
                     if indice_siguiente is None:
                         indice_siguiente = indice_col
@@ -1011,37 +1089,22 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
                 if activos and pasivos is not None and patrimonio is not None:
                     cuadra_balance = abs(pasivos + patrimonio - activos) / activos <= 0.01
 
-                # Respaldo por digito suelto pegado (BALANCE_NO_CUADRA): verificado
-                # real, BANCO_DE_BOGOTA 2026-T1 -- ver `_texto_con_digito_pegado_
-                # reparado`. Solo se intenta cuando el balance normal SI se pudo
-                # calcular pero NO cuadra (los tres campos presentes, la resta
-                # falla) -- si ya cuadraba, tocar esto no puede mejorar nada y solo
-                # arriesga una regresion; si faltaba algun campo, es otro problema
-                # (PARCIAL_SIN_BALANCE), no este.
-                if cuadra_balance is False and pagina_balance < len(pdf.pages):
-                    texto_reparado = _texto_con_digito_pegado_reparado(pdf.pages[pagina_balance])
-                    if texto_reparado and texto_reparado != texto:
-                        patron_rep, parser_rep = detectar_formato_numero(texto_reparado)
-                        activos_rep = _valor_en_columna(texto_reparado, SINONIMOS_ACTIVOS, indice_col, patron_rep, parser_rep)
-                        pasivos_rep = _valor_en_columna(texto_reparado, SINONIMOS_PASIVOS, indice_col, patron_rep, parser_rep)
-                        patrimonio_rep = _valor_en_columna(texto_reparado, SINONIMOS_PATRIMONIO, indice_col, patron_rep, parser_rep)
-                        if activos_rep and pasivos_rep is not None and patrimonio_rep is not None:
-                            cuadra_reparado = abs(pasivos_rep + patrimonio_rep - activos_rep) / activos_rep <= 0.01
-                            if cuadra_reparado:
-                                activos, pasivos, patrimonio = activos_rep, pasivos_rep, patrimonio_rep
-                                deuda_rep = _suma_todas_ocurrencias(texto_reparado, SINONIMOS_DEUDA, indice_col, patron_rep, parser_rep)
-                                if deuda_rep is not None:
-                                    deuda = deuda_rep
-                                cuadra_balance = True
-                                for campo, valor in [
-                                    ("activos_totales", activos), ("pasivos_totales", pasivos),
-                                    ("patrimonio", patrimonio), ("deuda_financiera", deuda),
-                                ]:
-                                    campos[campo] = {
-                                        "valor": round(valor * factor_documento, 3) if valor is not None else None,
-                                        "pagina": pagina_balance + 1,
-                                        "tabla": "situacion_financiera (generico, digito pegado reparado)",
-                                    }
+                # Respaldo por digito suelto pegado (BALANCE_NO_CUADRA) -- ver
+                # `_respaldo_digito_pegado` para el porqué completo.
+                activos, pasivos, patrimonio, deuda, cuadra_balance, reparado = _respaldo_digito_pegado(
+                    _pagina_segura(pdf, pagina_balance), texto, indice_col,
+                    activos, pasivos, patrimonio, deuda, cuadra_balance,
+                )
+                if reparado:
+                    for campo, valor in [
+                        ("activos_totales", activos), ("pasivos_totales", pasivos),
+                        ("patrimonio", patrimonio), ("deuda_financiera", deuda),
+                    ]:
+                        campos[campo] = {
+                            "valor": round(valor * factor_documento, 3) if valor is not None else None,
+                            "pagina": pagina_balance + 1,
+                            "tabla": "situacion_financiera (generico, digito pegado reparado)",
+                        }
 
         def _factor_y_columna(texto_pagina: str, pagina: int | None = None) -> tuple[float, int] | None:
             """(factor, índice de columna) de ESTA página -- unidad e índice
@@ -1049,8 +1112,7 @@ def extraer(ruta_pdf: Path, sector: str, anio: int, periodo: str) -> dict:
             balance a 2 columnas, resultados/flujos a 3 -- el índice hay que
             recalcularlo por página, la unidad casi siempre es la misma."""
             indice_local = _indice_columna_actual(
-                texto_pagina, anio, periodo,
-                pdf.pages[pagina] if pagina is not None and pagina < len(pdf.pages) else None,
+                texto_pagina, anio, periodo, _pagina_segura(pdf, pagina),
             )
             if indice_local is None:
                 return None
