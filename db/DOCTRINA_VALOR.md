@@ -397,6 +397,41 @@ necesite, no antes (evitar diseñar contra un caso de uso que todavía no existe
 **Siguiente paso**: Alex aplica el DDL en Supabase; luego W2 (Pilar 1, `jobs/solidez_financiera.py`)
 o W3a (Ruta H + `jobs/ingesta_participaciones.py`) — ambos ya tienen esquema esperándolos.
 
+## 8. W2 — Pilar 1, seguridad (Whitman), acotado a lo medible hoy (18-sep-2026)
+
+`jobs/solidez_financiera.py`, corrido real contra Supabase. **Honestidad explícita sobre el
+alcance**: el molde de 4 métricas por arquetipo que describe el plan §6 asume datos que este
+pipeline no captura todavía (gasto financiero, desglose de caja/deuda por plazo y moneda, CET1 y
+métricas regulatorias de bancos, valor de mercado del portafolio de un holding vía
+`participaciones_holding` que W3a aún no llena). En vez de inventar esas cifras o simular que se
+evaluaron, el job:
+
+- **Siembra `emisores.arquetipo`** (los 24 emisores, DOCTRINA_VALOR.md §2 + BVC como
+  `infraestructura_mercado`) — quedaba vacío desde el DDL de W1 a propósito.
+- **Puerta 0 (liquidez)**: reusa `app.services.liquidez.volumen_suficiente` (el mismo piso de F3,
+  500M COP/día en 20 sesiones), exigido en al menos un instrumento del emisor. **7/24 no pasan**:
+  PROMIGAS, ETB, GRUPO_NUTRESA, BVC, ENKA, EL_CONDOR, FABRICATO.
+- **Molde banco (3 emisores)**: declarado explícitamente `pilar1_seguridad_ok=None` con el motivo
+  completo de qué falta (CET1, cartera vencida, costo del riesgo, concentración del fondeo) — nunca
+  se aproxima con apalancamiento genérico, porque para un banco la deuda es el fondeo (depósitos),
+  no apalancamiento en el sentido de Whitman.
+- **Moldes real/holding/vehículo inmobiliario (20 emisores)**: veredicto por apalancamiento
+  (`deuda/EBITDA > 4x` o `deuda/patrimonio > 2x`, criterio documentado no medido, mismo espíritu que
+  el piso de liquidez), usando `deuda_ebitda`/`deuda_patrimonio` que YA calculaba
+  `analizador_fundamental.py` en `fundamentales_analisis` — no se recalculó nada, solo se leyó.
+  **11 OK, 3 no_ok** (ISA, GRUPO_ARGOS, CELSIA por deuda/EBITDA > 4x).
+- Cada fila deja en `pilar1_motivo` la lista de métricas del plan que quedaron sin evaluar por
+  arquetipo, para que quede trazable qué falta, no que se olvidó.
+
+**Resultado escrito en `score_valor`**: 24/24 filas (una por emisor, en su período más reciente con
+cifras). Verificado por consulta directa a Supabase.
+
+**Pendiente honesto para que W2 llegue al detalle del plan**: cobertura de intereses y desglose de
+caja/deuda (necesita ampliar `fundamentales_reportados` con gasto financiero, si el XBRL lo trae
+etiquetado -- no verificado); CET1/regulatorio de bancos (fuente externa nueva, no XBRL/PDF
+estándar); valor de mercado del portafolio de holdings (depende de W3a). Ninguno de los tres es
+"bug" -- son datos que este pipeline genuinamente no ingiere todavía.
+
 ## 6. Pendiente de este W0 (no completado en esta sesión)
 
 - Actualizar `PLAN-ASESOR-FINANCIERO.md` §6 y §3.7 para reflejar que el motor de valor es la

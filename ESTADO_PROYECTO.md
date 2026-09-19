@@ -1224,3 +1224,20 @@ escritura service_role). Detalle de cada tabla y las decisiones de diseño en
 
 Siguiente: Alex aplica el DDL, luego W2 (Pilar 1 solidez) o W3a (Ruta H + carga
 de participaciones) -- ambos con esquema ya listo.
+
+## 18-sep-2026 (cont. 5) — W1 aplicado por Alex, W2 (Pilar 1 solidez) corrido
+
+Alex aplicó `db/migrate_w1_valor.sql` en Supabase (verificado: las 5 tablas existen
+y responden, `emisores.arquetipo` existe). Se construyó y corrió
+`jobs/solidez_financiera.py` (Pilar 1, Whitman), acotado explícitamente a lo que
+el pipeline puede medir hoy -- ver `db/DOCTRINA_VALOR.md` §8 para el detalle
+completo de qué falta y por qué no se inventó.
+
+Resultado: arquetipo sembrado en los 24 emisores (14 real, 5 holding, 3 banco, 1
+vehículo inmobiliario, 1 infraestructura de mercado). Puerta de liquidez (reusa
+`liquidez.py`, piso de F3): 7/24 no pasan (PROMIGAS, ETB, GRUPO_NUTRESA, BVC,
+ENKA, EL_CONDOR, FABRICATO). Bancos (3) declarados explícitamente no evaluables
+(falta CET1/regulatorio). Real/holding/inmobiliario (20): veredicto por
+deuda/EBITDA y deuda/patrimonio ya calculados en `fundamentales_analisis` -- 11
+OK, 3 no_ok (ISA, GRUPO_ARGOS, CELSIA). 24/24 filas escritas en `score_valor`,
+verificado por consulta directa.
