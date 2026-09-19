@@ -93,13 +93,11 @@ Supabase) dio el número real, por primera vez en el W0:
 | | Medido en §3 (solo canal PDF) | Real, 18-sep-2026 (con XBRL cargado) |
 |---|---:|---:|
 | Emisores elegibles para el ranking (≥12 trimestres con cifras) | no medible | **23/24** |
-| Períodos pendientes de DESCARGA en todo el universo | no medible | **19** (14 `sin_archivo`, 3 `archivo_sin_estados`, 2 `archivo_sin_cifras`) |
+| Períodos pendientes de DESCARGA en todo el universo | no medible | ~~19~~ → **8** tras cargar los 10 archivos nuevos de Cowork y corregir el bug de `lector_xbrl.py` (§5C) — 7 canal C genuino (FABRICATO×6, DAVIVIENDA_GROUP 2025-T3), 1 canal B (PEI 2025-T4) |
 
 **El único emisor no elegible es DAVIVIENDA_GROUP**, y no es un hueco: cotiza desde 2025-T1, solo
-tiene 4 trimestres de existencia. Los 19 períodos pendientes están concentrados en 3 emisores
-(FABRICATO 7, PEI 6, más 2-3 sueltos en BANCO_DE_BOGOTA/CORFICOLOMBIANA/GRUPO_AVAL/DAVIVIENDA) — el
-detalle completo, con qué pedirle a Cowork, quedó en el CSV de esa corrida (no versionado, es una
-lista de pedidos de un momento, no una fuente de verdad — volver a correr el job para uno
+tiene 5 trimestres de existencia. El detalle completo con qué pedir queda en el CSV de la corrida
+más reciente (no versionado, es una lista de pedidos de un momento — correr de nuevo para uno
 actualizado).
 
 **GRUPO_SURA ya no es un caso especial**: con el staging cargado, tiene cobertura trimestral casi
@@ -292,13 +290,18 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
 5. Pedirle a Alex el EEFF real de GRUPO_SURA 2024-T4 (el archivo descargado es un comunicado de
    prensa sin balance, canal C) y revisar 2022-T4 y 2024-T2 (canal A, no verificados esta sesión).
 6. ✅ **Hecho (18-sep-2026, §3B): corrido `jobs/matriz_huecos_fundamentales.py --csv`** con Supabase
-   alcanzable — 23/24 emisores elegibles, solo 19 períodos pendientes de descarga en todo el
-   universo (el único no elegible, DAVIVIENDA_GROUP, no es un hueco: cotiza desde 2025-T1).
-7. Investigar los 4 casos de discrepancia real PDF↔XBRL que quedaron marcados en la carga del
-   Bloque 2 (§5B): BANCO_DE_BOGOTA 2023-T2, BVC 2023-T1 (parece bug de escala, mismo patrón que
-   2026-T1), MINEROS 2023-T2/T3 (posible acumulado vs. trimestre suelto).
-8. Pedirle a Cowork los 19 períodos pendientes de descarga (detalle en el CSV de
-   `matriz_huecos_fundamentales.py`, no versionado — correr de nuevo para una lista actualizada).
+   alcanzable — 23/24 emisores elegibles (el único no elegible, DAVIVIENDA_GROUP, no es un hueco:
+   cotiza desde 2025-T1).
+7. ✅ **Hecho (18-sep-2026, §5C): las 4 discrepancias PDF↔XBRL (BANCO_DE_BOGOTA 2023-T2, BVC
+   2023-T1, MINEROS 2023-T2/T3) se resolvieron solas** al corregir el bug de `_fechas_de_cierre` en
+   `lector_xbrl.py` — no eran 4 causas distintas, era el mismo bug de contexto de duración/instante.
+   Quedaron en 0.
+8. ✅ **Hecho (18-sep-2026): se le pidieron a Cowork los períodos pendientes** — 10 archivos nuevos
+   entregados, 6 confirmados ausentes en SIMEV (no es descarga fallida). Quedan **8** pendientes
+   reales tras la corrida más reciente de la matriz (§3B) — 7 canal C, 1 canal B (PEI 2025-T4, no
+   necesita descarga, necesita lectura visual).
+9. GRUPO_AVAL 2022-T1 tiene un bug DISTINTO al de §5C (no hay ni acciones ni utilidad por acción
+   etiquetadas para deducir la escala) — no perseguido, 1 archivo, bajo impacto.
 
 ## 5B. Bloque 2 XBRL (2021-2024 T1-T3, 258 archivos) — cruce standalone, 18-sep-2026
 
