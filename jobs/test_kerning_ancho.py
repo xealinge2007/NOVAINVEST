@@ -28,7 +28,7 @@ encontrar ese segundo bug (esta sesion publico y luego corrigio un falso
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
+from _prueba_utils import revisar, reportar_y_salir  # noqa: E402
 
 RUTA = Path(
     r"C:\Proyectos\BVC\SIMEV_BVC\BANCO_DE_BOGOTA"
@@ -41,16 +41,6 @@ if not RUTA.exists():
 
 import pdfplumber  # noqa: E402
 
-fallos = []
-
-
-def revisar(nombre, obtenido, esperado):
-    ok = obtenido == esperado
-    print(f"{'OK  ' if ok else 'FALLA'} {nombre}: esperado={esperado} obtenido={obtenido}")
-    if not ok:
-        fallos.append(nombre)
-
-
 TOLERANCIA_X_LETRA_ESPACIADA = 8.0
 
 with pdfplumber.open(RUTA) as pdf:
@@ -60,8 +50,4 @@ with pdfplumber.open(RUTA) as pdf:
 revisar("'Total activos' NO aparece limpio con tolerancia normal (confirma el bug)", "Total activos" in texto_normal, False)
 revisar("'Total activos' aparece limpio con tolerancia ancha (confirma el arreglo)", "Total activos" in texto_ancho, True)
 
-print()
-if fallos:
-    print(f"{len(fallos)} prueba(s) fallaron: {fallos}")
-    sys.exit(1)
-print("todas las pruebas pasaron")
+reportar_y_salir()

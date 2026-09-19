@@ -22,7 +22,7 @@ triage ya ubicaba bien la pagina."""
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
+from _prueba_utils import revisar, reportar_y_salir  # noqa: E402
 
 from app.services.extraccion.extractor_generico import _indice_columna_por_coordenadas  # noqa: E402
 
@@ -37,24 +37,10 @@ if not RUTA.exists():
 
 import pdfplumber  # noqa: E402
 
-fallos = []
-
-
-def revisar(nombre, obtenido, esperado):
-    ok = obtenido == esperado
-    print(f"{'OK  ' if ok else 'FALLA'} {nombre}: esperado={esperado} obtenido={obtenido}")
-    if not ok:
-        fallos.append(nombre)
-
-
 with pdfplumber.open(RUTA) as pdf:
     pagina = pdf.pages[88]  # ancla real del triage para este documento
     revisar("columna de T1 2026 (izquierda, marzo)", _indice_columna_por_coordenadas(pagina, 2026, "T1"), 0)
     revisar("columna de ANUAL 2025 (derecha, diciembre)", _indice_columna_por_coordenadas(pagina, 2025, "ANUAL"), 1)
     revisar("año que no aparece en el encabezado", _indice_columna_por_coordenadas(pagina, 2019, "ANUAL"), None)
 
-print()
-if fallos:
-    print(f"{len(fallos)} prueba(s) fallaron: {fallos}")
-    sys.exit(1)
-print("todas las pruebas pasaron")
+reportar_y_salir()

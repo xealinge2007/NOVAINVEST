@@ -10,10 +10,7 @@ literales reales de TERPEL 2023-ANUAL (pagina 283 de leyenda, 284 de balance),
 no ejemplos inventados.
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
+from _prueba_utils import revisar, reportar_y_salir  # noqa: E402
 
 from app.services.extraccion import extractor_generico as eg  # noqa: E402
 
@@ -27,22 +24,12 @@ LEYENDA_TERPEL = NL.join([
     "MUSD : Cifras expresadas en miles de dolares estadounidenses",
 ])
 
-fallos = []
-
-
 def lector(paginas):
     """`extraer` le pasa a la deteccion de unidad un lector de paginas
     (pdfplumber), no una lista. Aqui se simula con las paginas de prueba."""
     def leer(i):
         return paginas[i] if 0 <= i < len(paginas) else ""
     return leer
-
-
-def revisar(nombre, obtenido, esperado):
-    ok = obtenido == esperado
-    print(f"{'OK  ' if ok else 'FALLA'} {nombre}: esperado={esperado} obtenido={obtenido}")
-    if not ok:
-        fallos.append(nombre)
 
 
 def _balance(encabezado):
@@ -109,8 +96,4 @@ for texto, esperado in [
     r = eg._detectar_factor_unidad(NL.join(["Reporte de resultados consolidados para 1T2025", texto]))
     revisar(f"membrete laxo {texto[:40]!r}", r[0] if r else None, esperado)
 
-print()
-if fallos:
-    print(f"{len(fallos)} prueba(s) fallaron: {fallos}")
-    sys.exit(1)
-print("todas las pruebas pasaron")
+reportar_y_salir()

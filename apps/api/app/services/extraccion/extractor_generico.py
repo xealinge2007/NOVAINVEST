@@ -594,6 +594,31 @@ def _pagina_segura(pdf, indice: int | None):
     return pdf.pages[indice]
 
 
+def _agrupar_por_proximidad(items: list[dict], eje: str, umbral: float) -> list[list[dict]]:
+    """Agrupa `items` (palabras de `pdfplumber.extract_words()`) en grupos
+    consecutivos: abre grupo nuevo cuando la distancia en `eje` entre un item
+    y el ÚLTIMO que ya entró al grupo actual es >= `umbral`. `items` tiene
+    que venir ordenado por `eje` ascendente -- este primitivo no ordena,
+    porque los dos usos ya lo hacen con su propio criterio (columnas: por
+    x0; filas: por top) y ordenar dos veces sobre el mismo campo es trabajo
+    de más.
+
+    Compartido por `_indice_columna_por_coordenadas` (agrupa por `x0`, abre
+    columna nueva -- respaldo para encabezados de fecha intercalados) y
+    `_texto_con_digito_pegado_reparado` (agrupa por `top`, abre fila nueva
+    -- respaldo para dígitos sueltos pegados). Antes cada uno traía su
+    propio bucle idéntico salvo por el eje y el umbral."""
+    if not items:
+        return []
+    grupos: list[list[dict]] = [[items[0]]]
+    for item in items[1:]:
+        if item[eje] - grupos[-1][-1][eje] < umbral:
+            grupos[-1].append(item)
+        else:
+            grupos.append([item])
+    return grupos
+
+
 def _indice_columna_por_coordenadas(pagina_pdfplumber, anio: int, periodo: str) -> int | None:
     """Respaldo por COORDENADAS cuando ni el texto plano ni el bloque
     concatenado (arriba) resuelven la columna -- verificado real,
@@ -637,12 +662,7 @@ def _indice_columna_por_coordenadas(pagina_pdfplumber, anio: int, periodo: str) 
     if not palabras:
         return None
 
-    columnas: list[list[dict]] = [[palabras[0]]]
-    for palabra in palabras[1:]:
-        if palabra["x0"] - columnas[-1][-1]["x0"] < GAP_MINIMO_COLUMNA:
-            columnas[-1].append(palabra)
-        else:
-            columnas.append([palabra])
+    columnas = _agrupar_por_proximidad(palabras, "x0", GAP_MINIMO_COLUMNA)
 
     # Etiquetas sueltas como "Activos" o "Nota" quedan aisladas como su propia
     # columna (su x0 esta lejos de cualquier fecha) pero NO son columnas de
@@ -713,12 +733,7 @@ def _texto_con_digito_pegado_reparado(pagina_pdfplumber) -> str:
     palabras = sorted(pagina_pdfplumber.extract_words(), key=lambda w: w["top"])
     if not palabras:
         return ""
-    filas: list[list[dict]] = [[palabras[0]]]
-    for w in palabras[1:]:
-        if w["top"] - filas[-1][-1]["top"] < UMBRAL_MISMA_FILA:
-            filas[-1].append(w)
-        else:
-            filas.append([w])
+    filas = _agrupar_por_proximidad(palabras, "top", UMBRAL_MISMA_FILA)
 
     lineas = []
     for fila_sin_ordenar in filas:

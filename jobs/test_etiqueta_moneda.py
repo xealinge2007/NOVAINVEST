@@ -12,25 +12,12 @@ sesion "Total activos Ps." no igualaba "total activos" en el match exacto de
 anuales pese a que el triage ubicaba la pagina correcta.
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
+from _prueba_utils import revisar, reportar_y_salir  # noqa: E402
 
 from app.services.extraccion.pdf_utils import (  # noqa: E402
     normalizar,
     separar_etiqueta_y_valores_linea,
 )
-
-fallos = []
-
-
-def revisar(nombre, obtenido, esperado):
-    ok = obtenido == esperado
-    print(f"{'OK  ' if ok else 'FALLA'} {nombre}: esperado={esperado} obtenido={obtenido}")
-    if not ok:
-        fallos.append(nombre)
-
 
 for linea, etiqueta_esperada, valores_esperados in [
     # GRUPO_AVAL real, 2022-ANUAL pagina 169 via pdfplumber.
@@ -44,8 +31,4 @@ for linea, etiqueta_esperada, valores_esperados in [
     revisar(f"etiqueta de {linea[:35]!r}", normalizar(etiqueta), etiqueta_esperada)
     revisar(f"valores de {linea[:35]!r}", valores, valores_esperados)
 
-print()
-if fallos:
-    print(f"{len(fallos)} prueba(s) fallaron: {fallos}")
-    sys.exit(1)
-print("todas las pruebas pasaron")
+reportar_y_salir()
