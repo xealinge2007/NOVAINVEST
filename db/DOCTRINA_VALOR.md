@@ -437,13 +437,13 @@ estándar); valor de mercado del portafolio de holdings (depende de W3a). Ningun
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
-- ⚠️ **`PLAN-ASESOR-FINANCIERO.md` §6/§3.7 — NO actualizado, bloqueado.** El archivo no existe en
-  `C:\Proyectos\novainvest` ni en `C:\Proyectos` (la ruta relativa `../PLAN-ASESOR-FINANCIERO.md` que
-  usan `README.md` y `DECISION_ARQUITECTURA_EXTRACCION.md` está rota). La única copia encontrada está
-  en `C:\Users\Alex\OneDrive\Documents\AGENTES AI\FINANZAS E INVERSIONES PERSONALES\
-  PLAN-ASESOR-FINANCIERO.md` — el **respaldo congelado** que la memoria del proyecto marca como "no
-  trabajar ahí". No se editó para no violar esa regla. **Pendiente de decisión de Alex**: mover/copiar
-  el archivo real a `C:\Proyectos\novainvest`, o decir dónde vive de verdad.
+- ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por
+  indicación explícita de Alex) desde el respaldo de OneDrive. Se agregó **§0C** (nueva sección,
+  mismo patrón que §0B) explicando que el Motor de Valor BVC reemplaza el juicio ROIC/WACC/EVA
+  puro de §3.7.1/§6 como criterio primario de valoración — los 14 modelos + ensamble NO se
+  eliminan, quedan como evidencia secundaria. Notas en línea agregadas en los párrafos exactos de
+  "Creación de valor" de §3.7.1 y §6, apuntando a §0C. El archivo del respaldo de OneDrive no se
+  tocó (solo se copió).
 - ✅ **Hecho (18-sep-2026)**: `jobs/matriz_huecos_fundamentales.py` ahora incluye la columna de
   arquetipo y separa canal A/B/C explícitamente (antes solo tenía las 3 categorías técnicas). De
   paso corrigió un mal etiquetado real: PEI 2025-T4 salía "archivo_sin_estados → lo resuelve la
