@@ -432,11 +432,19 @@ etiquetado -- no verificado); CET1/regulatorio de bancos (fuente externa nueva, 
 estándar); valor de mercado del portafolio de holdings (depende de W3a). Ninguno de los tres es
 "bug" -- son datos que este pipeline genuinamente no ingiere todavía.
 
-## 6. Pendiente de este W0 (no completado en esta sesión)
+## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
-- Actualizar `PLAN-ASESOR-FINANCIERO.md` §6 y §3.7 para reflejar que el motor de valor es la
-  valoración primaria de la BVC (decisión de Alex, plan aprobado §0).
-- Extender `jobs/matriz_huecos_fundamentales.py` para que la matriz emisor×trimestre incluya la
-  columna de arquetipo (§2 de este documento) y separe explícitamente canal A/B/C — hoy solo
-  distingue `sin_archivo` / `archivo_sin_estados` / `archivo_sin_cifras`.
-- Diseño de esquema (`W1`, `db/migrate_w1_valor.sql`) queda para la siguiente fase, no este documento.
+- ⚠️ **`PLAN-ASESOR-FINANCIERO.md` §6/§3.7 — NO actualizado, bloqueado.** El archivo no existe en
+  `C:\Proyectos\novainvest` ni en `C:\Proyectos` (la ruta relativa `../PLAN-ASESOR-FINANCIERO.md` que
+  usan `README.md` y `DECISION_ARQUITECTURA_EXTRACCION.md` está rota). La única copia encontrada está
+  en `C:\Users\Alex\OneDrive\Documents\AGENTES AI\FINANZAS E INVERSIONES PERSONALES\
+  PLAN-ASESOR-FINANCIERO.md` — el **respaldo congelado** que la memoria del proyecto marca como "no
+  trabajar ahí". No se editó para no violar esa regla. **Pendiente de decisión de Alex**: mover/copiar
+  el archivo real a `C:\Proyectos\novainvest`, o decir dónde vive de verdad.
+- ✅ **Hecho (18-sep-2026)**: `jobs/matriz_huecos_fundamentales.py` ahora incluye la columna de
+  arquetipo y separa canal A/B/C explícitamente (antes solo tenía las 3 categorías técnicas). De
+  paso corrigió un mal etiquetado real: PEI 2025-T4 salía "archivo_sin_estados → lo resuelve la
+  descarga" cuando el archivo ya tiene los estados financieros, solo que escaneados (canal B, no C)
+  — ver `SENALES_ESCANEADO` en el job. Cobertura real tras los fixes de XBRL de esta sesión: de 19 a
+  **8 períodos pendientes** en todo el universo (7 canal C, 1 canal B).
+- Diseño de esquema (`W1`, `db/migrate_w1_valor.sql`) — hecho, ver §7.

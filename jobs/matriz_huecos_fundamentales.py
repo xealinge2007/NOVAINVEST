@@ -60,6 +60,22 @@ SENALES_SIN_ESTADOS = (
     "el triage no ubico la pagina",
 )
 
+# Dentro de "el triage no ubico la pagina" hay DOS causas distintas que esta
+# lista venía tratando igual (hallazgo real, 18-sep-2026: PEI 2025-T4 salía
+# "archivo_sin_estados" -> "lo resuelve la descarga", pero el archivo YA
+# tiene los estados financieros, solo que en una página escaneada sin capa
+# de texto -- pedirle a Cowork que lo vuelva a descargar no resuelve nada).
+# Si el detalle menciona escaneo, es CANAL B (lectura visual del subagente,
+# el archivo ya sirve); si no, es canal C real (informe narrativo sin
+# balance en ningún lado, hay que pedir el documento correcto).
+SENALES_ESCANEADO = ("probable escaneo", "sin capa de texto", "escaneado")
+
+# Canal por categoría (DOCTRINA_VALOR.md §5: A = código/parser, B = lectura
+# visual del subagente, C = descarga real). `archivo_sin_cifras` es canal A
+# por defecto (el parser tiene texto y falla en leerlo), salvo que el propio
+# detalle delate escaneo -- mismo caso que arriba.
+CANAL_POR_CATEGORIA = {"sin_archivo": "C", "archivo_sin_estados": "C", "archivo_sin_cifras": "A"}
+
 
 def construir_matriz(filas: list[dict]) -> dict[str, dict]:
     """filas: [{emisor_slug, anio, periodo}, ...] — una por CIFRA extraída, no
@@ -113,19 +129,25 @@ def resumen_emisor(datos: dict) -> dict:
     }
 
 
-def clasificar_pedido(archivos: list[dict]) -> tuple[str, str]:
-    """(categoria, detalle) para un periodo sin cifras. `archivos` son los
-    `reportes_archivo` de ese emisor/periodo que deberían haber servido."""
+def clasificar_pedido(archivos: list[dict]) -> tuple[str, str, str]:
+    """(categoria, canal, detalle) para un periodo sin cifras. `archivos` son
+    los `reportes_archivo` de ese emisor/periodo que deberían haber servido.
+    `canal` distingue A (código)/B (lectura visual, el archivo ya sirve)/C
+    (descarga real) -- ver CANAL_POR_CATEGORIA y SENALES_ESCANEADO arriba."""
     if not archivos:
-        return "sin_archivo", "no hay ningún estados_financieros ni informe_periodico descargado para este periodo"
+        return "sin_archivo", "C", "no hay ningún estados_financieros ni informe_periodico descargado para este periodo"
     detalles = [
         f"{a['nombre_archivo']}: {a['estado']} — {(a.get('error_detalle') or '').strip()}"
         for a in archivos
     ]
     texto = " ".join(detalles).lower()
+    escaneado = any(s in texto for s in SENALES_ESCANEADO)
     if any(s in texto for s in SENALES_SIN_ESTADOS):
-        return "archivo_sin_estados", " | ".join(detalles)
-    return "archivo_sin_cifras", " | ".join(detalles)
+        categoria = "archivo_sin_estados"
+    else:
+        categoria = "archivo_sin_cifras"
+    canal = "B" if escaneado else CANAL_POR_CATEGORIA[categoria]
+    return categoria, canal, " | ".join(detalles)
 
 
 def main():
@@ -137,7 +159,9 @@ def main():
     from app.database import cliente_servicio
 
     cliente = cliente_servicio()
-    emisores = {e["id"]: e["slug"] for e in cliente.table("emisores").select("id,slug").execute().data}
+    filas_emisores = cliente.table("emisores").select("id,slug,arquetipo").execute().data
+    emisores = {e["id"]: e["slug"] for e in filas_emisores}
+    arquetipos = {e["slug"]: e.get("arquetipo") or "sin_clasificar" for e in filas_emisores}
 
     # Lo que de verdad está cubierto: una fila de cifras, no un archivo en disco.
     cifras = cliente.table("fundamentales_reportados").select("emisor_id,anio,periodo").execute().data
@@ -168,11 +192,11 @@ def main():
 
     print(f"=== Elegibles para el ranking (>={args.min_trimestres} trimestres CON CIFRAS) — {len(elegibles)} emisores ===")
     for slug, r in sorted(elegibles.items(), key=lambda x: -x[1]["total"]):
-        print(f"  {slug:<30} total={r['total']:<3} (reportados={r['reportados']}, derivados={r['derivados']})  rango: {r['rango']}")
+        print(f"  {slug:<30} [{arquetipos.get(slug, 'sin_clasificar'):<22}] total={r['total']:<3} (reportados={r['reportados']}, derivados={r['derivados']})  rango: {r['rango']}")
 
     print(f"\n=== No elegibles todavía — {len(no_elegibles)} emisores, por rendimiento del esfuerzo ===")
     for slug, r in sorted(no_elegibles.items(), key=lambda x: -x[1]["total"]):
-        print(f"  {slug:<30} total={r['total']:<3} faltan {args.min_trimestres - r['total']} para elegible  rango: {r['rango']}")
+        print(f"  {slug:<30} [{arquetipos.get(slug, 'sin_clasificar'):<22}] total={r['total']:<3} faltan {args.min_trimestres - r['total']} para elegible  rango: {r['rango']}")
 
     # --- lista de pedidos -----------------------------------------------------
     # Se piden los huecos DENTRO del rango ya cubierto de cada emisor (lo
@@ -186,27 +210,33 @@ def main():
         if not objetivo and r["total"] == 0:
             objetivo = sorted({(a, p) for (s, a, p) in por_periodo if s == slug and p != "ANUAL"})
         for anio, periodo in objetivo:
-            categoria, detalle = clasificar_pedido(por_periodo.get((slug, anio, periodo), []))
+            categoria, canal, detalle = clasificar_pedido(por_periodo.get((slug, anio, periodo), []))
             pedidos.append({
                 "emisor": slug,
+                "arquetipo": arquetipos.get(slug, "sin_clasificar"),
                 "anio": anio,
                 "periodo": periodo,
                 "categoria": categoria,
+                "canal": canal,
                 "que_pedir": "Estados Financieros CONSOLIDADOS del periodo, radicados en SIMEV (la página de IR del emisor sirve como respaldo, nunca el comunicado de prensa)",
                 "detalle": detalle,
             })
 
     destino = Path(args.csv)
     with open(destino, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["emisor", "anio", "periodo", "categoria", "que_pedir", "detalle"])
+        w = csv.DictWriter(f, fieldnames=["emisor", "arquetipo", "anio", "periodo", "categoria", "canal", "que_pedir", "detalle"])
         w.writeheader()
         w.writerows(pedidos)
 
-    print(f"\n=== PEDIDOS DE DESCARGA — {len(pedidos)} periodos ===")
+    print(f"\n=== PEDIDOS — {len(pedidos)} periodos, por canal ===")
+    for canal, n in Counter(p["canal"] for p in pedidos).most_common():
+        print(f"  {n:4d}  canal {canal}")
+    print(f"\n=== PEDIDOS — {len(pedidos)} periodos, por categoría ===")
     for cat, n in Counter(p["categoria"] for p in pedidos).most_common():
         print(f"  {n:4d}  {cat}")
-    print("\n  sin_archivo / archivo_sin_estados -> los resuelve la descarga (Cowork)")
-    print("  archivo_sin_cifras                -> los resuelve el parser, no la descarga")
+    print("\n  canal A (archivo_sin_cifras sin señal de escaneo) -> lo resuelve el parser, no la descarga")
+    print("  canal B (cualquier categoría con señal de escaneo) -> lectura visual del subagente, el archivo ya sirve")
+    print("  canal C (sin_archivo / archivo_sin_estados sin escaneo) -> lo resuelve la descarga (Cowork)")
     print(f"\nTotal emisores: {len(resumenes)}  |  Elegibles: {len(elegibles)}  |  CSV: {destino.resolve()}")
 
 

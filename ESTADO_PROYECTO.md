@@ -1241,3 +1241,15 @@ ENKA, EL_CONDOR, FABRICATO). Bancos (3) declarados explícitamente no evaluables
 deuda/EBITDA y deuda/patrimonio ya calculados en `fundamentales_analisis` -- 11
 OK, 3 no_ok (ISA, GRUPO_ARGOS, CELSIA). 24/24 filas escritas en `score_valor`,
 verificado por consulta directa.
+
+## 18-sep-2026 (cont. 6) — cerrando pendientes de W0
+
+- `jobs/matriz_huecos_fundamentales.py` extendido: columna de arquetipo + canal A/B/C explícito
+  (antes solo distinguía 3 categorías técnicas). Corrigió un mal etiquetado real: PEI 2025-T4 salía
+  como "hay que descargar" cuando el archivo ya existe, solo que escaneado (era canal B). Cobertura
+  real del universo, tras los fixes de XBRL de esta sesión: 19 -> 8 períodos pendientes (7 canal C
+  genuino, 1 canal B).
+- `PLAN-ASESOR-FINANCIERO.md` §6/§3.7: NO se pudo actualizar. El archivo no existe en el repo activo
+  (`C:\Proyectos\novainvest` ni `C:\Proyectos`) -- la única copia está en el respaldo congelado de
+  OneDrive, que la memoria del proyecto prohíbe tocar. Queda pendiente de que Alex diga dónde vive
+  el archivo real o lo mueva al repo activo.
