@@ -88,12 +88,12 @@ function SeccionPosiciones() {
       <h2 className="font-serif text-base font-medium text-slate-900">Posiciones</h2>
       <ul className="divide-y divide-slate-200 text-sm">
         {posiciones.map((p) => (
-          <li key={p.id} className="flex justify-between py-2.5">
+          <li key={p.id} className="flex items-start justify-between gap-3 py-2.5">
             <span className="cifra">
               {p.ticker} · {p.clase} · {p.cantidad} @ {p.precio_promedio_compra.toLocaleString("es-CO")} {p.moneda_compra}{" "}
               <span className="font-sans text-xs text-slate-400">({p.horizonte}, {p.cuenta})</span>
             </span>
-            <button onClick={() => borrar(p.id)} className="cursor-pointer text-xs text-red-600 hover:underline">eliminar</button>
+            <button onClick={() => borrar(p.id)} className="shrink-0 cursor-pointer text-xs text-red-600 hover:underline">eliminar</button>
           </li>
         ))}
       </ul>
