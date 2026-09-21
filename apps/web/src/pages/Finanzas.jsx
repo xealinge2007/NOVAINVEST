@@ -8,10 +8,15 @@ import {
   registrarPatrimonio,
 } from "../api/client";
 
+const INPUT = "rounded-md border border-slate-300 px-3 py-2 focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20";
+const BOTON = "rounded-md bg-brand-900 py-2 text-white hover:opacity-90 cursor-pointer";
+
 export default function Finanzas() {
   return (
-    <div className="max-w-2xl mx-auto p-6 flex flex-col gap-10">
-      <h1 className="text-2xl font-semibold">Finanzas personales</h1>
+    <div className="flex flex-col gap-10">
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="font-serif text-2xl font-semibold text-slate-900">Finanzas personales</h1>
+      </div>
       <SeccionPresupuesto />
       <SeccionFondoEmergencia />
       <SeccionPatrimonio />
@@ -46,27 +51,27 @@ function SeccionPresupuesto() {
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-medium">Presupuesto 50/30/20</h2>
-      <form onSubmit={onSubmit} className="flex flex-col gap-2 max-w-sm">
+    <section className="flex flex-col gap-3">
+      <h2 className="font-serif text-base font-medium text-slate-900">Presupuesto 50/30/20</h2>
+      <form onSubmit={onSubmit} className="flex max-w-sm flex-col gap-2">
         <input
           type="number"
           placeholder="Ingreso mensual (COP)"
-          className="border rounded px-3 py-2"
+          className={INPUT}
           value={form.ingreso_mensual}
           onChange={(e) => setForm((f) => ({ ...f, ingreso_mensual: e.target.value }))}
           required
         />
         <div className="flex gap-2">
-          <input type="number" className="border rounded px-2 py-1 w-1/3" value={form.pct_necesidades}
+          <input type="number" className={`w-1/3 ${INPUT}`} value={form.pct_necesidades}
             onChange={(e) => setForm((f) => ({ ...f, pct_necesidades: e.target.value }))} />
-          <input type="number" className="border rounded px-2 py-1 w-1/3" value={form.pct_deseos}
+          <input type="number" className={`w-1/3 ${INPUT}`} value={form.pct_deseos}
             onChange={(e) => setForm((f) => ({ ...f, pct_deseos: e.target.value }))} />
-          <input type="number" className="border rounded px-2 py-1 w-1/3" value={form.pct_ahorro}
+          <input type="number" className={`w-1/3 ${INPUT}`} value={form.pct_ahorro}
             onChange={(e) => setForm((f) => ({ ...f, pct_ahorro: e.target.value }))} />
         </div>
         <p className="text-xs text-slate-400">necesidades / deseos / ahorro (%, deben sumar 100)</p>
-        <button className="bg-slate-900 text-white rounded py-2">Guardar</button>
+        <button className={BOTON}>Guardar</button>
         {mensaje && <p className="text-sm">{mensaje}</p>}
       </form>
     </section>
@@ -104,26 +109,32 @@ function SeccionFondoEmergencia() {
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-medium">Fondo de emergencia</h2>
+    <section className="flex flex-col gap-3">
+      <h2 className="font-serif text-base font-medium text-slate-900">Fondo de emergencia</h2>
       {estado && (
-        <div className={`text-sm rounded p-3 ${estado.bloqueado_inversion ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
+        <div
+          className={`rounded-lg border p-3 text-sm ${
+            estado.bloqueado_inversion
+              ? "border-amber-200 bg-amber-50 text-amber-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
           {estado.bloqueado_inversion
             ? `Módulo de inversión BLOQUEADO. ${estado.motivo}`
             : `Fondo de emergencia OK (${estado.meses_cubiertos} meses cubiertos) — inversión desbloqueada.`}
         </div>
       )}
-      <form onSubmit={onSubmit} className="flex flex-col gap-2 max-w-sm">
-        <input type="number" placeholder="Gastos mensuales estimados (COP)" className="border rounded px-3 py-2"
+      <form onSubmit={onSubmit} className="flex max-w-sm flex-col gap-2">
+        <input type="number" placeholder="Gastos mensuales estimados (COP)" className={INPUT}
           value={form.gastos_mensuales_estimados}
           onChange={(e) => setForm((f) => ({ ...f, gastos_mensuales_estimados: e.target.value }))} required />
-        <input type="number" min={3} max={6} placeholder="Meses objetivo (3-6)" className="border rounded px-3 py-2"
+        <input type="number" min={3} max={6} placeholder="Meses objetivo (3-6)" className={INPUT}
           value={form.meses_objetivo}
           onChange={(e) => setForm((f) => ({ ...f, meses_objetivo: e.target.value }))} required />
-        <input type="number" placeholder="Monto actual ahorrado (COP)" className="border rounded px-3 py-2"
+        <input type="number" placeholder="Monto actual ahorrado (COP)" className={INPUT}
           value={form.monto_actual}
           onChange={(e) => setForm((f) => ({ ...f, monto_actual: e.target.value }))} required />
-        <button className="bg-slate-900 text-white rounded py-2">Guardar</button>
+        <button className={BOTON}>Guardar</button>
         {mensaje && <p className="text-sm">{mensaje}</p>}
       </form>
     </section>
@@ -160,23 +171,23 @@ function SeccionPatrimonio() {
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-medium">Patrimonio neto</h2>
-      <form onSubmit={onSubmit} className="flex flex-col gap-2 max-w-sm">
-        <input type="date" className="border rounded px-3 py-2" value={form.fecha}
+    <section className="flex flex-col gap-3">
+      <h2 className="font-serif text-base font-medium text-slate-900">Patrimonio neto</h2>
+      <form onSubmit={onSubmit} className="flex max-w-sm flex-col gap-2">
+        <input type="date" className={INPUT} value={form.fecha}
           onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))} required />
-        <input type="number" placeholder="Activos totales (COP)" className="border rounded px-3 py-2"
+        <input type="number" placeholder="Activos totales (COP)" className={INPUT}
           value={form.activos_total} onChange={(e) => setForm((f) => ({ ...f, activos_total: e.target.value }))} required />
-        <input type="number" placeholder="Pasivos totales (COP)" className="border rounded px-3 py-2"
+        <input type="number" placeholder="Pasivos totales (COP)" className={INPUT}
           value={form.pasivos_total} onChange={(e) => setForm((f) => ({ ...f, pasivos_total: e.target.value }))} required />
-        <button className="bg-slate-900 text-white rounded py-2">Guardar snapshot</button>
+        <button className={BOTON}>Guardar snapshot</button>
         {mensaje && <p className="text-sm">{mensaje}</p>}
       </form>
-      <ul className="text-sm divide-y">
+      <ul className="divide-y divide-slate-200 text-sm">
         {snapshots.map((s) => (
-          <li key={s.fecha} className="py-1 flex justify-between">
+          <li key={s.fecha} className="flex justify-between py-1.5">
             <span>{s.fecha}</span>
-            <span>{s.patrimonio_neto.toLocaleString("es-CO")} COP</span>
+            <span className="cifra">{s.patrimonio_neto.toLocaleString("es-CO")} COP</span>
           </li>
         ))}
       </ul>

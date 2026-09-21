@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { compararEstrategias, crearDeuda, eliminarDeuda, getMisDeudas } from "../api/client";
 
 const NOMBRES_ESTRATEGIA = { avalancha: "Avalancha", nieve: "Bola de nieve", hibrida: "Híbrida" };
+const INPUT = "rounded-md border border-slate-300 px-3 py-2 focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20";
+const BOTON = "rounded-md bg-brand-900 py-2 text-white hover:opacity-90 cursor-pointer";
 
 export default function Deudas() {
   const [deudas, setDeudas] = useState([]);
@@ -52,41 +54,43 @@ export default function Deudas() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Deudas</h1>
+    <div className="flex flex-col gap-8">
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="font-serif text-2xl font-semibold text-slate-900">Deudas</h1>
+      </div>
 
-      <ul className="divide-y text-sm">
+      <ul className="divide-y divide-slate-200 text-sm">
         {deudas.map((d) => (
-          <li key={d.id} className="py-2 flex justify-between items-center">
-            <span>
+          <li key={d.id} className="flex items-center justify-between py-2.5">
+            <span className="cifra">
               {d.nombre} — {d.saldo.toLocaleString("es-CO")} COP @ {d.tasa_anual_pct}% anual (mínimo{" "}
               {d.pago_minimo.toLocaleString("es-CO")})
             </span>
-            <button onClick={() => borrar(d.id)} className="text-red-600 text-xs">
+            <button onClick={() => borrar(d.id)} className="cursor-pointer text-xs text-red-600 hover:underline">
               eliminar
             </button>
           </li>
         ))}
       </ul>
 
-      <form onSubmit={agregar} className="flex flex-col gap-2 max-w-sm">
-        <h2 className="font-medium">Agregar deuda</h2>
-        <input placeholder="Nombre" className="border rounded px-3 py-2" value={form.nombre}
+      <form onSubmit={agregar} className="flex max-w-sm flex-col gap-2">
+        <h2 className="font-serif text-base font-medium text-slate-900">Agregar deuda</h2>
+        <input placeholder="Nombre" className={INPUT} value={form.nombre}
           onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} required />
-        <input type="number" placeholder="Saldo (COP)" className="border rounded px-3 py-2" value={form.saldo}
+        <input type="number" placeholder="Saldo (COP)" className={INPUT} value={form.saldo}
           onChange={(e) => setForm((f) => ({ ...f, saldo: e.target.value }))} required />
-        <input type="number" placeholder="Tasa anual (%)" className="border rounded px-3 py-2" value={form.tasa_anual_pct}
+        <input type="number" placeholder="Tasa anual (%)" className={INPUT} value={form.tasa_anual_pct}
           onChange={(e) => setForm((f) => ({ ...f, tasa_anual_pct: e.target.value }))} required />
-        <input type="number" placeholder="Pago mínimo (COP)" className="border rounded px-3 py-2" value={form.pago_minimo}
+        <input type="number" placeholder="Pago mínimo (COP)" className={INPUT} value={form.pago_minimo}
           onChange={(e) => setForm((f) => ({ ...f, pago_minimo: e.target.value }))} required />
-        <button className="bg-slate-900 text-white rounded py-2">Agregar</button>
+        <button className={BOTON}>Agregar</button>
       </form>
 
-      <form onSubmit={comparar} className="flex flex-col gap-2 max-w-sm">
-        <h2 className="font-medium">Comparar estrategias</h2>
-        <input type="number" placeholder="Extra disponible al mes (COP)" className="border rounded px-3 py-2"
+      <form onSubmit={comparar} className="flex max-w-sm flex-col gap-2">
+        <h2 className="font-serif text-base font-medium text-slate-900">Comparar estrategias</h2>
+        <input type="number" placeholder="Extra disponible al mes (COP)" className={INPUT}
           value={extraMensual} onChange={(e) => setExtraMensual(e.target.value)} required />
-        <button className="bg-slate-900 text-white rounded py-2">Comparar</button>
+        <button className={BOTON}>Comparar</button>
       </form>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -97,24 +101,26 @@ export default function Deudas() {
             Recomendada: <b className="uppercase">{NOMBRES_ESTRATEGIA[comparacion.recomendada]}</b> —{" "}
             {comparacion.razon}
           </p>
-          <table className="text-sm w-full border">
-            <thead>
-              <tr className="bg-slate-100">
-                <th className="text-left p-2">Estrategia</th>
-                <th className="text-right p-2">Interés total</th>
-                <th className="text-right p-2">Meses hasta liberar todo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(comparacion.resultados).map(([nombre, r]) => (
-                <tr key={nombre} className="border-t">
-                  <td className="p-2">{NOMBRES_ESTRATEGIA[nombre]}</td>
-                  <td className="p-2 text-right">{r.interes_total.toLocaleString("es-CO")} COP</td>
-                  <td className="p-2 text-right">{r.meses_totales}</td>
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="p-2 text-left text-xs uppercase tracking-wide text-slate-500">Estrategia</th>
+                  <th className="p-2 text-right text-xs uppercase tracking-wide text-slate-500">Interés total</th>
+                  <th className="p-2 text-right text-xs uppercase tracking-wide text-slate-500">Meses hasta liberar todo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {Object.entries(comparacion.resultados).map(([nombre, r]) => (
+                  <tr key={nombre} className="border-t border-slate-100">
+                    <td className="p-2">{NOMBRES_ESTRATEGIA[nombre]}</td>
+                    <td className="cifra p-2 text-right">{r.interes_total.toLocaleString("es-CO")} COP</td>
+                    <td className="cifra p-2 text-right">{r.meses_totales}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

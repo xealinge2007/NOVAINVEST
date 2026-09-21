@@ -88,10 +88,11 @@ export default function Fundamentales() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Fundamentales BVC</h1>
-        <p className="text-sm text-slate-500">
+    <div className="flex flex-col gap-6">
+      <div className="border-b border-slate-200 pb-4">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-400">Screener</p>
+        <h1 className="mt-1 font-serif text-2xl font-semibold text-slate-900">Fundamentales BVC</h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-500">
           Análisis fundamental de los emisores de la Bolsa de Valores de Colombia: TTM de resultados,
           márgenes, ROE, múltiplos de mercado y creación de valor (ROIC vs. costo de capital). Doble canal
           (PDF + XBRL radicado ante la Superfinanciera). No es asesoría financiera ni recomendación de inversión.
@@ -104,8 +105,8 @@ export default function Fundamentales() {
 
       {filas.some(esEstrella) && (
         <div>
-          <h2 className="text-sm font-semibold text-slate-700 mb-2">⭐ Estrellas de la BVC</h2>
-          <p className="text-xs text-slate-500 mb-3">
+          <h2 className="font-serif text-base font-semibold text-slate-900">Estrellas de la BVC</h2>
+          <p className="mt-1 mb-3 text-xs text-slate-500">
             Crean valor por encima de su costo de capital (ROIC &gt; WACC; en bancos y holdings financieros,
             ROE &gt; Ke) y no tienen múltiplos fuera de rango. No es una recomendación de inversión — sin backtest todavía.
           </p>
@@ -114,10 +115,10 @@ export default function Fundamentales() {
               .filter(esEstrella)
               .sort((a, b) => a.ranking_estrella - b.ranking_estrella)
               .map((f) => (
-                <div key={f.emisor_id} className="border rounded-lg px-3 py-2 bg-emerald-50 border-emerald-200 text-sm">
-                  <span className="font-semibold text-emerald-800">#{f.ranking_estrella}</span>{" "}
-                  <span className="font-medium">{f.nombre}</span>{" "}
-                  <span className="text-emerald-700">+{fmt(f.spread_valor)}pp</span>{" "}
+                <div key={f.emisor_id} className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
+                  <span className="font-mono text-xs font-semibold text-emerald-800">#{f.ranking_estrella}</span>
+                  <span className="font-medium text-slate-800">{f.nombre}</span>
+                  <span className="cifra text-xs text-emerald-700">+{fmt(f.spread_valor)}pp</span>
                   <span className="text-xs text-slate-400">{f.metodo_valor}</span>
                 </div>
               ))}
@@ -126,7 +127,7 @@ export default function Fundamentales() {
       )}
 
       {macro.length > 0 && (
-        <details className="border rounded-lg px-4 py-3 text-sm">
+        <details className="rounded-lg border border-slate-200 px-4 py-3 text-sm">
           <summary className="cursor-pointer font-medium text-slate-700">
             Supuestos macro del costo de capital
           </summary>
@@ -137,7 +138,7 @@ export default function Fundamentales() {
             {macro.map((m) => (
               <div key={m.parametro} className="text-xs">
                 <span className="font-medium text-slate-800">
-                  {ETIQUETA_MACRO[m.parametro] || m.parametro}: {fmt(m.valor * 100, 2)}%
+                  {ETIQUETA_MACRO[m.parametro] || m.parametro}: <span className="cifra">{fmt(m.valor * 100, 2)}%</span>
                 </span>
                 <div className="text-slate-400">{m.fuente} · {m.fecha_dato}</div>
               </div>
@@ -147,20 +148,20 @@ export default function Fundamentales() {
       )}
 
       {filas.length > 0 && (
-        <div className="flex flex-wrap items-end gap-3 text-sm border rounded-lg p-3 bg-slate-50">
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-500">Buscar</label>
             <input
               type="text" placeholder="Nombre o ticker" value={filtros.busqueda}
               onChange={(e) => setFiltros((f) => ({ ...f, busqueda: e.target.value }))}
-              className="border rounded px-2 py-1 text-sm w-40"
+              className="w-40 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20"
             />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-500">Sector</label>
             <select
               value={filtros.sector} onChange={(e) => setFiltros((f) => ({ ...f, sector: e.target.value }))}
-              className="border rounded px-2 py-1 text-sm"
+              className="rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20"
             >
               <option value="">Todos</option>
               {sectores.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -171,7 +172,7 @@ export default function Fundamentales() {
             <input
               type="number" placeholder="ej. 15" value={filtros.peMax}
               onChange={(e) => setFiltros((f) => ({ ...f, peMax: e.target.value }))}
-              className="border rounded px-2 py-1 text-sm w-24"
+              className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -179,7 +180,7 @@ export default function Fundamentales() {
             <input
               type="number" placeholder="ej. 0" value={filtros.spreadMin}
               onChange={(e) => setFiltros((f) => ({ ...f, spreadMin: e.target.value }))}
-              className="border rounded px-2 py-1 text-sm w-24"
+              className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20"
             />
           </div>
           <label className="flex items-center gap-1.5 text-sm pb-1.5">
@@ -191,11 +192,11 @@ export default function Fundamentales() {
           </label>
           <button
             onClick={() => setFiltros(FILTROS_INICIALES)}
-            className="text-xs text-slate-500 underline pb-1.5"
+            className="pb-1.5 text-xs text-slate-500 underline cursor-pointer"
           >
             Limpiar filtros
           </button>
-          <span className="text-xs text-slate-400 ml-auto pb-1.5">
+          <span className="ml-auto pb-1.5 font-mono text-xs text-slate-400">
             {filasFiltradas.length} de {filas.length} emisores
           </span>
         </div>
@@ -213,9 +214,9 @@ export default function Fundamentales() {
       )}
 
       {filasFiltradas.length > 0 && (
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-3 py-2"></th>
                 <th className="px-3 py-2"></th>
@@ -238,7 +239,7 @@ export default function Fundamentales() {
                 <>
                   <tr
                     key={f.emisor_id}
-                    className="border-t hover:bg-slate-50 cursor-pointer"
+                    className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
                     onClick={() => setExpandido(expandido === f.emisor_id ? null : f.emisor_id)}
                   >
                     <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -250,34 +251,34 @@ export default function Fundamentales() {
                         title={`Comparar (máx. ${MAX_COMPARACION})`}
                       />
                     </td>
-                    <td className="px-3 py-2 text-center text-amber-500">
-                      {f.ranking_estrella ? (esEstrella(f) ? `⭐${f.ranking_estrella}` : `#${f.ranking_estrella}`) : ""}
+                    <td className="px-3 py-2 text-center font-mono text-xs text-amber-600">
+                      {f.ranking_estrella ? (esEstrella(f) ? `★${f.ranking_estrella}` : `#${f.ranking_estrella}`) : ""}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-medium">{f.nombre}</div>
+                      <div className="font-medium text-slate-900">{f.nombre}</div>
                       <div className="text-xs text-slate-400">{f.ticker}</div>
                     </td>
                     <td className="px-3 py-2 text-slate-500">{f.sector || "—"}</td>
-                    <td className="px-3 py-2 text-right">{fmt(f.precio, 0)}</td>
-                    <td className="px-3 py-2 text-right">{fmt(f.capitalizacion_mmm)}</td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="cifra px-3 py-2 text-right">{fmt(f.precio, 0)}</td>
+                    <td className="cifra px-3 py-2 text-right">{fmt(f.capitalizacion_mmm)}</td>
+                    <td className="cifra px-3 py-2 text-right">
                       {fmt(f.per)}
                       {f.alerta_multiplos && <span title={f.alerta_multiplos} className="ml-1 text-amber-600">⚠</span>}
                     </td>
-                    <td className="px-3 py-2 text-right">{fmt(f.precio_valor_libro)}</td>
-                    <td className="px-3 py-2 text-right">{f.margen_neto === null ? "—" : `${fmt(f.margen_neto)}%`}</td>
-                    <td className="px-3 py-2 text-right">{f.roe === null ? "—" : `${fmt(f.roe)}%`}</td>
-                    <td className="px-3 py-2 text-right">{fmt(f.deuda_patrimonio, 2)}</td>
-                    <td className="px-3 py-2 text-right">{f.roic === null ? "—" : `${fmt(f.roic)}%`}</td>
-                    <td className="px-3 py-2 text-right">{f.wacc === null ? "—" : `${fmt(f.wacc)}%`}</td>
-                    <td title={f.metodo_valor || ""} className={`px-3 py-2 text-right font-medium ${
+                    <td className="cifra px-3 py-2 text-right">{fmt(f.precio_valor_libro)}</td>
+                    <td className="cifra px-3 py-2 text-right">{f.margen_neto === null ? "—" : `${fmt(f.margen_neto)}%`}</td>
+                    <td className="cifra px-3 py-2 text-right">{f.roe === null ? "—" : `${fmt(f.roe)}%`}</td>
+                    <td className="cifra px-3 py-2 text-right">{fmt(f.deuda_patrimonio, 2)}</td>
+                    <td className="cifra px-3 py-2 text-right">{f.roic === null ? "—" : `${fmt(f.roic)}%`}</td>
+                    <td className="cifra px-3 py-2 text-right">{f.wacc === null ? "—" : `${fmt(f.wacc)}%`}</td>
+                    <td title={f.metodo_valor || ""} className={`cifra px-3 py-2 text-right font-medium ${
                       f.spread_valor === null ? "" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
                     }`}>
                       {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
                     </td>
                   </tr>
                   {expandido === f.emisor_id && (
-                    <tr key={`${f.emisor_id}-detalle`} className="border-t bg-slate-50/60">
+                    <tr key={`${f.emisor_id}-detalle`} className="border-t border-slate-100 bg-slate-50/60">
                       <td colSpan={14} className="px-3 py-3">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                           <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
@@ -363,7 +364,7 @@ function EvolucionSeccion({ slug }) {
     <div className="mt-4 pt-3 border-t flex flex-col gap-5">
       {datos.percentiles.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-slate-700 mb-1">Bandas de valoración (percentil, últimos ~5 años)</h4>
+          <h4 className="font-serif text-sm font-semibold text-slate-900 mb-1">Bandas de valoración (percentil, últimos ~5 años)</h4>
           <p className="text-xs text-slate-500 mb-3">
             Dónde está el múltiplo de hoy frente a su propia historia — no un veredicto de "caro/barato": un
             percentil alto puede reflejar una mejora real, no solo sobrevaloración.
@@ -378,13 +379,13 @@ function EvolucionSeccion({ slug }) {
 
       <div>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-        <h4 className="text-sm font-semibold text-slate-700">Evolución fundamental vs. precio</h4>
-        <div className="flex items-center gap-1 text-xs border rounded overflow-hidden">
+        <h4 className="font-serif text-sm font-semibold text-slate-900">Evolución fundamental vs. precio</h4>
+        <div className="flex items-center gap-1 overflow-hidden rounded-md border border-slate-200 text-xs">
           {TIPOS_GRAFICO.map(({ valor, etiqueta }) => (
             <button
               key={valor}
               onClick={() => elegirTipoGrafico(valor)}
-              className={`px-2.5 py-1 ${tipoGrafico === valor ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}
+              className={`px-2.5 py-1 cursor-pointer transition-colors ${tipoGrafico === valor ? "bg-brand-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}
             >
               {etiqueta}
             </button>
@@ -430,15 +431,15 @@ function BandaPercentil({ datos }) {
   const { multiplo, valor_actual, percentil, minimo, maximo, mediana, n } = datos;
   const color = percentil >= 80 ? "bg-red-400" : percentil <= 20 ? "bg-emerald-400" : "bg-amber-400";
   return (
-    <div className="text-xs border rounded px-3 py-2">
+    <div className="rounded-md border border-slate-200 px-3 py-2 text-xs">
       <div className="flex justify-between items-baseline mb-1">
         <span className="font-medium text-slate-700">{ETIQUETA_MULTIPLO[multiplo] || multiplo}</span>
-        <span className="text-slate-500">{valor_actual} · percentil {percentil}%</span>
+        <span className="cifra text-slate-500">{valor_actual} · percentil {percentil}%</span>
       </div>
       <div className="relative h-1.5 bg-slate-100 rounded-full">
         <div className={`absolute top-0 h-1.5 w-1.5 rounded-full -mt-0 ${color}`} style={{ left: `calc(${percentil}% - 3px)` }} />
       </div>
-      <div className="flex justify-between text-slate-400 mt-1">
+      <div className="cifra flex justify-between text-slate-400 mt-1">
         <span>mín {minimo}</span>
         <span>mediana {mediana}</span>
         <span>máx {maximo}</span>
@@ -468,11 +469,11 @@ const FILAS_COMPARADOR = [
 
 function Comparador({ filas, onQuitar }) {
   return (
-    <div className="border rounded-lg overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="min-w-full text-sm">
-        <thead className="bg-slate-50">
+        <thead className="border-b border-slate-200 bg-slate-50">
           <tr>
-            <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Comparador</th>
+            <th className="px-3 py-2 text-left text-xs uppercase tracking-wide text-slate-500">Comparador</th>
             {filas.map((f) => (
               <th key={f.emisor_id} className="px-3 py-2 text-left">
                 <div className="flex items-center justify-between gap-2">
@@ -482,7 +483,7 @@ function Comparador({ filas, onQuitar }) {
                   </div>
                   <button
                     onClick={() => onQuitar(f.emisor_id)}
-                    className="text-slate-400 hover:text-slate-600 text-xs"
+                    className="cursor-pointer text-xs text-slate-400 hover:text-slate-600"
                     title="Quitar de la comparación"
                   >
                     ✕
@@ -494,10 +495,10 @@ function Comparador({ filas, onQuitar }) {
         </thead>
         <tbody>
           {FILAS_COMPARADOR.map((fila) => (
-            <tr key={fila.etiqueta} className="border-t">
+            <tr key={fila.etiqueta} className="border-t border-slate-100">
               <td className="px-3 py-1.5 text-xs text-slate-500">{fila.etiqueta}</td>
               {filas.map((f) => (
-                <td key={f.emisor_id} className="px-3 py-1.5 text-sm">{fila.valor(f)}</td>
+                <td key={f.emisor_id} className="cifra px-3 py-1.5 text-sm">{fila.valor(f)}</td>
               ))}
             </tr>
           ))}
@@ -511,7 +512,7 @@ function Dato({ etiqueta, valor }) {
   return (
     <div>
       <p className="text-slate-400">{etiqueta}</p>
-      <p className="font-medium text-slate-800">{valor}</p>
+      <p className="cifra font-medium text-slate-800">{valor}</p>
     </div>
   );
 }

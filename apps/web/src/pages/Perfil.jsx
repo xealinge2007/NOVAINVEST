@@ -38,16 +38,18 @@ export default function Perfil() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Perfil de riesgo</h1>
+    <div className="flex flex-col gap-6">
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="font-serif text-2xl font-semibold text-slate-900">Perfil de riesgo</h1>
+      </div>
 
       {resultado && (
-        <div className="border rounded p-4 bg-slate-50">
-          <p className="font-medium">
-            Tu perfil: <span className="uppercase">{resultado.perfil_resultado}</span>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p className="font-medium text-slate-900">
+            Tu perfil: <span className="font-serif uppercase">{resultado.perfil_resultado}</span>
           </p>
           {resultado.detalle && (
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="cifra text-xs text-slate-600 mt-1">
               capacidad {resultado.detalle.capacidad_pct}% · tolerancia {resultado.detalle.tolerancia_pct}% ·
               experiencia {resultado.detalle.experiencia_pct}% · liquidez {resultado.detalle.liquidez_pct}%
               {resultado.detalle.limitado_por_capacidad && " · limitado por tu capacidad"}
@@ -89,7 +91,11 @@ export default function Perfil() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button type="submit" disabled={cargando} className="bg-slate-900 text-white rounded py-2 disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={cargando}
+          className="cursor-pointer rounded-md bg-brand-900 py-2 text-white hover:opacity-90 disabled:opacity-50"
+        >
           {cargando ? "..." : "Calcular mi perfil"}
         </button>
       </form>

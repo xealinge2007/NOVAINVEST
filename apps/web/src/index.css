@@ -1,4 +1,32 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap");
+
+@theme {
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* voz editorial/analítica del proyecto (fichas, tesis, doctrina) --
+     deliberadamente distinta del sans que usa cualquier dashboard genérico */
+  --font-serif: "Fraunces", "IBM Plex Sans", serif;
+
+  --color-brand-950: #020617;
+  --color-brand-900: #0f172a;
+  --color-brand-800: #1e293b;
+  --color-brand-700: #334155;
+  --color-brand-100: #e9eef6;
+
+  --color-positivo: #16a34a;
+  --color-positivo-fondo: #f0fdf4;
+  --color-negativo: #dc2626;
+  --color-negativo-fondo: #fef2f2;
+
+  /* los 4 cuadrantes del Motor de Valor (DOCTRINA_VALOR.md) -- el mismo
+     vocabulario de color se usa en el logo, el dashboard y, más adelante,
+     en las fichas de emisor. No es una paleta decorativa: es la doctrina. */
+  --color-cuadrante-safe-cheap: #059669;
+  --color-cuadrante-safe-cara: #b45309;
+  --color-cuadrante-trampa: #be123c;
+  --color-cuadrante-neutro: #64748b;
+}
 
 :root {
   color-scheme: light;
@@ -6,7 +34,13 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   background: #f8fafc;
   color: #0f172a;
+}
+
+/* cifras financieras: alineadas y sin salto de ancho al cambiar de valor */
+.cifra {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }

@@ -4,6 +4,10 @@ import { useAuth } from "../auth/AuthContext";
 import { borrarMiCuenta, exportarMisDatos } from "../api/client";
 import { supabase } from "../lib/supabase";
 
+const INPUT = "rounded-md border border-slate-300 px-3 py-2 focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/20";
+const BOTON = "max-w-xs rounded-md bg-brand-900 py-2 text-white hover:opacity-90 cursor-pointer";
+const BOTON_SECUNDARIO = "max-w-xs rounded-md border border-slate-300 py-2 hover:border-brand-700 cursor-pointer";
+
 export default function Cuenta() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
@@ -63,38 +67,40 @@ export default function Cuenta() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Mi cuenta</h1>
-      <p className="text-sm text-slate-600">{usuario?.email}</p>
+    <div className="flex flex-col gap-8">
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="font-serif text-2xl font-semibold text-slate-900">Mi cuenta</h1>
+        <p className="mt-1 text-sm text-slate-600">{usuario?.email}</p>
+      </div>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-medium">Verificación en dos pasos (opcional)</h2>
+        <h2 className="font-serif text-base font-medium text-slate-900">Verificación en dos pasos (opcional)</h2>
         {!qr ? (
-          <button onClick={iniciarEnrolamiento2fa} className="bg-slate-900 text-white rounded py-2 max-w-xs">
+          <button onClick={iniciarEnrolamiento2fa} className={BOTON}>
             Activar 2FA
           </button>
         ) : (
-          <form onSubmit={verificar2fa} className="flex flex-col gap-2 max-w-xs">
-            <img src={qr} alt="QR 2FA" className="w-40 h-40" />
+          <form onSubmit={verificar2fa} className="flex max-w-xs flex-col gap-2">
+            <img src={qr} alt="QR 2FA" className="h-40 w-40 rounded-md border border-slate-200" />
             <input
               placeholder="Código de 6 dígitos"
-              className="border rounded px-3 py-2"
+              className={INPUT}
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
               required
             />
-            <button className="bg-slate-900 text-white rounded py-2">Verificar</button>
+            <button className={BOTON}>Verificar</button>
           </form>
         )}
         {mensaje2fa && <p className="text-sm">{mensaje2fa}</p>}
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-medium">Mis datos</h2>
-        <button onClick={exportar} className="border rounded py-2 max-w-xs">
+        <h2 className="font-serif text-base font-medium text-slate-900">Mis datos</h2>
+        <button onClick={exportar} className={BOTON_SECUNDARIO}>
           Exportar mis datos (JSON)
         </button>
-        <button onClick={borrarCuenta} className="border border-red-600 text-red-600 rounded py-2 max-w-xs">
+        <button onClick={borrarCuenta} className="max-w-xs cursor-pointer rounded-md border border-red-300 py-2 text-red-600 hover:bg-red-50">
           Borrar mi cuenta
         </button>
         {mensaje && <p className="text-sm text-red-600">{mensaje}</p>}
