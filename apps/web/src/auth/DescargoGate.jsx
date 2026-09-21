@@ -13,6 +13,7 @@ brokers.`;
 export default function DescargoGate({ children }) {
   const [aceptado, setAceptado] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     getDescargoAceptado()
@@ -25,8 +26,15 @@ export default function DescargoGate({ children }) {
 
   async function aceptar() {
     setGuardando(true);
-    await aceptarDescargo();
-    setAceptado(true);
+    setError(null);
+    try {
+      await aceptarDescargo();
+      setAceptado(true);
+    } catch (err) {
+      setError(err.message || "No se pudo guardar. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
   }
 
   return (
@@ -38,10 +46,15 @@ export default function DescargoGate({ children }) {
         <button
           onClick={aceptar}
           disabled={guardando}
-          className="rounded-lg bg-brand-900 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
+          className="w-full rounded-lg bg-brand-900 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
         >
-          {guardando ? "..." : "Acepto y continúo"}
+          {guardando ? "Guardando…" : "Acepto y continúo"}
         </button>
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600" role="alert">
+            {error}. Si el servidor estaba dormido, puede tardar hasta 50s en despertar — intenta de nuevo.
+          </p>
+        )}
       </div>
     </div>
   );
