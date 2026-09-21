@@ -20,18 +20,36 @@ import {
   IconSenales,
 } from "./icons";
 
-const LINKS = [
-  { to: "/", texto: "Inicio", Icono: IconInicio, fin: true },
-  { to: "/portafolio", texto: "Portafolio", Icono: IconPortafolio },
-  { to: "/fundamentales", texto: "Fundamentales", Icono: IconFundamentales },
-  { to: "/senales", texto: "Señales", Icono: IconSenales },
-  { to: "/etf", texto: "ETF", Icono: IconEtf },
-  { to: "/finanzas", texto: "Finanzas", Icono: IconFinanzas },
-  { to: "/deudas", texto: "Deudas", Icono: IconDeudas },
-  { to: "/gastos", texto: "Gastos", Icono: IconGastos },
-  { to: "/objetivos", texto: "Objetivos", Icono: IconObjetivos },
-  { to: "/perfil", texto: "Perfil", Icono: IconPerfil },
-  { to: "/cuenta", texto: "Cuenta", Icono: IconCuenta },
+const SECCIONES_NAV = [
+  {
+    titulo: null,
+    links: [{ to: "/", texto: "Inicio", Icono: IconInicio, fin: true }],
+  },
+  {
+    titulo: "Inversiones",
+    links: [
+      { to: "/portafolio", texto: "Portafolio", Icono: IconPortafolio },
+      { to: "/fundamentales", texto: "Fundamentales", Icono: IconFundamentales },
+      { to: "/senales", texto: "Señales", Icono: IconSenales },
+      { to: "/etf", texto: "ETF", Icono: IconEtf },
+    ],
+  },
+  {
+    titulo: "Finanzas personales",
+    links: [
+      { to: "/finanzas", texto: "Finanzas", Icono: IconFinanzas },
+      { to: "/deudas", texto: "Deudas", Icono: IconDeudas },
+      { to: "/gastos", texto: "Gastos", Icono: IconGastos },
+      { to: "/objetivos", texto: "Objetivos", Icono: IconObjetivos },
+    ],
+  },
+  {
+    titulo: null,
+    links: [
+      { to: "/perfil", texto: "Perfil", Icono: IconPerfil },
+      { to: "/cuenta", texto: "Cuenta", Icono: IconCuenta },
+    ],
+  },
 ];
 
 function EnlaceNav({ link, onNavigate }) {
@@ -121,9 +139,20 @@ export default function Layout() {
             </button>
           </div>
 
-          <nav className="flex-1 space-y-1 overflow-y-auto">
-            {LINKS.map((l) => (
-              <EnlaceNav key={l.to} link={l} onNavigate={() => setMenuAbierto(false)} />
+          <nav className="flex-1 space-y-4 overflow-y-auto">
+            {SECCIONES_NAV.map((seccion, i) => (
+              <div key={seccion.titulo || `sin-titulo-${i}`}>
+                {seccion.titulo && (
+                  <p className="px-3 pb-1 pt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                    {seccion.titulo}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {seccion.links.map((l) => (
+                    <EnlaceNav key={l.to} link={l} onNavigate={() => setMenuAbierto(false)} />
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
 

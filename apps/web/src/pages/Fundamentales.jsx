@@ -87,6 +87,17 @@ export default function Fundamentales() {
     });
   }
 
+  // Todas las acciones, de mejor a peor puntaje (spread de valor ROIC-WACC).
+  // Sin dato de spread se manda al final -- no es "peor", es "sin calcular".
+  const filasOrdenadas = useMemo(() => {
+    return [...filas].sort((a, b) => {
+      if (a.spread_valor === null && b.spread_valor === null) return 0;
+      if (a.spread_valor === null) return 1;
+      if (b.spread_valor === null) return -1;
+      return b.spread_valor - a.spread_valor;
+    });
+  }, [filas]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="border-b border-slate-200 pb-4">
@@ -103,25 +114,31 @@ export default function Fundamentales() {
       {cargando && <p className="text-sm text-slate-500">Cargando…</p>}
       {!cargando && filas.length === 0 && <p className="text-sm text-slate-500">Todavía no hay análisis cargado.</p>}
 
-      {filas.some(esEstrella) && (
+      {filasOrdenadas.length > 0 && (
         <div>
-          <h2 className="font-serif text-base font-semibold text-slate-900">Estrellas de la BVC</h2>
+          <h2 className="font-serif text-base font-semibold text-slate-900">Ranking de valor — todas las acciones</h2>
           <p className="mt-1 mb-3 text-xs text-slate-500">
-            Crean valor por encima de su costo de capital (ROIC &gt; WACC; en bancos y holdings financieros,
-            ROE &gt; Ke) y no tienen múltiplos fuera de rango. No es una recomendación de inversión — sin backtest todavía.
+            Todos los emisores, de mejor a peor spread de creación de valor (ROIC − WACC; en bancos y holdings
+            financieros, ROE − Ke). Las marcadas con ★ crean valor por encima de su costo de capital y no tienen
+            múltiplos fuera de rango ("Estrellas de la BVC"). No es una recomendación de inversión — sin backtest todavía.
           </p>
-          <div className="flex flex-wrap gap-2">
-            {filas
-              .filter(esEstrella)
-              .sort((a, b) => a.ranking_estrella - b.ranking_estrella)
-              .map((f) => (
-                <div key={f.emisor_id} className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
-                  <span className="font-mono text-xs font-semibold text-emerald-800">#{f.ranking_estrella}</span>
-                  <span className="font-medium text-slate-800">{f.nombre}</span>
-                  <span className="cifra text-xs text-emerald-700">+{fmt(f.spread_valor)}pp</span>
-                  <span className="text-xs text-slate-400">{f.metodo_valor}</span>
-                </div>
-              ))}
+          <div className="flex flex-col divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+            {filasOrdenadas.map((f, i) => (
+              <div key={f.emisor_id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                <span className="w-6 shrink-0 text-right font-mono text-xs text-slate-400">{i + 1}</span>
+                <span className="w-4 shrink-0 text-center text-amber-500">{esEstrella(f) ? "★" : ""}</span>
+                <span className="flex-1 truncate font-medium text-slate-800">{f.nombre}</span>
+                <span className="hidden font-mono text-xs text-slate-400 sm:inline">{f.ticker}</span>
+                <span className="hidden text-xs text-slate-400 md:inline">{f.sector || "—"}</span>
+                <span
+                  className={`cifra w-20 shrink-0 text-right text-sm font-semibold ${
+                    f.spread_valor === null ? "text-slate-400" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
+                  }`}
+                >
+                  {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -214,71 +231,57 @@ export default function Fundamentales() {
       )}
 
       {filasFiltradas.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-3 py-2"></th>
-                <th className="px-3 py-2"></th>
-                <th className="px-3 py-2">Emisor</th>
-                <th className="px-3 py-2">Sector</th>
-                <th className="px-3 py-2 text-right">Precio</th>
-                <th className="px-3 py-2 text-right">Cap. (MMM)</th>
-                <th className="px-3 py-2 text-right">P/E</th>
-                <th className="px-3 py-2 text-right">P/VL</th>
-                <th className="px-3 py-2 text-right">Margen neto</th>
-                <th className="px-3 py-2 text-right">ROE</th>
-                <th className="px-3 py-2 text-right">Deuda/Patr.</th>
-                <th className="px-3 py-2 text-right">ROIC</th>
-                <th className="px-3 py-2 text-right">WACC</th>
-                <th className="px-3 py-2 text-right">Spread</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filasFiltradas.map((f) => (
-                  <tr
-                    key={f.emisor_id}
-                    className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
-                    onClick={() => setExpandido(expandido === f.emisor_id ? null : f.emisor_id)}
+        <div>
+          <p className="mb-2 text-xs text-slate-500">
+            Elige una acción para ver su ficha completa debajo. El porcentaje es el spread de creación de valor
+            (ROIC − WACC / ROE − Ke) — placeholder del score de valor mientras se construye el motor de 4 pilares.
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {filasFiltradas.map((f) => {
+              const activo = expandido === f.emisor_id;
+              const seleccionado = seleccionados.includes(f.emisor_id);
+              return (
+                <div
+                  key={f.emisor_id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExpandido(activo ? null : f.emisor_id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setExpandido(activo ? null : f.emisor_id);
+                  }}
+                  className={`relative flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-3 py-3 text-center transition-colors ${
+                    activo
+                      ? "border-brand-700 bg-brand-900/5 ring-2 ring-brand-700/20"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={seleccionado}
+                    disabled={!seleccionado && seleccionados.length >= MAX_COMPARACION}
+                    onChange={() => alternarSeleccion(f.emisor_id)}
+                    onClick={(e) => e.stopPropagation()}
+                    title={`Comparar (máx. ${MAX_COMPARACION})`}
+                    className="absolute left-2 top-2"
+                  />
+                  {f.ranking_estrella && (
+                    <span className="absolute right-2 top-2 font-mono text-[10px] text-amber-600">
+                      {esEstrella(f) ? `★${f.ranking_estrella}` : `#${f.ranking_estrella}`}
+                    </span>
+                  )}
+                  <span className="mt-3 line-clamp-2 text-sm font-medium text-slate-900">{f.nombre}</span>
+                  <span className="text-xs text-slate-400">{f.ticker}</span>
+                  <span
+                    className={`cifra text-lg font-semibold ${
+                      f.spread_valor === null ? "text-slate-400" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
+                    }`}
                   >
-                    <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={seleccionados.includes(f.emisor_id)}
-                        disabled={!seleccionados.includes(f.emisor_id) && seleccionados.length >= MAX_COMPARACION}
-                        onChange={() => alternarSeleccion(f.emisor_id)}
-                        title={`Comparar (máx. ${MAX_COMPARACION})`}
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-center font-mono text-xs text-amber-600">
-                      {f.ranking_estrella ? (esEstrella(f) ? `★${f.ranking_estrella}` : `#${f.ranking_estrella}`) : ""}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="font-medium text-slate-900">{f.nombre}</div>
-                      <div className="text-xs text-slate-400">{f.ticker}</div>
-                    </td>
-                    <td className="px-3 py-2 text-slate-500">{f.sector || "—"}</td>
-                    <td className="cifra px-3 py-2 text-right">{fmt(f.precio, 0)}</td>
-                    <td className="cifra px-3 py-2 text-right">{fmt(f.capitalizacion_mmm)}</td>
-                    <td className="cifra px-3 py-2 text-right">
-                      {fmt(f.per)}
-                      {f.alerta_multiplos && <span title={f.alerta_multiplos} className="ml-1 text-amber-600">⚠</span>}
-                    </td>
-                    <td className="cifra px-3 py-2 text-right">{fmt(f.precio_valor_libro)}</td>
-                    <td className="cifra px-3 py-2 text-right">{f.margen_neto === null ? "—" : `${fmt(f.margen_neto)}%`}</td>
-                    <td className="cifra px-3 py-2 text-right">{f.roe === null ? "—" : `${fmt(f.roe)}%`}</td>
-                    <td className="cifra px-3 py-2 text-right">{fmt(f.deuda_patrimonio, 2)}</td>
-                    <td className="cifra px-3 py-2 text-right">{f.roic === null ? "—" : `${fmt(f.roic)}%`}</td>
-                    <td className="cifra px-3 py-2 text-right">{f.wacc === null ? "—" : `${fmt(f.wacc)}%`}</td>
-                    <td title={f.metodo_valor || ""} className={`cifra px-3 py-2 text-right font-medium ${
-                      f.spread_valor === null ? "" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
-                    }`}>
-                      {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
-                    </td>
-                  </tr>
-              ))}
-            </tbody>
-          </table>
+                    {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}%`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
