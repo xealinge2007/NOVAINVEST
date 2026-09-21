@@ -455,6 +455,39 @@ FABRICATO (2019-T1 nuevo + los 5 ya confirmados no radicados de 2021-2022). DAVI
 aparece en la lista de pedidos (sigue no elegible para el ranking por historial corto — total=6,
 faltan 6 para el mínimo de 12 — pero eso es tiempo, no un hueco de datos).
 
+## 5F. FABRICATO 2021-T2/T3/T4, 2022-T1/T4 — cerrado permanentemente, no se busca más (21-sep-2026)
+
+**Tercera verificación independiente, mismo resultado.** Alex buscó por su cuenta y encontró dos
+archivos reales para esa ventana — se revisaron ambos y **ninguno cumple el estándar del
+proyecto** (Estados Financieros Consolidados, nunca Individual/Separado ni comunicado/información
+relevante):
+
+- **XBRL `...I-I_2021-06-30.xbrl` (corte T2-2021)**: el propio `lector_xbrl.leer()` lo marca
+  explícito — `"el punto de entrada no es consolidado: ctrl-34-tc-ind-int_entry-point_2016-04-01.xsd"`
+  (el sufijo `-ind-` es Individual). Activos totales 806,85 MMM, más bajo que el resto de la serie
+  Consolidado de Fabricato (~950-1.000+ MMM) — consistente con que le falta el segmento
+  inmobiliario, que la propia empresa reporta como parte material del Consolidado (ver PDF abajo).
+  Es el mismo hallazgo que ya había reportado Cowork ("solo existe Individual/Separado en esas
+  fechas"), confirmado por un canal independiente, no un archivo nuevo.
+- **PDF "Información Relevante 3Q 2021"**: resumen de resultados para inversionistas, acumulado a
+  septiembre 2021, sí etiquetado "Consolidado (Textil + Inmobiliario)" pero **sin balance**
+  (activos/pasivos/patrimonio) — no se puede ni verificar `cuadra_balance`. Mismo patrón ya
+  descartado antes con Nutresa/ISA/PEI (comunicado/información relevante sin estados financieros
+  formales, §5).
+
+**Decisión de Alex: cerrar los 5 (2021-T2, T3, T4, 2022-T1, T4) como huecos permanentes, sin dejar
+una vía de respaldo con el Individual.** Razón registrada: FABRICATO ya es elegible con margen
+amplio (25/31 trimestres, muy por encima del mínimo de 12) y no pasa la puerta de liquidez del
+Pilar 1 (W2, `jobs/solidez_financiera.py`) — no hay necesidad analítica que justifique el riesgo de
+mezclar un perímetro de consolidación distinto dentro de la misma serie, el mismo tipo de error que
+ya costó tiempo en §4B. Si en el futuro cambia el criterio (Fabricato re-radica, o se decide que el
+Individual sirve para algo puntual), que sea una decisión nueva y consciente, no un atajo heredado
+de esta nota.
+
+**Estado final del universo de 24 emisores**: 6 huecos, todos FABRICATO — los 5 aquí cerrados
+(permanentes) + **2019-T1** (§5E, nunca verificado, el único que sigue genuinamente abierto).
+Ningún otro emisor tiene huecos.
+
 ## 7. W1 — esquema del motor de 4 pilares (18-sep-2026)
 
 Con W0 cerrado (§5C), se pasó a W1 por decisión de Alex. `db/migrate_w1_valor.sql` — **no aplicado

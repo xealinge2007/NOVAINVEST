@@ -1313,3 +1313,24 @@ reestructuración Ley 550) más el 2019-T1 expuesto de regalo al cargar 2019-T4 
 pendientes en NINGÚN otro emisor del universo de 24 -- los 6 restantes son bajo impacto y no se
 persiguen por ahora. 23/24 emisores elegibles para el ranking (DAVIVIENDA_GROUP sigue corto de
 historial, no de datos).
+
+## 21-sep-2026 (cont. 3) — FABRICATO 2021-2022 cerrado permanentemente: tercera verificación, mismo resultado
+
+Alex buscó por su cuenta los 5 períodos de Fabricato y encontró dos archivos reales para esa
+ventana. Revisados ambos, ninguno cumple el estándar del proyecto (Consolidado, nunca
+Individual/Separado ni comunicado/información relevante):
+
+- XBRL de corte 2021-06-30: el propio `lector_xbrl.leer()` lo marca -- punto de entrada
+  `ctrl-34-tc-ind-int...` (Individual, no Consolidado). Mismo hallazgo que ya había reportado
+  Cowork, confirmado por un canal independiente.
+- PDF "Información Relevante 3Q 2021": resumen para inversionistas, sin balance -- no se puede
+  verificar que cuadre, mismo patrón ya descartado antes con Nutresa/ISA/PEI.
+
+**Decisión de Alex: cerrar los 5 permanentemente, sin dejar una vía de respaldo con el Individual.**
+Fabricato ya es elegible con margen amplio (25/31 trimestres) y no pasa la puerta de liquidez del
+Pilar 1 -- no había necesidad analítica que justificara el riesgo de mezclar un perímetro de
+consolidación distinto en la misma serie. Detalle completo en `db/DOCTRINA_VALOR.md` §5F.
+
+**Estado final del universo de 24 emisores**: 6 huecos, todos FABRICATO -- los 5 aquí cerrados
+(permanentes) + 2019-T1 (nunca verificado, el único que sigue genuinamente abierto). Ningún otro
+emisor tiene huecos pendientes.
