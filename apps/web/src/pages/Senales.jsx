@@ -77,16 +77,16 @@ export default function Senales() {
           const badge = ETIQUETA_ESTADO[s.estado] || ETIQUETA_ESTADO.invalidada;
           return (
             <div key={s.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className="font-serif font-semibold text-slate-900">{s.activos?.ticker}</span>
-                  <span className="text-xs text-slate-500">{s.activos?.nombre}</span>
                   <span className="font-mono text-xs uppercase text-slate-400">{s.timeframe}</span>
                   <span className={`text-xs font-medium uppercase ${s.direccion === "largo" ? "text-emerald-700" : "text-red-700"}`}>
                     {s.direccion}
                   </span>
+                  <span className="w-full text-xs text-slate-500 sm:w-auto">{s.activos?.nombre}</span>
                 </div>
-                <span className={`rounded-md border px-2 py-1 text-xs ${badge.clase}`}>{badge.texto}</span>
+                <span className={`shrink-0 rounded-md border px-2 py-1 text-xs ${badge.clase}`}>{badge.texto}</span>
               </div>
 
               {s.estado === "cuarentena" && s.motivo_cuarentena && (

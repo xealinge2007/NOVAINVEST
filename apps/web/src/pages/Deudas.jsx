@@ -61,12 +61,12 @@ export default function Deudas() {
 
       <ul className="divide-y divide-slate-200 text-sm">
         {deudas.map((d) => (
-          <li key={d.id} className="flex items-center justify-between py-2.5">
+          <li key={d.id} className="flex items-start justify-between gap-3 py-2.5">
             <span className="cifra">
               {d.nombre} — {d.saldo.toLocaleString("es-CO")} COP @ {d.tasa_anual_pct}% anual (mínimo{" "}
               {d.pago_minimo.toLocaleString("es-CO")})
             </span>
-            <button onClick={() => borrar(d.id)} className="cursor-pointer text-xs text-red-600 hover:underline">
+            <button onClick={() => borrar(d.id)} className="shrink-0 cursor-pointer text-xs text-red-600 hover:underline">
               eliminar
             </button>
           </li>
