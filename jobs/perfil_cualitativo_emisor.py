@@ -88,14 +88,17 @@ def cargar_seed(ruta: Path) -> dict:
 
 
 def construir_fila(emisor_id: int, slug: str, de_yfinance: dict, de_seed: dict) -> dict | None:
-    """Fusiona yfinance + seed. yfinance manda en descripcion/ceo si los
-    trae (dato verificable de primera mano); el seed rellena lo que
-    yfinance no trajo y aporta lo que yfinance nunca tiene (noticias,
-    micro/macro). Sin nada de ninguna de las dos fuentes no se escribe
-    fila -- el frontend ya maneja "sin perfil todavía" sin necesitar una
-    fila vacía."""
-    descripcion = de_yfinance.get("descripcion") or de_seed.get("descripcion")
-    ceo = de_yfinance.get("ceo") or de_seed.get("ceo")
+    """Fusiona yfinance + seed. El seed manda en descripcion/ceo cuando lo
+    trae: está en español, citado y curado para esta app, mientras que
+    longBusinessSummary de yfinance viene en inglés (Yahoo no traduce
+    emisores BVC) -- mezclar idiomas en la ficha sería peor que preferir
+    la fuente ya revisada. yfinance solo rellena lo que el seed no trajo
+    (huecos de una futura ronda) y aporta lo que el seed nunca tiene
+    (verificación adicional). Sin nada de ninguna de las dos fuentes no
+    se escribe fila -- el frontend ya maneja "sin perfil todavía" sin
+    necesitar una fila vacía."""
+    descripcion = de_seed.get("descripcion") or de_yfinance.get("descripcion")
+    ceo = de_seed.get("ceo") or de_yfinance.get("ceo")
     noticias = de_seed.get("noticias_impacto", [])
     situacion_micro = de_seed.get("situacion_micro")
     situacion_macro = de_seed.get("situacion_macro")
@@ -104,16 +107,21 @@ def construir_fila(emisor_id: int, slug: str, de_yfinance: dict, de_seed: dict) 
         return None
 
     fuentes = list(de_seed.get("fuentes", []))
-    if de_yfinance.get("descripcion"):
-        fuentes.append({"campo": "descripcion", "tipo": "yfinance", "detalle": f"Ticker.info de {slug}"})
-    if de_yfinance.get("ceo"):
-        fuentes.append({"campo": "ceo", "tipo": "yfinance", "detalle": f"Ticker.info de {slug}"})
-    if de_seed.get("descripcion") and not de_yfinance.get("descripcion"):
+    if de_seed.get("descripcion"):
         fuentes.append({"campo": "descripcion", "tipo": "investigacion_ia", "detalle": "seed curado, ver noticias_impacto para citas"})
-    if de_seed.get("ceo") and not de_yfinance.get("ceo"):
+    elif de_yfinance.get("descripcion"):
+        fuentes.append({"campo": "descripcion", "tipo": "yfinance", "detalle": f"Ticker.info de {slug} (en inglés, Yahoo no cubre BVC en español)"})
+    if de_seed.get("ceo"):
         fuentes.append({"campo": "ceo", "tipo": "investigacion_ia", "detalle": "seed curado, ver noticias_impacto para citas"})
+    elif de_yfinance.get("ceo"):
+        fuentes.append({"campo": "ceo", "tipo": "yfinance", "detalle": f"Ticker.info de {slug}"})
 
-    usa_yfinance = bool(de_yfinance.get("descripcion") or de_yfinance.get("ceo"))
+    # A diferencia de arriba, esto mira qué terminó EN LA FILA (no qué trajo
+    # cada fuente) -- si el seed cubrió todo, yfinance no cuenta aunque haya
+    # respondido con datos que quedaron sin usar.
+    usa_yfinance = (not de_seed.get("descripcion") and bool(de_yfinance.get("descripcion"))) or (
+        not de_seed.get("ceo") and bool(de_yfinance.get("ceo"))
+    )
     usa_investigacion = bool(
         de_seed.get("descripcion") or de_seed.get("ceo") or noticias or situacion_micro or situacion_macro
     )
