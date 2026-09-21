@@ -58,7 +58,7 @@ def obtener_de_yfinance(ticker: str) -> dict:
     cobertura no debe tumbar el job completo (igual que el resto de
     conectores de datos del proyecto)."""
     try:
-        import yfinance as yf
+        from app.services.datos.yfinance_conector import yf  # fija CURL_CA_BUNDLE en Windows al importar
 
         info = yf.Ticker(ticker).info
     except Exception as e:
