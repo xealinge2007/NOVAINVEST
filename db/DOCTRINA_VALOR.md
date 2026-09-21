@@ -403,6 +403,54 @@ de 8 (7 canal C + 1 canal B) a **7 (7 canal C, 0 canal B)**. Quedan solo los de 
 DAVIVIENDA_GROUP 2025-T3; FABRICATO 2019-T4, 2021-T2, 2021-T3, 2021-T4, 2022-T1, 2022-T4 — lista
 completa en `PEDIDOS_DESCARGA.csv` (regenerado, no trackeado en git).
 
+## 5E. Cowork entregó FABRICATO 2019-T4 y DAVIVIENDA_GROUP 2025-T3 (21-sep-2026)
+
+**FABRICATO 2019-T4**: XBRL genuino, radicado 2020-04-01, verificado en disco (6.127.005 bytes) y
+cargado con `jobs/extraer_xbrl.py --emisor FABRICATO` (`xbrl_radicado`, 9 campos, `cuadra_balance`
+correcto: 438,681+518,842=957,523 MMM). **Efecto colateral bueno**: el archivo trae contextos
+comparativos que el pipeline ya sabe aprovechar (`comparativo_mas_pobre_fusionado`) — junto con
+este file se derivaron también 2019-ANUAL, 2019-T2 y 2019-T3, ninguno de los tres pedido
+explícitamente. **Efecto colateral que abre un hueco nuevo**: al extender el rango conocido de
+FABRICATO hacia atrás hasta 2019, la matriz ahora expone **2019-T1** como pendiente — no existía
+en el radar antes porque estaba fuera del rango cubierto. Bajo impacto (1 trimestre, mismo patrón
+que GRUPO_AVAL 2022-T1 en §5C), no perseguido esta sesión — queda anotado para el próximo pedido a
+Cowork si se decide seguir cerrando huecos.
+
+**DAVIVIENDA_GROUP 2025-T3 — NO cargado, pendiente de decisión de Alex.** Cowork encontró el
+archivo bajo la entidad predecesora, **Banco Davivienda S.A.** (NIT/código distinto), porque
+Davivienda Group como holding no existía como emisor reportante hasta su debut el 21-nov-2025 — al
+30-sep-2025 (corte del T3) no podía haber nada radicado bajo el código actual. Es un hallazgo
+correcto y bien documentado por Cowork, pero al leer el archivo (`lector_xbrl.leer`) las cifras
+**no cuadran de forma limpia con los trimestres vecinos de DAVIVIENDA_GROUP ya cargados**:
+
+| Campo | Predecesora 2025-T3 | DAVIVIENDA_GROUP 2025-ANUAL/T4 (mismo trimestre-año fiscal) | Diferencia |
+|---|---:|---:|---:|
+| Activos totales | 190.467,91 | 263.684,15 | −28% |
+| Patrimonio | 16.476,95 | 20.906,32 | −21% |
+| Deuda financiera | 21.183,11 | 7.962,51 | **+166%** |
+| Acciones en circulación | 487.670.413 | 436.008.931 | +12% (esperable: conversión de acciones en la escisión) |
+
+La brecha de activos/patrimonio tiene una explicación de negocio plausible (el holding consolida
+más entidades que el banco solo). La de `deuda_financiera` —2,7x más alta en el banco solo que en
+el holding— no tiene una explicación obvia y es más probable que sea un problema de mapeo de
+concepto XBRL entre la taxonomía bancaria (`ec-1-bco-con-int`, que usa `Borrowings` con un alcance
+distinto) y la taxonomía no-bancaria que usa el resto de la serie. Además, `utilidad_operacional` y
+`ebitda` salen en **negativo por miles de millones** (-5.823,24 y -5.457,31) en el mismo trimestre
+en que `utilidad_neta` es positiva (+1.083,05) — internamente inconsistente, casi seguro el mismo
+problema de taxonomía bancaria (el concepto `ProfitLossFromOperatingActivities` no significa lo
+mismo en el punto de entrada de bancos que en el de empresas no financieras).
+
+**No se insertó nada todavía.** Insertar activos/pasivos/patrimonio/utilidad_neta con una nota de
+"entidad predecesora, no directamente comparable" es defendible: son datos reales, verificados,
+solo que de otro perímetro de consolidación. Pero mezclar dos alcances de consolidación distintos
+en la misma serie de tiempo del emisor es exactamente el tipo de "cuadra_balance=True no prueba
+que la columna sea correcta" que ya mordió a este proyecto (§4B) — aquí el balance sí cuadra
+internamente, el problema es que es el balance de OTRA empresa. Queda para que Alex decida:
+(a) insertar solo activos/pasivos/patrimonio/utilidad_neta (los 4 campos con brecha explicable)
+con nota de alcance distinto, (b) insertar todo tal cual llegó, o (c) declarar 2025-T3 como hueco
+genuino de DAVIVIENDA_GROUP (la entidad, tal como existe hoy, sencillamente no tiene datos propios
+de ese trimestre) y no cargar el archivo de la predecesora.
+
 ## 7. W1 — esquema del motor de 4 pilares (18-sep-2026)
 
 Con W0 cerrado (§5C), se pasó a W1 por decisión de Alex. `db/migrate_w1_valor.sql` — **no aplicado

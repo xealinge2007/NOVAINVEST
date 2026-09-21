@@ -1272,3 +1272,28 @@ los 7 restantes canal C** (descarga): DAVIVIENDA_GROUP 2025-T3; FABRICATO 2019-T
 2021-T3, 2021-T4, 2022-T1, 2022-T4. Esos 7 necesitan que Alex (o Cowork) los descargue del
 SIMEV/página de relación con inversionistas del emisor — no son un problema de código ni de
 lectura, no se pueden cerrar desde esta sesión.
+
+## 21-sep-2026 (cont.) — Cowork entregó 2 de los 7; 5 confirmados como no radicados
+
+Cowork re-verificó los 5 de FABRICATO (2021-T2/T3/T4, 2022-T1/T4) contra la API oficial de SIMEV:
+mismo resultado que el 18-sep-2026, siguen sin Consolidado radicado (solo Individual/Separado) —
+consistente con la ventana de reestructuración Ley 550 que atravesó la empresa. Se reportan como
+"no radicado", no se sigue insistiendo.
+
+**FABRICATO 2019-T4**: sí existe (XBRL, radicado 2020-04-01). Verificado en disco y cargado con
+`jobs/extraer_xbrl.py --emisor FABRICATO`. El archivo trae contextos comparativos que el pipeline
+ya aprovecha, así que de paso se derivaron también 2019-ANUAL, 2019-T2 y 2019-T3 (nadie los pidió,
+vinieron gratis). Efecto secundario: al extender el rango de FABRICATO hasta 2019 la matriz expone
+un hueco nuevo, **2019-T1**, que antes no era visible por estar fuera del rango conocido -- bajo
+impacto, no perseguido, queda anotado para un futuro pedido a Cowork.
+
+**DAVIVIENDA_GROUP 2025-T3**: Cowork lo encontró bajo la entidad predecesora, Banco Davivienda
+S.A. (Davivienda Group no existía como emisor hasta su debut el 21-nov-2025). Al leer el archivo,
+las cifras no cuadran limpio contra los trimestres ya cargados del holding -- activos y patrimonio
+20-28% más bajos (explicable: el holding consolida más entidades que el banco solo) pero
+`deuda_financiera` 2,7x más alta (no explicable con la misma lógica) y `utilidad_operacional`/
+`ebitda` negativos por miles de millones en el mismo trimestre que la utilidad neta es positiva --
+huele a mapeo de concepto XBRL distinto entre la taxonomía bancaria y la que usa el resto de la
+serie, no a un error de Cowork. **No se cargó nada todavía** -- es una decisión de Alex (insertar
+parcial con nota de alcance distinto, insertar todo, o declarar el hueco genuino). Detalle completo
+y la tabla comparativa en `db/DOCTRINA_VALOR.md` §5E.
