@@ -593,17 +593,32 @@ Financieros Separados, Nota 9, pág. 69-79 + Estado de situación financiera sep
 
 | Participada | % tenencia | Cotiza | Valor participación (MMM) |
 |---|---:|:---:|---:|
-| Grupo Cibest S.A. | 24.65% | Sí | 11.619,4 |
-| Enka de Colombia S.A. | 20.76% (17.06% directo + 3.70% vía subsidiaria 100%) | Sí | 47,2 |
+| Grupo Cibest S.A. | 24.65% (de capitalización TOTAL, ambas clases) | Sí | 20.251,2 |
+| Enka de Colombia S.A. | 17.06% directo (ver nota sobre el 3.70% indirecto abajo) | Sí | 38,8 |
 | Sura Asset Management S.A. | 93.32% | No (libro) | 12.302,9 |
 | Suramericana S.A. | 81.13% | No (libro) | 5.265,2 |
-| Inversiones y Construcciones Estratégicas S.A.S. | 100% | No (libro) | 96,7 |
+| Inversiones y Construcciones Estratégicas S.A.S. (ICE) | 100% | No (libro) | 96,7 |
 | Sura Ventures S.A. | 100% | No (libro) | 44,2 |
 | Enlace Operativo S.A. | 100% | No (libro) | 1,3 |
 
 **Grupo Argos S.A. NO se incluye**: la participación que tenía Sura en Argos (33,80% a dic-2024)
 fue escindida/distribuida a los accionistas en 2025 ("las Escisiones", Nota 10) — al 31-dic-2025 la
 tenencia es 0%. Coincide con el desenroque del GEA ya documentado en el plan (§5B).
+
+**El 3.70% indirecto de Enka (vía ICE) NO se cuenta aparte.** Sura tiene 17.06% directo + 3.70%
+adicional vía su subsidiaria 100% ICE (Nota 9.1.2, nota 4). El valor en libros de la fila "ICE" ya
+incluye ese 3.70% (método de participación de ICE incorpora su inversión en Enka) — sumarlo
+también en la fila "Enka" a precio de mercado sería contar el mismo 3.70% dos veces, una a mercado
+y otra a libro. La fila "Enka" usa solo el 17.06% directo.
+
+**Cibest se valora a capitalización TOTAL (ordinaria + preferencial), no solo ordinaria.** Sura
+declara su 24.65% "en función total de las acciones emitidas" (Nota 9.1.2) — aplicar ese % a la
+capitalización solo-ordinaria (la convención que usa el resto de `fundamentales_analisis` en todo
+el proyecto) subestimaría la participación ~40%, porque Cibest tiene ~444M acciones preferenciales
+además de las ~510M ordinarias. Verificado con un cruce independiente: Sura declara tener
+235.012.336 acciones de Cibest = 24.65% de participación Y 46.16% de derecho a voto — como el
+derecho a voto es proporcional solo a las ordinarias, eso implica 509.125.511 ordinarias totales,
+que coincide con el dato curado a mano en `fundamentales_analisis` (509.704.584) dentro de 0.11%.
 
 **Neto de activos/pasivos propios del holding** (caja, obligaciones financieras, bonos emitidos,
 pasivo por acciones preferenciales, etc. — todo lo que no es la cartera de participaciones):
@@ -612,33 +627,48 @@ Total activos separado (23.588,6) − participaciones ya contadas (23.351,6) −
 (obligaciones + bonos + preferenciales ≈ 7.770,8 MMM) contra casi nada de caja propia (7,6 MMM) —
 guardado como una fila `ajustes_nav` (`tipo_ajuste='otro'`), porque el esquema de W1 no tiene una
 tabla dedicada para el balance separado del holding y no vale la pena crear una hasta que W3a la
-necesite en más de un emisor (nota ya dejada en el DDL original).
+necesite en más de un emisor (nota ya dejada en el DDL original). `ajustes_nav` no tiene
+restricción `unique` en el esquema — `jobs/ingesta_participaciones.py::cargar_ajuste_propio` borra
+cualquier fila que matchee (emisor, año, periodo, tipo, concepto) antes de insertar, para que
+correr el script dos veces no duplique ni acumule filas.
 
 **Resultado (`valor_estimado`, verificado con `jobs/test_valor_engine.py`)**:
-- **NAV-mercado** (solo las 2 cotizadas + neto propio): **3.869,6 MMM**
-- **NAV-lookthrough** (las 7 + neto propio): **21.579,9 MMM**
-- **Precio de mercado** (capitalización ordinaria, `fundamentales_analisis`): 11.426,0 MMM
-- **Descuento vs. NAV-lookthrough: 47,1%**
+- **NAV-mercado** (solo las 2 cotizadas + neto propio): **12.493,0 MMM**
+- **NAV-lookthrough** (las 7 + neto propio): **30.203,3 MMM**
+- **Precio de mercado** (capitalización ordinaria, `fundamentales_analisis`, 2026-09-14): 11.426,0 MMM
+- **Descuento vs. NAV-mercado: 8,5%** · **Descuento vs. NAV-lookthrough: 62,2%**
 
-**Por qué NAV-mercado (3.869,6) queda POR DEBAJO del precio de mercado (11.426,0), al revés de lo
-esperado.** No es un bug: las 2 únicas participaciones con precio verificable (Cibest, Enka) son
-justamente las más chicas del portafolio — los activos grandes (Sura Asset Management,
-Suramericana, ~17.568 MMM juntos) no cotizan y quedan fuera del NAV-mercado por diseño (plan §6: es
-la cifra *conservadora*, no la representativa). Este caso ilustra exactamente por qué el plan pide
-reportar SIEMPRE las dos cifras y nunca una sola con asterisco — usar solo NAV-mercado aquí daría
-la impresión falsa de que Sura cotiza CARO, cuando en look-through (la cifra que sí incluye el
-grueso del portafolio) está 47% bajo NAV.
+Con NAV-mercado por encima del precio (8,5%) y NAV-lookthrough muy por encima (62,2%), el resultado
+es internamente coherente: las 2 participaciones cotizadas (que sí tienen precio verificable) ya
+valen más que todo el holding en bolsa, y el descuento se amplía fuerte al sumar el resto del
+portafolio a libro — dentro del rango histórico de descuento de holding en Colombia (40-60%+)
+citado en el plan.
 
 **Limitaciones declaradas, no implementadas todavía** (`valor_estimado.tasa_descuento_detalle`):
 VPN de gastos de administración del holding, impuesto latente sobre plusvalías, y precio de mercado
-a fecha_corte + 45 días anti look-ahead (usa precio actual) — ninguna de las tres impide calcular
-NAV-mercado/NAV-lookthrough, son refinamientos que angostarían el rango, no insumos bloqueantes.
+a fecha_corte + 45 días anti look-ahead (usa el snapshot de `fundamentales_analisis`, 2026-09-14) —
+ninguna de las tres impide calcular NAV-mercado/NAV-lookthrough, son refinamientos que angostarían
+el rango, no insumos bloqueantes.
+
+**Auditoría independiente (21-sep-2026, agente `critico`, a pedido explícito de Alex).** Antes de
+declarar el piloto terminado se mandó a un agente con ojos frescos a releer el PDF original,
+recalcular todo desde cero y consultar Supabase directo, sin confiar en lo ya escrito. Encontró y
+se corrigió: (1) el doble conteo del 3.70% de Enka descrito arriba — el hallazgo más importante,
+porque se habría replicado automáticamente en los otros holdings si tienen estructuras similares;
+(2) que la primera versión valoraba Cibest solo a capitalización ordinaria en vez de total (ver
+arriba); (3) que `ajustes_nav` no tenía forma segura de recargarse sin duplicar — ahora
+`cargar_ajuste_propio` lo resuelve por borrado + inserción. Verificado además: idempotencia (correr
+`ingesta_participaciones.py` dos veces seguidas no duplica ninguna tabla), y que las cifras que
+aparecen aquí coinciden exactas con lo que hay hoy en `participaciones_holding`, `ajustes_nav` y
+`valor_estimado`.
 
 **Siguiente**: repetir el mismo patrón para los otros 4 holdings del MVP (GRUPO_ARGOS, GRUPO_AVAL,
 CORFICOLOMBIANA, GEB) — cada uno necesita leer su propia Nota de inversiones en asociadas y
-subsidiarias de sus EEFF Separados más recientes y añadir un bloque a
-`jobs/ingesta_participaciones.py`. Después, W3b (validar contra el SOTP de Davivienda Corredores
-para Argos y Sura, y contra los 3 eventos de control históricos).
+subsidiarias de sus EEFF Separados más recientes, revisar si tienen el mismo tipo de participación
+indirecta vía subsidiaria (el bug de doble conteo de Enka) y de clases de acción múltiples en sus
+participadas (el ajuste de Cibest), y añadir un bloque a `jobs/ingesta_participaciones.py`. Después,
+W3b (validar contra el SOTP de Davivienda Corredores para Argos y Sura, y contra los 3 eventos de
+control históricos).
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

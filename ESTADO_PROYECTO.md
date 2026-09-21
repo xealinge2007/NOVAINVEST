@@ -1361,13 +1361,38 @@ método de participación). Verificado: la suma de las no cotizadas cuadra exact
 que declara la propia nota (17.710,275 MMM), y el balance separado cuadra exacto
 (23.588,565 = 8.033,946 + 15.554,619).
 
-Resultado: **NAV-mercado 3.869,6 MMM, NAV-lookthrough 21.579,9 MMM**, precio de mercado actual
-11.426,0 MMM -- **descuento del 47,1% vs. NAV-lookthrough**. NAV-mercado sale más bajo que el
-precio (al revés de lo intuitivo) porque las únicas 2 participaciones cotizadas son las más chicas
-del portafolio -- los activos grandes (Sura AM, Suramericana) no cotizan y quedan fuera de esa
-cifra conservadora por diseño. Detalle completo, la tabla de participaciones y las limitaciones
-declaradas (VPN gastos admin, impuesto latente, anti look-ahead -- ninguna implementada todavía)
-en `db/DOCTRINA_VALOR.md` §9.
+Resultado inicial: NAV-mercado 3.869,6 MMM, NAV-lookthrough 21.579,9 MMM, descuento 47,1%. **Estas
+cifras quedaron obsoletas por la auditoría de abajo -- ver el resultado final corregido.**
+
+## 21-sep-2026 (cont. 6) — auditoría del piloto W3a: 2 correcciones reales, cifras finales
+
+Alex pidió dejar el piloto "completamente terminado y perfecto" y usar un agente auditor. Se mandó
+al agente `critico` con instrucciones de releer el PDF original desde cero, recalcular todo con
+calculadora propia y consultar Supabase directo, sin confiar en el trabajo previo. Encontró 2
+correcciones reales (no solo de forma):
+
+1. **Doble conteo real**: el 3.70% indirecto de Enka que Sura tiene vía su subsidiaria 100% ICE se
+   estaba sumando dos veces -- una a precio de mercado (en la fila "Enka") y otra a valor en libros
+   (ya incluida dentro de la fila "ICE"). Corregido: la fila "Enka" ahora usa solo el 17.06%
+   directo. Este era el hallazgo más importante porque se habría replicado automáticamente en los
+   otros 4 holdings si tienen estructuras de participación indirecta parecidas.
+2. **Cibest valorado con la clase de acción equivocada**: Sura declara su 24.65% "en función total
+   de las acciones emitidas" (ambas clases), pero la primera versión aplicó ese % a la
+   capitalización solo-ordinaria (la convención del resto del proyecto) -- eso subestimaba la
+   participación ~40%. Corregido usando capitalización TOTAL (ordinaria + preferencial), verificado
+   con un cruce independiente contra el % de derecho a voto que la misma nota declara.
+
+De paso se corrigió una fragilidad de código: `ajustes_nav` no tiene restricción `unique` en el
+esquema, así que el neto de balance propio del holding se cargaba a mano, fuera de cualquier
+script versionado. Ahora `ingesta_participaciones.py::cargar_ajuste_propio` lo carga con un patrón
+borrar-e-insertar, verificado idempotente (correr el script dos veces no duplica nada).
+
+**Resultado final: NAV-mercado 12.493,0 MMM, NAV-lookthrough 30.203,3 MMM**, precio de mercado
+11.426,0 MMM -- **descuento del 8,5% vs. NAV-mercado y 62,2% vs. NAV-lookthrough**. Con NAV-mercado
+ya por encima del precio, el resultado es internamente coherente (antes, con el error, salía al
+revés). Detalle completo, la tabla de participaciones corregida y las limitaciones declaradas (VPN
+gastos admin, impuesto latente, anti look-ahead -- ninguna implementada todavía) en
+`db/DOCTRINA_VALOR.md` §9.
 
 Pendiente: repetir para GRUPO_ARGOS, GRUPO_AVAL, CORFICOLOMBIANA, GEB (los otros 4 holdings del
 MVP), luego W3b (validar contra el SOTP de Davivienda Corredores y los eventos de control).

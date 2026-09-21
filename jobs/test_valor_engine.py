@@ -48,10 +48,13 @@ if not fila:
 f = fila[0]
 
 # Calculado a mano (DOCTRINA_VALOR.md, W3a): 2 participaciones cotizadas
-# (Cibest 24.65%, Enka 20.76%) + 5 no cotizadas a libro, mas el neto de
-# activos/deuda propios del holding separado (-7,796.977 MMM).
-revisar("NAV-mercado (solo cotizadas + neto propio)", round(f["nav_mercado_mmm"], 1), 3869.6)
-revisar("NAV-lookthrough (todas + neto propio)", round(f["nav_lookthrough_mmm"], 1), 21579.9)
+# (Cibest 24.65% de capitalizacion TOTAL -- ambas clases, ver comentario en
+# ingesta_participaciones.py -- y Enka 17.06% SOLO directo, el 3.70%
+# indirecto via ICE no se cuenta aparte para no duplicarlo con el valor en
+# libros de ICE) + 5 no cotizadas a libro, mas el neto de activos/deuda
+# propios del holding separado (-7,796.977 MMM).
+revisar("NAV-mercado (solo cotizadas + neto propio)", round(f["nav_mercado_mmm"], 1), 12493.0)
+revisar("NAV-lookthrough (todas + neto propio)", round(f["nav_lookthrough_mmm"], 1), 30203.3)
 revisar("balance: lookthrough > mercado (mas participaciones suman valor)",
         f["nav_lookthrough_mmm"] > f["nav_mercado_mmm"], True)
 revisar("valor_central usa la conservadora (nav_mercado), no la lookthrough",

@@ -47,37 +47,75 @@ FUENTE_SURA = (
 # un dato observado aparte.
 PARTICIPACIONES_GRUPO_SURA = [
     dict(
+        # CORREGIDO 21-sep-2026 (auditoria del piloto): Grupo Sura declara su
+        # 24.65% "en funcion total de las acciones emitidas" (Nota 9.1.2) --
+        # aplicar ese % a la capitalizacion SOLO-ORDINARIA de
+        # fundamentales_analisis (47,137.48 MMM, la convencion que usa el
+        # resto del pipeline) subestima la participacion en ~40%, porque
+        # Cibest tiene ~444M acciones preferenciales ademas de las ~510M
+        # ordinarias. Valor 100% aqui es capitalizacion TOTAL (ambas
+        # clases), calculada aparte -- no reutiliza
+        # fundamentales_analisis.capitalizacion_mmm para este caso especifico.
+        #
+        # Cruce de verificacion: Grupo Sura declara tener 235,012,336
+        # acciones de Cibest = 24.65% de participacion Y 46.16% de derecho a
+        # voto (Nota 9.1.2). Como el derecho a voto es proporcional SOLO a
+        # las ordinarias, eso implica ordinarias_total = 235,012,336/0.4616 =
+        # 509,125,511 -- coincide con el dato curado a mano en
+        # fundamentales_analisis (509,704,584) dentro de 0.11%. Y
+        # participacion_total implica total = 235,012,336/0.2465 =
+        # 953,396,901 -> preferenciales implicadas = 444,271,389.
         participada_slug="GRUPO_CIBEST_BANCOLOMBIA",
         participada_nombre="Grupo Cibest S.A.",
         cotizada=True,
         pct_tenencia=24.65,
         metodo_valoracion="precio_mercado",
-        valor_100pct_mmm=47137.48,
-        valor_participacion_mmm=47137.48 * 0.2465,
+        valor_100pct_mmm=509704584 * 92480 / 1e9 + 444271389 * 78820 / 1e9,  # 82,154.95 MMM
+        valor_participacion_mmm=(509704584 * 92480 / 1e9 + 444271389 * 78820 / 1e9) * 0.2465,
         detalle_metodo=(
             "24.65% de participacion (Nota 9.1.2, 'en funcion total de las acciones "
-            "emitidas'). Valor 100% = capitalizacion bursatil ordinaria de "
-            "fundamentales_analisis (precio x acciones ordinarias curadas a mano de "
-            "Circular Superfinanciera) -- misma convencion 'ordinaria' que usa todo "
-            "el resto del pipeline, no se mezclan clases de accion."
+            "emitidas'). Valor 100% = capitalizacion bursatil TOTAL (ordinaria "
+            "509,704,584 x $92,480 + preferencial 444,271,389 x $78,820, precios "
+            "CIBEST.CL/PFCIBEST.CL al 2026-09-14, misma fecha que "
+            "fundamentales_analisis para no mezclar fechas de precio entre "
+            "participadas). Preferenciales derivadas del cruce de % participacion "
+            "vs. % derecho a voto que la propia Nota 9.1.2 declara -- ver comentario "
+            "arriba. NO usa fundamentales_analisis.capitalizacion_mmm directo "
+            "(esa cifra es solo-ordinaria, la convencion del resto del pipeline, "
+            "pero aqui subestimaria la participacion porque el % de Sura es sobre "
+            "el total de acciones, no solo las ordinarias)."
         ),
         confianza="alta",
     ),
     dict(
+        # CORREGIDO 21-sep-2026 (auditoria independiente): el 3.70% indirecto
+        # de Enka via ICE (Inversiones y Construcciones Estrategicas S.A.S.,
+        # subsidiaria 100% de Sura) NO se suma aqui por separado, porque ya
+        # esta implicito en el valor en libros de la fila "ICE" mas abajo
+        # (metodo de participacion de ICE incluye su inversion en Enka,
+        # Nota 9.2.1). Sumarlo tambien aqui a valor de mercado era un doble
+        # conteo real -- el mismo 3.70% contado dos veces, una a mercado y
+        # otra a libro dentro de ICE. Esta fila usa SOLO el 17.06% directo
+        # (Nota 9.1.2); el tramo indirecto queda cubierto, a libro, dentro
+        # de ICE, sin partirlo aparte (no hay balance separado de ICE para
+        # aislar "ICE sin su Enka" sin inventar una cifra).
         participada_slug="ENKA",
         participada_nombre="Enka de Colombia S.A.",
         cotizada=True,
-        pct_tenencia=17.06 + 3.70,  # directo + indirecto via subsidiaria 100% (Nota 9.1.2, nota (4))
+        pct_tenencia=17.06,  # SOLO directo -- ver nota arriba sobre el 3.70% indirecto
         metodo_valoracion="precio_mercado",
         valor_100pct_mmm=227.233,
-        valor_participacion_mmm=227.233 * (17.06 + 3.70) / 100,
+        valor_participacion_mmm=227.233 * 17.06 / 100,
         detalle_metodo=(
-            "17.06% directo + 3.70% indirecto via Inversiones y Construcciones "
-            "Estrategicas S.A.S. (subsidiaria 100% de Grupo Sura, Nota 9.1.2 nota 4) "
-            "= 20.76% economico total. Valor 100% = capitalizacion bursatil de "
-            "fundamentales_analisis."
+            "17.06% de participacion DIRECTA (Nota 9.1.2). El 3.70% adicional que Sura "
+            "tiene via su subsidiaria 100% Inversiones y Construcciones Estrategicas "
+            "S.A.S. (ICE, Nota 9.1.2 nota 4) NO se suma aqui -- ya esta implicito, a "
+            "valor en libros, dentro de la fila 'ICE' de este mismo catalogo. Sumarlo "
+            "tambien aqui a precio de mercado seria contar el mismo 3.70% dos veces. "
+            "Valor 100% = capitalizacion bursatil de fundamentales_analisis (Enka solo "
+            "tiene una clase de accion, sin el problema de Cibest)."
         ),
-        confianza="media",  # blend directo+indirecto es un juicio, no un dato unico de la nota
+        confianza="alta",
     ),
     dict(
         participada_slug=None,  # no cotiza en la BVC, fuera del universo de 24 emisores
@@ -115,7 +153,12 @@ PARTICIPACIONES_GRUPO_SURA = [
         metodo_valoracion="libro_ajustado",
         valor_participacion_mmm=96.651,
         valor_100pct_mmm=96.651,
-        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 9.2.1).",
+        detalle_metodo=(
+            "Valor en libros metodo de participacion al 31-dic-2025 (Nota 9.2.1). "
+            "OJO: este valor incluye el 3.70% que ICE tiene en Enka de Colombia S.A. "
+            "(Nota 9.1.2 nota 4) -- por eso la fila 'Enka' de este catalogo usa solo "
+            "el 17.06% directo, para no contar ese 3.70% dos veces."
+        ),
         confianza="media",
     ),
     dict(
@@ -144,6 +187,35 @@ PARTICIPACIONES_GRUPO_SURA = [
 
 CATALOGOS = {
     "GRUPO_SURA": (PARTICIPACIONES_GRUPO_SURA, "2025-12-31", FUENTE_SURA),
+}
+
+# Neto de activos/pasivos propios del holding a nivel SEPARADO (caja,
+# instrumentos financieros derivados, obligaciones financieras, bonos
+# emitidos, pasivo por acciones preferenciales, etc.), fuera de las
+# participaciones ya contabilizadas arriba. No tiene tabla propia en el
+# esquema de W1 (ver nota de aplicacion #2 en migrate_w1_valor.sql) --
+# se guarda como una fila `ajustes_nav` (tipo_ajuste='otro').
+#
+# = Total activos separado - (Inversiones en asociadas + Inversiones en
+# subsidiarias) - Total pasivos separado, todas del Estado de situacion
+# financiera separado, misma fuente y fecha_corte que las participaciones.
+AJUSTES_HOLDING = {
+    "GRUPO_SURA": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios del holding a nivel separado (caja, "
+            "instrumentos financieros derivados, obligaciones financieras, bonos "
+            "emitidos, pasivo por acciones preferenciales, etc.), fuera de las "
+            "participaciones ya contabilizadas en participaciones_holding. = Total "
+            "activos separado (23,588.565) - inversiones en asociadas+subsidiarias "
+            "(23,351.596) - Total pasivos separado (8,033.946)."
+        ),
+        monto_mmm=23588.565 - (5641.321 + 17710.275) - 8033.946,  # -7,796.977
+        fuente=FUENTE_SURA.replace("Nota 9", "Estado de situacion financiera separado, pag. 7 / Nota 9"),
+        pagina_fuente=7,
+        confianza="alta",
+    ),
 }
 
 
@@ -186,6 +258,35 @@ def cargar(cliente, holding_slug: str):
     print(f"{holding_slug}: {len(filas)} participaciones cargadas a fecha_corte={fecha_corte}")
 
 
+def cargar_ajuste_propio(cliente, holding_slug: str):
+    """`ajustes_nav` no tiene restriccion `unique` (solo la PK, ver
+    migrate_w1_valor.sql) -- un upsert real no es posible sin migrar el
+    esquema. Para que este script sea seguro de correr mas de una vez
+    (idempotente) sin duplicar ni acumular filas, se borra cualquier fila
+    existente que matchee (emisor, anio, periodo, tipo_ajuste, concepto)
+    antes de insertar la nueva."""
+    if holding_slug not in AJUSTES_HOLDING:
+        print(f"{holding_slug}: sin ajuste de balance propio cargado todavia.")
+        return
+
+    a = AJUSTES_HOLDING[holding_slug]
+    emisores = {e["slug"]: e["id"] for e in cliente.table("emisores").select("id,slug").execute().data}
+    holding_id = emisores[holding_slug]
+
+    cliente.table("ajustes_nav").delete().eq("emisor_id", holding_id).eq("anio", a["anio"]).eq(
+        "periodo", a["periodo"]
+    ).eq("tipo_ajuste", a["tipo_ajuste"]).eq("concepto", a["concepto"]).execute()
+
+    cliente.table("ajustes_nav").insert({
+        "emisor_id": holding_id,
+        "anio": a["anio"], "periodo": a["periodo"],
+        "tipo_ajuste": a["tipo_ajuste"], "concepto": a["concepto"],
+        "monto_mmm": a["monto_mmm"], "fuente": a["fuente"],
+        "pagina_fuente": a["pagina_fuente"], "confianza": a["confianza"],
+    }).execute()
+    print(f"{holding_slug}: ajuste de balance propio cargado (monto={a['monto_mmm']:.3f} MMM)")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--emisor", type=str, required=True)
@@ -193,6 +294,7 @@ def main():
 
     cliente = cliente_servicio()
     cargar(cliente, args.emisor)
+    cargar_ajuste_propio(cliente, args.emisor)
 
 
 if __name__ == "__main__":
