@@ -577,6 +577,69 @@ etiquetado -- no verificado); CET1/regulatorio de bancos (fuente externa nueva, 
 estándar); valor de mercado del portafolio de holdings (depende de W3a). Ninguno de los tres es
 "bug" -- son datos que este pipeline genuinamente no ingiere todavía.
 
+## 9. W3a — Pilar 2, Ruta H (suma de partes de holdings), primer caso real: GRUPO_SURA (21-sep-2026)
+
+`jobs/ingesta_participaciones.py` + `jobs/valor_engine.py`. Sin extractor automático todavía —
+canal **"el subagente lee, el parser verifica"** (`db/DECISION_ARQUITECTURA_EXTRACCION.md`), igual
+que canal B: no hay bug de escaneo en la Nota de participaciones (es texto normal, se lee por
+volumen/estructura, no por imagen), pero tampoco hay un extractor de la Nota "Inversiones en
+asociadas y subsidiarias" de los **Estados Financieros SEPARADOS** (el pipeline de XBRL/PDF
+existente solo lee CONSOLIDADO). "El parser verifica" aquí es: (1) la suma de las participaciones
+leídas cuadra exacto contra el "Total" que la propia nota declara, (2) el balance separado cuadra
+exacto (activos = pasivos + patrimonio).
+
+**GRUPO_SURA al 31-dic-2025** (fuente: `2025-ANUAL_Informe-Periodico-Fin-Ejercicio...pdf`, Estados
+Financieros Separados, Nota 9, pág. 69-79 + Estado de situación financiera separado, pág. 7):
+
+| Participada | % tenencia | Cotiza | Valor participación (MMM) |
+|---|---:|:---:|---:|
+| Grupo Cibest S.A. | 24.65% | Sí | 11.619,4 |
+| Enka de Colombia S.A. | 20.76% (17.06% directo + 3.70% vía subsidiaria 100%) | Sí | 47,2 |
+| Sura Asset Management S.A. | 93.32% | No (libro) | 12.302,9 |
+| Suramericana S.A. | 81.13% | No (libro) | 5.265,2 |
+| Inversiones y Construcciones Estratégicas S.A.S. | 100% | No (libro) | 96,7 |
+| Sura Ventures S.A. | 100% | No (libro) | 44,2 |
+| Enlace Operativo S.A. | 100% | No (libro) | 1,3 |
+
+**Grupo Argos S.A. NO se incluye**: la participación que tenía Sura en Argos (33,80% a dic-2024)
+fue escindida/distribuida a los accionistas en 2025 ("las Escisiones", Nota 10) — al 31-dic-2025 la
+tenencia es 0%. Coincide con el desenroque del GEA ya documentado en el plan (§5B).
+
+**Neto de activos/pasivos propios del holding** (caja, obligaciones financieras, bonos emitidos,
+pasivo por acciones preferenciales, etc. — todo lo que no es la cartera de participaciones):
+Total activos separado (23.588,6) − participaciones ya contadas (23.351,6) − Total pasivos separado
+(8.033,9) = **−7.796,98 MMM**. Grupo Sura tiene el holding fuertemente apalancado a nivel separado
+(obligaciones + bonos + preferenciales ≈ 7.770,8 MMM) contra casi nada de caja propia (7,6 MMM) —
+guardado como una fila `ajustes_nav` (`tipo_ajuste='otro'`), porque el esquema de W1 no tiene una
+tabla dedicada para el balance separado del holding y no vale la pena crear una hasta que W3a la
+necesite en más de un emisor (nota ya dejada en el DDL original).
+
+**Resultado (`valor_estimado`, verificado con `jobs/test_valor_engine.py`)**:
+- **NAV-mercado** (solo las 2 cotizadas + neto propio): **3.869,6 MMM**
+- **NAV-lookthrough** (las 7 + neto propio): **21.579,9 MMM**
+- **Precio de mercado** (capitalización ordinaria, `fundamentales_analisis`): 11.426,0 MMM
+- **Descuento vs. NAV-lookthrough: 47,1%**
+
+**Por qué NAV-mercado (3.869,6) queda POR DEBAJO del precio de mercado (11.426,0), al revés de lo
+esperado.** No es un bug: las 2 únicas participaciones con precio verificable (Cibest, Enka) son
+justamente las más chicas del portafolio — los activos grandes (Sura Asset Management,
+Suramericana, ~17.568 MMM juntos) no cotizan y quedan fuera del NAV-mercado por diseño (plan §6: es
+la cifra *conservadora*, no la representativa). Este caso ilustra exactamente por qué el plan pide
+reportar SIEMPRE las dos cifras y nunca una sola con asterisco — usar solo NAV-mercado aquí daría
+la impresión falsa de que Sura cotiza CARO, cuando en look-through (la cifra que sí incluye el
+grueso del portafolio) está 47% bajo NAV.
+
+**Limitaciones declaradas, no implementadas todavía** (`valor_estimado.tasa_descuento_detalle`):
+VPN de gastos de administración del holding, impuesto latente sobre plusvalías, y precio de mercado
+a fecha_corte + 45 días anti look-ahead (usa precio actual) — ninguna de las tres impide calcular
+NAV-mercado/NAV-lookthrough, son refinamientos que angostarían el rango, no insumos bloqueantes.
+
+**Siguiente**: repetir el mismo patrón para los otros 4 holdings del MVP (GRUPO_ARGOS, GRUPO_AVAL,
+CORFICOLOMBIANA, GEB) — cada uno necesita leer su propia Nota de inversiones en asociadas y
+subsidiarias de sus EEFF Separados más recientes y añadir un bloque a
+`jobs/ingesta_participaciones.py`. Después, W3b (validar contra el SOTP de Davivienda Corredores
+para Argos y Sura, y contra los 3 eventos de control históricos).
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por

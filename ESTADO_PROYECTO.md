@@ -1350,3 +1350,24 @@ radicados. Detalle y la regla para el futuro en `db/DOCTRINA_VALOR.md` §5F.
 
 **Estado final real del universo de 24 emisores**: 7 huecos, todos FABRICATO, todos cerrados por
 decisión explícita de no seguir. Ningún otro emisor tiene huecos pendientes.
+
+## 21-sep-2026 (cont. 5) — arranca W3a: primer NAV real, GRUPO_SURA
+
+`jobs/ingesta_participaciones.py` + `jobs/valor_engine.py` (nuevos) + `jobs/test_valor_engine.py`.
+Leída a mano la Nota 9 (Inversiones en asociadas y subsidiarias) de los Estados Financieros
+Separados de Grupo Sura 2025-ANUAL: 7 participaciones vigentes al 31-dic-2025 (Grupo Argos ya no
+está -- se escindió durante 2025). 2 cotizan (Cibest 24.65%, Enka 20.76%), 5 no (a valor en libros
+método de participación). Verificado: la suma de las no cotizadas cuadra exacto contra el "Total"
+que declara la propia nota (17.710,275 MMM), y el balance separado cuadra exacto
+(23.588,565 = 8.033,946 + 15.554,619).
+
+Resultado: **NAV-mercado 3.869,6 MMM, NAV-lookthrough 21.579,9 MMM**, precio de mercado actual
+11.426,0 MMM -- **descuento del 47,1% vs. NAV-lookthrough**. NAV-mercado sale más bajo que el
+precio (al revés de lo intuitivo) porque las únicas 2 participaciones cotizadas son las más chicas
+del portafolio -- los activos grandes (Sura AM, Suramericana) no cotizan y quedan fuera de esa
+cifra conservadora por diseño. Detalle completo, la tabla de participaciones y las limitaciones
+declaradas (VPN gastos admin, impuesto latente, anti look-ahead -- ninguna implementada todavía)
+en `db/DOCTRINA_VALOR.md` §9.
+
+Pendiente: repetir para GRUPO_ARGOS, GRUPO_AVAL, CORFICOLOMBIANA, GEB (los otros 4 holdings del
+MVP), luego W3b (validar contra el SOTP de Davivienda Corredores y los eventos de control).
