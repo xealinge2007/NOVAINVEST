@@ -236,7 +236,6 @@ export default function Fundamentales() {
             </thead>
             <tbody>
               {filasFiltradas.map((f) => (
-                <>
                   <tr
                     key={f.emisor_id}
                     className="border-t border-slate-100 cursor-pointer hover:bg-slate-50"
@@ -277,55 +276,69 @@ export default function Fundamentales() {
                       {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
                     </td>
                   </tr>
-                  {expandido === f.emisor_id && (
-                    <tr key={`${f.emisor_id}-detalle`} className="border-t border-slate-100 bg-slate-50/60">
-                      <td colSpan={14} className="px-3 py-3">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                          <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
-                          <Dato etiqueta="Utilidad neta TTM" valor={fmt(f.utilidad_neta_ttm)} />
-                          <Dato etiqueta="EBITDA TTM" valor={fmt(f.ebitda_ttm)} />
-                          <Dato etiqueta="Patrimonio" valor={fmt(f.patrimonio)} />
-                          <Dato etiqueta="Activos" valor={fmt(f.activos)} />
-                          <Dato etiqueta="Deuda financiera" valor={fmt(f.deuda_financiera)} />
-                          <Dato etiqueta="EPS (COP)" valor={fmt(f.eps_cop, 2)} />
-                          <Dato etiqueta="Acciones" valor={fmt(f.acciones, 0)} />
-                          <Dato etiqueta="Beta vs. COLCAP" valor={fmt(f.beta, 2)} />
-                          <Dato etiqueta="Costo de patrimonio" valor={f.costo_patrimonio === null ? "—" : `${fmt(f.costo_patrimonio)}%`} />
-                          <Dato etiqueta="Costo de deuda (dt)" valor={f.costo_deuda_dt === null ? "—" : `${fmt(f.costo_deuda_dt)}%`} />
-                          <Dato etiqueta="EVA (MMM)" valor={fmt(f.eva_mmm)} />
-                          <Dato etiqueta="Método de valor" valor={f.metodo_valor || "—"} />
-                          <Dato etiqueta="EV (MMM, sin netear caja)" valor={fmt(f.ev_mmm)} />
-                          <Dato etiqueta="EV/EBITDA" valor={fmt(f.ev_ebitda, 2)} />
-                          <Dato etiqueta="Deuda/EBITDA" valor={fmt(f.deuda_ebitda, 2)} />
-                          <Dato etiqueta="Q de Tobin (aprox.)" valor={fmt(f.q_tobin, 2)} />
-                          <Dato etiqueta="Último dividendo (MMM)" valor={fmt(f.dividendo_reciente_mmm)} />
-                          <Dato etiqueta="Payout" valor={f.payout_pct === null ? "—" : `${fmt(f.payout_pct)}%`} />
-                          <Dato etiqueta="Dividend yield" valor={f.dividend_yield_pct === null ? "—" : `${fmt(f.dividend_yield_pct)}%`} />
-                          <Dato etiqueta="Correlación vs. dólar (TRM)" valor={fmt(f.correlacion_dolar, 2)} />
-                          <Dato etiqueta="Clase de precio" valor={f.clase_precio || "—"} />
-                          <Dato etiqueta="Serie de resultados" valor={f.serie_resultados || "—"} />
-                          <Dato etiqueta="Fuente resultados" valor={f.fuente_resultados || "—"} />
-                          <Dato etiqueta="Fuente ingresos" valor={f.fuente_ingresos || "—"} />
-                          <Dato etiqueta="Balance de" valor={f.balance_de || "—"} />
-                          <Dato etiqueta="Acciones de" valor={f.acciones_de || "—"} />
-                          <Dato etiqueta="Períodos con cifras" valor={f.periodos_con_cifras ?? "—"} />
-                          <Dato etiqueta="Actualizado" valor={f.actualizado_en ? new Date(f.actualizado_en).toLocaleString("es-CO") : "—"} />
-                        </div>
-                        {f.filas_descartadas_por_escala && (
-                          <p className="text-xs text-amber-700 mt-2">⚠ Descartadas por escala: {f.filas_descartadas_por_escala}</p>
-                        )}
-                        {f.alerta_multiplos && <p className="text-xs text-amber-700 mt-2">⚠ {f.alerta_multiplos}</p>}
-                        {f.motivo_sin_roic && <p className="text-xs text-slate-400 mt-2">Sin ROIC/WACC: {f.motivo_sin_roic}</p>}
-                        <EvolucionSeccion slug={f.slug} />
-                      </td>
-                    </tr>
-                  )}
-                </>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Fuera del contenedor overflow-x-auto de la tabla a propósito: si el
+          detalle viviera dentro (colSpan sobre la tabla ancha) heredaba el
+          ancho de las 14 columnas en vez del ancho visible de la pantalla,
+          y la mitad de la información quedaba fuera de la vista sin scroll
+          evidente. Como panel aparte, usa el ancho real del contenedor. */}
+      {expandido && filasFiltradas.some((f) => f.emisor_id === expandido) && (
+        <DetalleEmisor f={filasFiltradas.find((f) => f.emisor_id === expandido)} />
+      )}
+    </div>
+  );
+}
+
+function DetalleEmisor({ f }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h3 className="font-serif text-base font-semibold text-slate-900">
+          {f.nombre} <span className="font-sans text-xs font-normal text-slate-400">{f.ticker}</span>
+        </h3>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+        <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
+        <Dato etiqueta="Utilidad neta TTM" valor={fmt(f.utilidad_neta_ttm)} />
+        <Dato etiqueta="EBITDA TTM" valor={fmt(f.ebitda_ttm)} />
+        <Dato etiqueta="Patrimonio" valor={fmt(f.patrimonio)} />
+        <Dato etiqueta="Activos" valor={fmt(f.activos)} />
+        <Dato etiqueta="Deuda financiera" valor={fmt(f.deuda_financiera)} />
+        <Dato etiqueta="EPS (COP)" valor={fmt(f.eps_cop, 2)} />
+        <Dato etiqueta="Acciones" valor={fmt(f.acciones, 0)} />
+        <Dato etiqueta="Beta vs. COLCAP" valor={fmt(f.beta, 2)} />
+        <Dato etiqueta="Costo de patrimonio" valor={f.costo_patrimonio === null ? "—" : `${fmt(f.costo_patrimonio)}%`} />
+        <Dato etiqueta="Costo de deuda (dt)" valor={f.costo_deuda_dt === null ? "—" : `${fmt(f.costo_deuda_dt)}%`} />
+        <Dato etiqueta="EVA (MMM)" valor={fmt(f.eva_mmm)} />
+        <Dato etiqueta="Método de valor" valor={f.metodo_valor || "—"} />
+        <Dato etiqueta="EV (MMM, sin netear caja)" valor={fmt(f.ev_mmm)} />
+        <Dato etiqueta="EV/EBITDA" valor={fmt(f.ev_ebitda, 2)} />
+        <Dato etiqueta="Deuda/EBITDA" valor={fmt(f.deuda_ebitda, 2)} />
+        <Dato etiqueta="Q de Tobin (aprox.)" valor={fmt(f.q_tobin, 2)} />
+        <Dato etiqueta="Último dividendo (MMM)" valor={fmt(f.dividendo_reciente_mmm)} />
+        <Dato etiqueta="Payout" valor={f.payout_pct === null ? "—" : `${fmt(f.payout_pct)}%`} />
+        <Dato etiqueta="Dividend yield" valor={f.dividend_yield_pct === null ? "—" : `${fmt(f.dividend_yield_pct)}%`} />
+        <Dato etiqueta="Correlación vs. dólar (TRM)" valor={fmt(f.correlacion_dolar, 2)} />
+        <Dato etiqueta="Clase de precio" valor={f.clase_precio || "—"} />
+        <Dato etiqueta="Serie de resultados" valor={f.serie_resultados || "—"} />
+        <Dato etiqueta="Fuente resultados" valor={f.fuente_resultados || "—"} />
+        <Dato etiqueta="Fuente ingresos" valor={f.fuente_ingresos || "—"} />
+        <Dato etiqueta="Balance de" valor={f.balance_de || "—"} />
+        <Dato etiqueta="Acciones de" valor={f.acciones_de || "—"} />
+        <Dato etiqueta="Períodos con cifras" valor={f.periodos_con_cifras ?? "—"} />
+        <Dato etiqueta="Actualizado" valor={f.actualizado_en ? new Date(f.actualizado_en).toLocaleString("es-CO") : "—"} />
+      </div>
+      {f.filas_descartadas_por_escala && (
+        <p className="text-xs text-amber-700 mt-2">⚠ Descartadas por escala: {f.filas_descartadas_por_escala}</p>
+      )}
+      {f.alerta_multiplos && <p className="text-xs text-amber-700 mt-2">⚠ {f.alerta_multiplos}</p>}
+      {f.motivo_sin_roic && <p className="text-xs text-slate-400 mt-2">Sin ROIC/WACC: {f.motivo_sin_roic}</p>}
+      <EvolucionSeccion slug={f.slug} />
     </div>
   );
 }
