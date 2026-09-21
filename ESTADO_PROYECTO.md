@@ -1294,6 +1294,22 @@ las cifras no cuadran limpio contra los trimestres ya cargados del holding -- ac
 `deuda_financiera` 2,7x más alta (no explicable con la misma lógica) y `utilidad_operacional`/
 `ebitda` negativos por miles de millones en el mismo trimestre que la utilidad neta es positiva --
 huele a mapeo de concepto XBRL distinto entre la taxonomía bancaria y la que usa el resto de la
-serie, no a un error de Cowork. **No se cargó nada todavía** -- es una decisión de Alex (insertar
-parcial con nota de alcance distinto, insertar todo, o declarar el hueco genuino). Detalle completo
-y la tabla comparativa en `db/DOCTRINA_VALOR.md` §5E.
+serie, no a un error de Cowork.
+
+**Decisión de Alex: cargar Banco Davivienda y Davivienda Group como una sola serie.** Insertado
+(id 5031 en `fundamentales_reportados`, traza en `reportes_xbrl` al archivo con el sufijo
+`-predecesora`). Se cargaron los 7 campos limpios (activos, pasivos, patrimonio, ingresos, utilidad
+neta, deuda financiera, acciones en circulación); `utilidad_operacional` y `ebitda` quedaron `null`
+a propósito -- esos dos no son solo "otro alcance de consolidación", son internamente
+inconsistentes (negativos por miles de millones con utilidad neta positiva en el mismo trimestre),
+y fusionar las dos entidades no los vuelve confiables. Detalle completo y la tabla comparativa en
+`db/DOCTRINA_VALOR.md` §5E.
+
+## 21-sep-2026 (cont. 2) — huecos del universo: 6, todos FABRICATO, todos confirmados no radicados
+
+Con DAVIVIENDA_GROUP resuelto, `python jobs/matriz_huecos_fundamentales.py` deja **6 huecos, todos
+FABRICATO**: los 5 ya confirmados no radicados (2021-T2/T3/T4, 2022-T1/T4, ventana de
+reestructuración Ley 550) más el 2019-T1 expuesto de regalo al cargar 2019-T4 (§5E). No hay huecos
+pendientes en NINGÚN otro emisor del universo de 24 -- los 6 restantes son bajo impacto y no se
+persiguen por ahora. 23/24 emisores elegibles para el ranking (DAVIVIENDA_GROUP sigue corto de
+historial, no de datos).

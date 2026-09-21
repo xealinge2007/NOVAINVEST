@@ -403,7 +403,7 @@ de 8 (7 canal C + 1 canal B) a **7 (7 canal C, 0 canal B)**. Quedan solo los de 
 DAVIVIENDA_GROUP 2025-T3; FABRICATO 2019-T4, 2021-T2, 2021-T3, 2021-T4, 2022-T1, 2022-T4 — lista
 completa en `PEDIDOS_DESCARGA.csv` (regenerado, no trackeado en git).
 
-## 5E. Cowork entregó FABRICATO 2019-T4 y DAVIVIENDA_GROUP 2025-T3 (21-sep-2026)
+## 5E. Cowork entregó FABRICATO 2019-T4 y DAVIVIENDA_GROUP 2025-T3 — ambos cargados (21-sep-2026)
 
 **FABRICATO 2019-T4**: XBRL genuino, radicado 2020-04-01, verificado en disco (6.127.005 bytes) y
 cargado con `jobs/extraer_xbrl.py --emisor FABRICATO` (`xbrl_radicado`, 9 campos, `cuadra_balance`
@@ -440,16 +440,20 @@ en que `utilidad_neta` es positiva (+1.083,05) — internamente inconsistente, c
 problema de taxonomía bancaria (el concepto `ProfitLossFromOperatingActivities` no significa lo
 mismo en el punto de entrada de bancos que en el de empresas no financieras).
 
-**No se insertó nada todavía.** Insertar activos/pasivos/patrimonio/utilidad_neta con una nota de
-"entidad predecesora, no directamente comparable" es defendible: son datos reales, verificados,
-solo que de otro perímetro de consolidación. Pero mezclar dos alcances de consolidación distintos
-en la misma serie de tiempo del emisor es exactamente el tipo de "cuadra_balance=True no prueba
-que la columna sea correcta" que ya mordió a este proyecto (§4B) — aquí el balance sí cuadra
-internamente, el problema es que es el balance de OTRA empresa. Queda para que Alex decida:
-(a) insertar solo activos/pasivos/patrimonio/utilidad_neta (los 4 campos con brecha explicable)
-con nota de alcance distinto, (b) insertar todo tal cual llegó, o (c) declarar 2025-T3 como hueco
-genuino de DAVIVIENDA_GROUP (la entidad, tal como existe hoy, sencillamente no tiene datos propios
-de ese trimestre) y no cargar el archivo de la predecesora.
+**Decisión de Alex (21-sep-2026): cargar Banco Davivienda y Davivienda Group como una sola serie.**
+Insertado en `fundamentales_reportados` (id 5031) y `reportes_xbrl` (traza al archivo con el
+sufijo `-predecesora` en el nombre, así que la procedencia queda visible para quien mire la fila).
+Se cargaron los 7 campos limpios — `activos_totales`, `pasivos_totales`, `patrimonio`, `ingresos`,
+`utilidad_neta`, `deuda_financiera`, `acciones_en_circulacion` — y se dejaron `utilidad_operacional`
+y `ebitda` en `null` a propósito: esos dos no son solo "otro alcance de consolidación" como el
+resto, son **internamente inconsistentes** (negativos por miles de millones en un trimestre de
+utilidad neta positiva), y eso no se vuelve verdad por fusionar las dos entidades — se prefiere
+`null` a propagar un número que ya se sabe que está mal.
+
+Verificado: `python jobs/matriz_huecos_fundamentales.py` — huecos bajaron de 7 a **6**, los 6
+FABRICATO (2019-T1 nuevo + los 5 ya confirmados no radicados de 2021-2022). DAVIVIENDA_GROUP ya no
+aparece en la lista de pedidos (sigue no elegible para el ranking por historial corto — total=6,
+faltan 6 para el mínimo de 12 — pero eso es tiempo, no un hueco de datos).
 
 ## 7. W1 — esquema del motor de 4 pilares (18-sep-2026)
 
