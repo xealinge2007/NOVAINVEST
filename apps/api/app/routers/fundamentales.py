@@ -33,6 +33,21 @@ async def detalle_fundamental(slug: str, usuario: UsuarioActual = Depends(get_cu
     return resp.data[0]
 
 
+@router.get("/{slug}/perfil")
+async def perfil_cualitativo(slug: str, usuario: UsuarioActual = Depends(get_current_usuario)):
+    """Descripción, CEO, noticias de impacto y situación micro/macro (F4q).
+    404 cuando el emisor todavía no tiene ficha investigada -- el frontend lo
+    trata como "aún no disponible", no como error."""
+    cliente = cliente_supabase_de(usuario)
+    emisor = cliente.table("emisores").select("id").eq("slug", slug).execute().data
+    if not emisor:
+        raise HTTPException(404, f"No existe el emisor {slug}")
+    resp = cliente.table("perfil_cualitativo_emisor").select("*").eq("emisor_id", emisor[0]["id"]).execute().data
+    if not resp:
+        raise HTTPException(404, f"Todavía no hay perfil cualitativo para {slug}")
+    return resp[0]
+
+
 @router.get("/{slug}/evolucion")
 async def evolucion_fundamental(slug: str, usuario: UsuarioActual = Depends(get_current_usuario)):
     """Serie histórica (TTM en cada punto) vs. precio, contemporáneo y con

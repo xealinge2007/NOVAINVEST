@@ -1,0 +1,147 @@
+{
+  "_leeme": "Seed de investigación asistida por IA para jobs/perfil_cualitativo_emisor.py. Un emisor por clave (slug = emisores.slug). Cada fila cita sus fuentes en 'fuentes'. Piloto 2026-09-21: 6 de ~24 emisores (los de mayor capitalización/relevancia); el resto queda pendiente de una siguiente ronda de investigación -- el frontend ya maneja 'sin perfil todavía' sin romperse. generado_por/confianza los decide construir_fila() del job, no se repiten aquí salvo 'confianza' cuando se quiera forzar algo distinto de 'media'.",
+
+  "ECOPETROL": {
+    "descripcion": "Petrolera integrada colombiana (exploración, producción, transporte, refinación y petroquímica), mayoritariamente estatal (~88% del Ministerio de Hacienda). Desde 2021 controla el 51,4% de ISA, con lo que sumó transmisión eléctrica y algo de vías/telecomunicaciones a su negocio de hidrocarburos.",
+    "ceo": "Alfonso Camilo Barco Muñoz (presidente encargado desde el 15-sep-2026, tras la salida de Juan Carlos Hurtado Parra el mismo día; antes había estado Ricardo Roa Barragán)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-08-03",
+        "titulo": "Utilidad neta del 2T-2026 sube a $6,1 billones (+235% interanual) por el repunte del petróleo",
+        "resumen": "Producción de hidrocarburos en 706.000 barriles equivalentes/día; la cuenca Permian en EE.UU. cayó 30% por segundo trimestre consecutivo.",
+        "fuente": "La República / Infobae",
+        "url": "https://www.larepublica.co/economia/resultados-del-segundo-trimestre-de-2026-de-ecopetrol-4450372"
+      },
+      {
+        "fecha": "2026-09-15",
+        "titulo": "Tercer relevo de presidente en 2026: sale Hurtado Parra, asume Barco Muñoz como encargado",
+        "resumen": "Continúa la inestabilidad directiva del año (Roa Barragán -> Hurtado Parra -> Barco Muñoz), en medio de presión sindical para vender activos por el nivel de deuda.",
+        "fuente": "SEC Form 6-K Ecopetrol",
+        "url": "https://www.sec.gov/Archives/edgar/data/0001444406/000129281426004570/ex99-1.htm"
+      }
+    ],
+    "situacion_micro": "Tercer cambio de presidente en 2026 (inestabilidad de gobierno corporativo); presión sindical y de analistas (Citi) para vender activos -- incluida su participación en ISA -- por el nivel de deuda; producción en la cuenca Permian (EE.UU.) cayendo dos trimestres seguidos.",
+    "situacion_macro": "Alta sensibilidad al precio internacional del crudo (Brent/WTI) y a la tasa de cambio COP/USD. Control mayoritario del Estado colombiano la expone a presión fiscal (extracción de dividendos para el presupuesto nacional) y a decisiones políticas del Gobierno de turno sobre exploración y venta de activos.",
+    "confianza": "media"
+  },
+
+  "GRUPO_SURA": {
+    "descripcion": "Holding financiero colombiano con seguros (SURA), pensiones/gestión de activos (SURA Asset Management, con operación en Colombia, México, Perú, Chile, Uruguay y El Salvador) y una participación relevante en Grupo Cibest (Bancolombia). Tras la escisión de 2025 dejó de tener participaciones cruzadas con Grupo Argos y Nutresa, quedando enfocado solo en servicios financieros.",
+    "ceo": "Ricardo Jaramillo Mejía (presidente desde el 1-may-2024, en reemplazo de Gonzalo Pérez)",
+    "noticias_impacto": [
+      {
+        "fecha": "2025-07",
+        "titulo": "Completó la escisión por absorción que terminó las participaciones cruzadas con Grupo Argos y Nutresa",
+        "resumen": "Grupo Sura queda enfocado exclusivamente en servicios financieros; el mercado lo tomó como fin del 'descuento de holding' del viejo GEA.",
+        "fuente": "Grupo SURA (comunicado)",
+        "url": "https://www.gruposura.com/noticia/asamblea-de-accionistas-de-grupo-sura-aprobo-operacion-para-evolucionar-estructura-accionaria/"
+      },
+      {
+        "fecha": "2026-03",
+        "titulo": "Cierra 2025 con utilidad neta recurrente +39,9% interanual y propone dividendo de $2.000/acción (+33,3%)",
+        "resumen": "ROE de 13,7%; Junta también aprobó un programa de recompra de acciones vigente hasta 2028.",
+        "fuente": "Grupo SURA (comunicado) / Pulzo",
+        "url": "https://www.gruposura.com/noticia/grupo-sura-cierra-el-2025-con-una-utilidad-neta-recurrente-de-cop-2-3-billones/"
+      }
+    ],
+    "situacion_micro": "La simplificación societaria post-escisión (fin de participaciones cruzadas con Argos/Nutresa) puede reducir el histórico 'descuento de holding'; el programa de recompra hasta 2028 da soporte al precio. El resultado consolidado depende del desempeño de pensiones/seguros en varios países de la región y de su participación económica en Grupo Cibest.",
+    "situacion_macro": "Muy sensible a las tasas de interés regionales (Banrep y bancos centrales de México, Perú, Chile) porque afectan el ingreso por inversiones de los fondos de pensiones y las reservas de seguros. Expuesta a reformas pensionales en la región (ya aprobada en Colombia, debates en Chile) que pueden cambiar la base de activos administrados y las comisiones.",
+    "confianza": "media"
+  },
+
+  "GRUPO_CIBEST_BANCOLOMBIA": {
+    "descripcion": "Holding financiero colombiano (antes 'Grupo Bancolombia', reorganizado como Grupo Cibest en 2025) dueño de Bancolombia, Bancoagrícola (El Salvador), Bam (Guatemala) y un frente digital (Nequi, Wompi, Wenia). Es el mayor grupo bancario de Colombia por cartera.",
+    "ceo": "Juan Carlos Mora (CEO de Grupo Cibest y presidente de Bancolombia)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-08",
+        "titulo": "Utilidad neta del 2T-2026 crece 52,4% interanual; cartera bruta llega a $262 billones (+5,72%)",
+        "resumen": "El Grupo proyecta para 2026 crecimiento de cartera de 7%-8% y ROE de 21%-22%.",
+        "fuente": "Valora Analitik / Bancolombia (sala de prensa)",
+        "url": "https://www.valoraanalitik.com/utilidad-grupo-cibest-2t-2026/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Propone dividendo extraordinario de $1.270,3 por acción tras la venta de Banistmo",
+        "resumen": "Parte de una estrategia de asignación de capital que equilibra retorno a accionistas, solidez de las entidades operativas y crecimiento regional.",
+        "fuente": "Valora Analitik",
+        "url": "https://www.valoraanalitik.com/grupo-cibest-rentabilidad-2026-cartera/"
+      }
+    ],
+    "situacion_micro": "Redistribución de capital tras la venta de Banistmo (Panamá) vía dividendo extraordinario, en lugar de reinversión; expansión de su ecosistema digital (Nequi, Wompi, Wenia -- este último en activos digitales/cripto), un frente de negocio más nuevo y menos probado que la banca tradicional.",
+    "situacion_macro": "El margen de intermediación depende directamente de la tasa de intervención del Banco de la República; la calidad de cartera depende del ciclo de crédito y desempleo en Colombia. Su exposición en El Salvador y Guatemala la expone también al riesgo macro/regulatorio de esos países y a la tasa de cambio COP/USD.",
+    "confianza": "media"
+  },
+
+  "ISA": {
+    "descripcion": "Grupo de infraestructura energética (transmisión eléctrica, con algo de vías y telecomunicaciones) que opera en Colombia, Brasil (vía CTEEP), Chile, Perú y Bolivia. Ecopetrol es su accionista mayoritario (51,4%) desde 2021.",
+    "ceo": "Olga Patricia Castaño Díaz (presidenta encargada desde 2026, tras la anulación judicial del nombramiento de Jorge Carrillo como presidente; Juan Pablo Zárate es el presidente de la junta directiva)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Moody's baja la calificación de ISA de Baa2 a Baa3 con panorama negativo",
+        "resumen": "La baja no responde a las finanzas propias de ISA sino a las de su matriz Ecopetrol, por preocupación sobre distribuciones extraordinarias de dividendos hacia la casa matriz.",
+        "fuente": "Halcones y Palomas / Bloomberg Línea",
+        "url": "https://www.halconesypalomas.com/2026/07/28/tras-primicia-de-primera-pagina-citi-elevo-expectativas-sobre-ecopetrol-ante-posible-venta-de-su-participacion-en-isa/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Turbulencia de gobierno corporativo: la justicia anula el nombramiento de Jorge Carrillo como presidente",
+        "resumen": "La junta directiva nombra a Olga Patricia Castaño como presidenta encargada; en paralelo circula interés del Gobierno para que Grupo Energía Bogotá compre la participación de Ecopetrol en ISA, algo que ambas compañías niegan como plan de corto plazo.",
+        "fuente": "El Colombiano / Portafolio",
+        "url": "https://www.elcolombiano.com/amp/negocios/isa-nombra-olga-patricia-castano-presidenta-encargada-cambios-junta-directiva-2026-GM36180644"
+      }
+    ],
+    "situacion_micro": "Inestabilidad de gobierno corporativo (presidencia encargada tras litigio judicial por el nombramiento anterior); presión sobre la calificación crediticia por las distribuciones extraordinarias hacia Ecopetrol; especulación -- no confirmada -- sobre un eventual cambio de control hacia Grupo Energía Bogotá, que sería catalizador pero también fuente de incertidumbre para el minoritario.",
+    "situacion_macro": "Ingresos regulados por tarifas que fijan los reguladores de cada país donde opera (Colombia, Brasil, Perú, Chile, Bolivia), con exposición a riesgo regulatorio y político en varias jurisdicciones a la vez. Sensible a tasas de interés por su alto apalancamiento de largo plazo para financiar capex, y a las monedas locales (BRL, COP, CLP, PEN) frente al dólar.",
+    "confianza": "media"
+  },
+
+  "GRUPO_ARGOS": {
+    "descripcion": "Holding colombiano de infraestructura: cemento y concreto (Cementos Argos, con operación en Colombia, EE.UU., Centroamérica, Caribe y República Dominicana), generación de energía (Celsia) y vías/aeropuertos (Odinsa).",
+    "ceo": "Juan Esteban Calle (presidente desde el 1-abr-2026, en reemplazo de Jorge Mario Velásquez, que se retiró; Calle venía de liderar Cementos Argos durante los 10 años anteriores)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-03-31",
+        "titulo": "Completa la escisión por absorción que terminó las participaciones cruzadas con Grupo Sura y Cementos Argos",
+        "resumen": "Mismo proceso de simplificación societaria del antiguo GEA que también ejecutó Grupo Sura.",
+        "fuente": "Grupo Argos (comunicado)",
+        "url": "https://www.grupoargos.com/en/news/grupo-argos-board-of-directors-appointed-juan-esteban-calle-as-successor-to-jorge-mario-velasquez-as-president-of-grupo-argos-effective-april-1-2026/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Cementos Argos planea separarse en dos compañías: Argos Materials (EE.UU.) y Argos Latam",
+        "resumen": "Separación estructural a ejecutarse en ~24 meses, con inversión planeada de ~US$500 millones en 5 años (mina en República Dominicana, puerto y terminales en EE.UU.).",
+        "fuente": "El Colombiano",
+        "url": "https://www.elcolombiano.com/negocios/cementos-argos-separacion-operaciones-eeuu-latinoamerica-inversion-agregados-2026-IE36670769"
+      }
+    ],
+    "situacion_micro": "Cambio de presidente (abril de 2026) coincide con una reestructuración corporativa mayor -- la separación de Cementos Argos en dos compañías operativas -- con riesgo de ejecución a lo largo de un cronograma de ~2 años. Una eventual escisión/listado separado de Argos Materials podría liberar o diluir valor según cómo se estructure.",
+    "situacion_macro": "La demanda de cemento y concreto depende del ciclo de construcción e infraestructura en EE.UU., Colombia y Centroamérica; las tasas de interés afectan directamente esa demanda. Costos de insumos (energía, clínker) y regulación de transición de carbono presionan márgenes; alta exposición a la tasa de cambio COP/USD por la operación en dólares en EE.UU.",
+    "confianza": "media"
+  },
+
+  "GRUPO_NUTRESA": {
+    "descripcion": "Grupo colombiano de alimentos de consumo masivo: cárnicos fríos, galletas, chocolates/cacao, café, pastas, helados y servicios de alimentación, con operación en Colombia y exportaciones/presencia en el resto de la región.",
+    "ceo": "Jaime Gilinski Bacal (presidente desde el 27-ene-2025, tras la OPA del Grupo Gilinski; reemplazó a Carlos Ignacio Gallego, que lideró la compañía por más de 10 años)",
+    "noticias_impacto": [
+      {
+        "fecha": "2024-04-03",
+        "titulo": "Cierra la última OPA de Gilinski por Nutresa: queda con ~99,4% de la compañía",
+        "resumen": "Tras más de un año y ocho ofertas públicas de adquisición; Nutresa sale del índice S&P Colombia Select el 8-abr-2024 por su bajo flotante.",
+        "fuente": "Valora Analitik / La República",
+        "url": "https://www.valoraanalitik.com/gilinski-se-queda-con-994-de-grupo-nutresa-tras-cierre-de-ultima-opa/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Grupo Gilinski cede el control de Nutresa a socios árabes tras ~2,5 años de negociación",
+        "resumen": "Cambio relevante de estructura de propiedad para los minoritarios; en paralelo, Nutresa reorganiza categorías y ajusta sus proyecciones para 2026.",
+        "fuente": "Pulzo / Valora Analitik",
+        "url": "https://www.pulzo.com/economia/grupo-gilinski-cedera-control-nutresa-socios-arabes-PP3809218A"
+      }
+    ],
+    "situacion_micro": "Concentración accionaria casi total (~99,4%) bajo Gilinski implica flotante y liquidez muy bajos para el minoritario, con influencia prácticamente nula sobre decisiones; la cesión de control a socios árabes añade incertidumbre sobre la dirección estratégica y un posible deslistamiento futuro.",
+    "situacion_macro": "Expuesta al consumo e inflación de alimentos en Colombia y la región -- demanda relativamente defensiva, pero con márgenes sensibles al precio de commodities agrícolas (cacao, café, trigo) y empaques. La tasa de cambio COP/USD afecta tanto insumos importados como competitividad de exportaciones.",
+    "confianza": "media"
+  }
+}

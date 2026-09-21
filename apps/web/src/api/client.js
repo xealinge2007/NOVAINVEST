@@ -143,6 +143,7 @@ export const getFundamentales = () => peticion("GET", "/fundamentales");
 export const getFundamentalDetalle = (slug) => peticion("GET", `/fundamentales/${slug}`);
 export const getSupuestosMacro = () => peticion("GET", "/fundamentales/macro/supuestos");
 export const getEvolucionFundamental = (slug) => peticion("GET", `/fundamentales/${slug}/evolucion`);
+export const getPerfilCualitativo = (slug) => peticion("GET", `/fundamentales/${slug}/perfil`);
 
 // señales
 export const getSenales = (params = {}) => {

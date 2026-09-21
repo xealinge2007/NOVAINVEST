@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getFundamentales, getSupuestosMacro, getEvolucionFundamental } from "../api/client";
+import { getFundamentales, getSupuestosMacro, getEvolucionFundamental, getPerfilCualitativo } from "../api/client";
 import EvolucionChart from "../components/EvolucionChart";
 
 const METRICAS_EVOLUCION = [
@@ -305,7 +305,8 @@ function DetalleEmisor({ f }) {
           {f.nombre} <span className="font-sans text-xs font-normal text-slate-400">{f.ticker}</span>
         </h3>
       </div>
-      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+      <PerfilCualitativoSeccion slug={f.slug} />
+      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4 mt-4 pt-3 border-t">
         <Dato etiqueta="Ingresos TTM" valor={fmt(f.ingresos_ttm)} />
         <Dato etiqueta="Utilidad neta TTM" valor={fmt(f.utilidad_neta_ttm)} />
         <Dato etiqueta="EBITDA TTM" valor={fmt(f.ebitda_ttm)} />
@@ -342,6 +343,94 @@ function DetalleEmisor({ f }) {
       {f.alerta_multiplos && <p className="text-xs text-amber-700 mt-2">⚠ {f.alerta_multiplos}</p>}
       {f.motivo_sin_roic && <p className="text-xs text-slate-400 mt-2">Sin ROIC/WACC: {f.motivo_sin_roic}</p>}
       <EvolucionSeccion slug={f.slug} />
+    </div>
+  );
+}
+
+const ETIQUETA_FUENTE_PERFIL = {
+  yfinance: "yfinance",
+  investigacion_ia: "investigación asistida por IA",
+  mixto: "yfinance + investigación asistida por IA",
+  manual: "cargado por Alex",
+};
+
+function PerfilCualitativoSeccion({ slug }) {
+  const [perfil, setPerfil] = useState(undefined); // undefined = cargando, null = sin ficha todavía
+
+  useEffect(() => {
+    setPerfil(undefined);
+    getPerfilCualitativo(slug).then(setPerfil).catch(() => setPerfil(null));
+  }, [slug]);
+
+  if (perfil === undefined) return <p className="text-xs text-slate-400 mt-2">Cargando perfil…</p>;
+  if (perfil === null) {
+    return (
+      <p className="text-xs text-slate-400 mt-2 italic">
+        Todavía no hay perfil cualitativo (descripción, CEO, noticias de impacto, situación micro/macro)
+        investigado para este emisor.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-500">
+          fuente: {ETIQUETA_FUENTE_PERFIL[perfil.generado_por] || perfil.generado_por} · confianza {perfil.confianza}
+          {!perfil.revisado_por_alex && " · sin revisar por Alex"}
+        </span>
+      </div>
+
+      {(perfil.descripcion || perfil.ceo) && (
+        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          {perfil.descripcion && <p className="text-slate-700">{perfil.descripcion}</p>}
+          {perfil.ceo && (
+            <div className="shrink-0 text-xs">
+              <p className="text-slate-400">CEO / gerente general</p>
+              <p className="font-medium text-slate-800">{perfil.ceo}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {perfil.noticias_impacto?.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-slate-700 mb-1.5">Noticias de impacto</p>
+          <ul className="flex flex-col gap-1.5">
+            {perfil.noticias_impacto.map((n, i) => (
+              <li key={i} className="text-xs leading-relaxed">
+                <span className="font-mono text-slate-400">{n.fecha}</span>{" "}
+                {n.url ? (
+                  <a href={n.url} target="_blank" rel="noreferrer" className="font-medium text-brand-700 hover:underline">
+                    {n.titulo}
+                  </a>
+                ) : (
+                  <span className="font-medium text-slate-800">{n.titulo}</span>
+                )}
+                {n.resumen && <span className="text-slate-500"> — {n.resumen}</span>}
+                {n.fuente && <span className="text-slate-400"> ({n.fuente})</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(perfil.situacion_micro || perfil.situacion_macro) && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {perfil.situacion_micro && (
+            <div className="rounded-md border border-slate-200 px-3 py-2 text-xs">
+              <p className="font-medium text-slate-700 mb-1">Situación micro</p>
+              <p className="text-slate-600">{perfil.situacion_micro}</p>
+            </div>
+          )}
+          {perfil.situacion_macro && (
+            <div className="rounded-md border border-slate-200 px-3 py-2 text-xs">
+              <p className="font-medium text-slate-700 mb-1">Situación macro</p>
+              <p className="text-slate-600">{perfil.situacion_macro}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
