@@ -1,5 +1,5 @@
 {
-  "_leeme": "Seed de investigación asistida por IA para jobs/perfil_cualitativo_emisor.py. Un emisor por clave (slug = emisores.slug). Cada fila cita sus fuentes en 'fuentes'. Piloto 2026-09-21: 6 de ~24 emisores (los de mayor capitalización/relevancia); el resto queda pendiente de una siguiente ronda de investigación -- el frontend ya maneja 'sin perfil todavía' sin romperse. generado_por/confianza los decide construir_fila() del job, no se repiten aquí salvo 'confianza' cuando se quiera forzar algo distinto de 'media'.",
+  "_leeme": "Seed de investigación asistida por IA para jobs/perfil_cualitativo_emisor.py. Un emisor por clave (slug = emisores.slug). Cada fila cita sus fuentes en 'fuentes'. Estado 2026-09-21: las 24 emisoras del universo BVC seguido investigadas (6 en la ronda inicial + 18 en una segunda ronda). generado_por/confianza los decide construir_fila() del job, no se repiten aquí salvo 'confianza' cuando se quiera forzar algo distinto de 'media'. Si aparece un emisor nuevo en el universo, agregar su clave aquí y volver a correr el job -- sin fila el frontend muestra 'todavía no hay perfil' sin romperse.",
 
   "ECOPETROL": {
     "descripcion": "Petrolera integrada colombiana (exploración, producción, transporte, refinación y petroquímica), mayoritariamente estatal (~88% del Ministerio de Hacienda). Desde 2021 controla el 51,4% de ISA, con lo que sumó transmisión eléctrica y algo de vías/telecomunicaciones a su negocio de hidrocarburos.",
@@ -142,6 +142,417 @@
     ],
     "situacion_micro": "Concentración accionaria casi total (~99,4%) bajo Gilinski implica flotante y liquidez muy bajos para el minoritario, con influencia prácticamente nula sobre decisiones; la cesión de control a socios árabes añade incertidumbre sobre la dirección estratégica y un posible deslistamiento futuro.",
     "situacion_macro": "Expuesta al consumo e inflación de alimentos en Colombia y la región -- demanda relativamente defensiva, pero con márgenes sensibles al precio de commodities agrícolas (cacao, café, trigo) y empaques. La tasa de cambio COP/USD afecta tanto insumos importados como competitividad de exportaciones.",
+    "confianza": "media"
+  },
+
+  "CONSTRUCTORA_CONCONCRETO": {
+    "descripcion": "Constructora colombiana de infraestructura, vivienda y edificaciones, con más de 65 años de trayectoria; participa en concesiones y proyectos propios de vivienda (VIS y no VIS) además de obra civil para terceros.",
+    "ceo": "Nicolás Jaramillo (presidente desde abril de 2024)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-05",
+        "titulo": "Ingresos consolidados del 1T-2026 caen a $123.188 millones (desde $146.251 millones en 1T-2025) y el EBITDA cae de $37.984 a $18.607 millones",
+        "resumen": "A la par, avanza en vivienda: lanzó 'Calia' en Bogotá (VIS, ~1.780 unidades en dos fases, ventas estimadas de $584.797 millones).",
+        "fuente": "Portafolio / El Colombiano",
+        "url": "https://www.portafolio.co/negocios/empresas/conconcreto-reporto-ingresos-de-123-188-millones-en-2026-y-avanza-en-obras-clave-de-infraestructura-y-vivienda-494070"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Ingresos del 2T-2026 suben 11,86% interanual, pero la utilidad neta cae con fuerza",
+        "resumen": "El negocio de vivienda crece con fuerza en el trimestre (de $18.203 a $47.639 millones), mientras la rentabilidad general sigue presionada.",
+        "fuente": "Yahoo Noticias / Colombinews",
+        "url": "https://es-us.noticias.yahoo.com/conconcreto-aumenta-ingresos-11-86-232000681.html"
+      }
+    ],
+    "situacion_micro": "La prioridad estratégica 2026 es el negocio de vivienda (Medellín, Neiva, Barranquilla, Envigado), mientras el negocio de infraestructura/concesiones muestra ingresos y EBITDA más débiles que en 2025; la utilidad neta sigue bajo presión pese a crecer en ingresos.",
+    "situacion_macro": "Expuesta al ciclo de tasas de interés colombianas (financiación de vivienda VIS/No VIS) y al ritmo de adjudicación de infraestructura/concesiones 4G-5G del Estado; costos de materiales de construcción sensibles a inflación y a la tasa de cambio.",
+    "confianza": "media"
+  },
+
+  "EL_CONDOR": {
+    "descripcion": "Constructora colombiana de infraestructura vial, con participación en concesiones de cuarta generación (4G) y proyectos de obra civil en Colombia y algunos mercados internacionales.",
+    "ceo": "Luis Alfredo Turizo (presidente)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Cierra un 'ciclo de normalización' tras tres años consecutivos de pérdidas (2023-2025) ligadas a proyectos 4G",
+        "resumen": "Incluyó venta de activos y reconfiguración contable; la compañía proyectaba una recuperación con resultados positivos a partir de 2026.",
+        "fuente": "Portafolio",
+        "url": "https://www.portafolio.co/economia/infraestructura/cosntrucciones-el-condor-cierra-ciclo-de-normalizacion-tras-tres-anos-de-perdidas-y-proyecta-recuperacion-en-489779"
+      },
+      {
+        "fecha": "2026-08-13",
+        "titulo": "EBITDA positivo de $23.658 millones en el 2T-2026 y pérdida neta reducida 98,4%",
+        "resumen": "Margen operacional pasó de -17,49% (1S-2025) a +17,93% (1S-2026); hito adicional: laudo arbitral favorable en el proceso RAM vs. ANI que reconoce $3,5 billones a favor de la concesión.",
+        "fuente": "ABC Economía / Valora Analitik",
+        "url": "https://abceconomia.co/2026/08/13/construcciones-el-condor-ebitda-ajustado-segundo-trimestre-2026/"
+      }
+    ],
+    "situacion_micro": "Recuperación operativa reciente tras tres años de pérdidas -- el giro depende de que se sostenga el desapalancamiento y de la ejecución de nuevos proyectos internacionales; el laudo arbitral RAM vs. ANI es un catalizador relevante todavía pendiente de materializarse en caja.",
+    "situacion_macro": "Como constructora de infraestructura vial depende del ritmo de adjudicación y pago de proyectos de concesión del Estado colombiano (ANI) y de las tasas de interés para financiar obra; sensible al riesgo de disputas contractuales con el Estado (como el caso RAM vs. ANI).",
+    "confianza": "media"
+  },
+
+  "TERPEL": {
+    "descripcion": "Distribuidor líder de combustibles y lubricantes en Colombia, con operación también en Perú, Chile y Panamá (estaciones de servicio, GNV, lubricantes y nueva movilidad).",
+    "ceo": "Óscar Bravo (presidente desde inicios de 2026, exvicepresidente financiero, con más de 15 años en la compañía)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Reportó utilidad neta de $530.756 millones, resultado positivo",
+        "resumen": "Crecimiento de doble dígito en combustibles exportados desde El Callao (Perú) hacia Ecuador, Bolivia, Colombia, Centroamérica y ocasionalmente Chile; demanda de lubricantes +4% interanual en 1S-2026.",
+        "fuente": "La República",
+        "url": "https://www.larepublica.co/empresas/terpel-reporto-un-resultado-positivo-con-una-utilidad-neta-que-llego-a-530-756-millones-4097593"
+      },
+      {
+        "fecha": "2026-09-08",
+        "titulo": "Lanza un nuevo portafolio de combustibles de nueva generación",
+        "resumen": "Meta de cobertura nacional hacia finales de 2026 en sus más de 2.000 estaciones de servicio.",
+        "fuente": "La Última Noticias",
+        "url": "https://laultima.com.co/2026/09/08/va-a-tanquear-terpel-lanza-su-nuevo-portafolio-de-combustibles/"
+      }
+    ],
+    "situacion_micro": "Primer año de gestión de Óscar Bravo como presidente (desde inicios de 2026); apuesta por combustibles de nueva generación y expansión regional (Perú, Chile, Panamá) como palancas de crecimiento frente a la transición energética.",
+    "situacion_macro": "Márgenes atados al precio internacional del petróleo/refinados y a la política de precios de combustibles de cada país (regulación de precios en Colombia); exposición de mediano plazo a la transición hacia vehículos eléctricos; FX en sus operaciones fuera de Colombia (PEN, CLP, USD en Panamá).",
+    "confianza": "media"
+  },
+
+  "PROMIGAS": {
+    "descripcion": "Empresa colombiana de gas natural y energía multienergética (transporte y distribución de gas, y generación/distribución eléctrica), con operación en Colombia y Perú; llegó a 7,6 millones de clientes / más de 25 millones de usuarios.",
+    "ceo": "Juan Manuel Rojas Payán (presidente desde 2021)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Ingresos operacionales del 1T-2026 de $1,72 billones, utilidad neta cae 19% a $241.384 millones",
+        "resumen": "EBITDA de $547.000 millones (98% del presupuesto); el programa de crédito social 'Brilla' colocó $376.832 millones en 153.000 créditos, 94% a estratos 1-3.",
+        "fuente": "Valora Analitik / El Tiempo",
+        "url": "https://www.valoraanalitik.com/ingresos-promigas-primer-trimestre-2026/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Más de 122.000 nuevos clientes conectados a gas natural en el 2T-2026",
+        "resumen": "Continúa la expansión de cobertura en Colombia y Perú.",
+        "fuente": "El Norte",
+        "url": "https://elnorte.com.co/promigas-impulsa-el-desarrollo-de-la-region-a-traves-de-soluciones-multienergeticas-para-mas-de-25-millones-de-usuarios/"
+      }
+    ],
+    "situacion_micro": "Utilidad neta del 1T-2026 por debajo del año anterior pese a que sigue sumando clientes; el programa social Brilla es un canal de crecimiento y fidelización relevante para el negocio de distribución.",
+    "situacion_macro": "Ingresos regulados en buena parte por la CREG en Colombia y su par en Perú -- expuesta a decisiones tarifarias; sensible al precio internacional del gas/combustibles sustitutos y a la tasa de cambio COP/PEN/USD.",
+    "confianza": "media"
+  },
+
+  "PEI": {
+    "descripcion": "Principal vehículo inmobiliario colombiano listado en la BVC -- un fideicomiso de renta variable (Patrimonio Autónomo Estrategias Inmobiliarias), no una sociedad anónima tradicional: posee y administra activos de renta (oficinas, bodegas, locales comerciales y activos especializados) en más de 30 ciudades, administrado por PEI Asset Management.",
+    "ceo": "Jairo Corrales (presidente de PEI Asset Management, según su perfil corporativo)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Coloca exitosamente la duodécima emisión de Títulos Participativos por $500.000 millones",
+        "resumen": "7.142.857 títulos colocados a $70.000 cada uno.",
+        "fuente": "Bolsa de Valores de Colombia (comunicado)",
+        "url": "https://www.bvc.com.co/noticias/pei-realiza-la-decimosegunda-emision-de-titulos-participativos-por-medio-billon-de-pesos-cmevtbvvh1x9a08lddcr0tjsw"
+      }
+    ],
+    "situacion_micro": "Como fideicomiso (no una acción ordinaria), su análisis de valor no es directamente comparable con el de las demás emisoras (no tiene ROIC/WACC clásico); depende de la ocupación y los cánones de arrendamiento de su portafolio y de que las nuevas emisiones de títulos se coloquen a buen precio.",
+    "situacion_macro": "Muy sensible a las tasas de interés colombianas (compite con renta fija por los mismos inversionistas y su costo de financiación depende de ellas) y al ciclo de oficinas/comercio/logística en las principales ciudades del país.",
+    "confianza": "baja"
+  },
+
+  "GRUPO_AVAL": {
+    "descripcion": "Mayor conglomerado financiero de Colombia, matriz de varios bancos (Banco de Bogotá, Banco de Occidente, Banco Popular, AV Villas) y, hasta la escisión de marzo de 2026, también de BAC (banca en Centroamérica); participa además en pensiones/fiduciaria y en concesiones de infraestructura vía Corficolombiana.",
+    "ceo": "María Lorena Gutiérrez (presidenta desde marzo de 2024, primera mujer en liderar el grupo; Luis Carlos Sarmiento Gutiérrez es el presidente de la junta directiva, no el CEO)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-03-27",
+        "titulo": "Completa la escisión de su filial centroamericana BAC Holding International (BHI)",
+        "resumen": "Aval y Banco de Bogotá retuvieron un 75% directo de BHI, listada en las bolsas de Colombia y Panamá; tras el anuncio, la acción preferencial de Aval cayó 17,2% y la de Banco de Bogotá 25,2% en la sesión.",
+        "fuente": "Yahoo Noticias / AméricaEconomía",
+        "url": "https://es-us.noticias.yahoo.com/colombiano-grupo-aval-escinde-filial-180709216.html"
+      }
+    ],
+    "situacion_micro": "La escisión de BAC (Centroamérica) simplifica la estructura pero generó una fuerte caída bursátil inicial en Aval y Banco de Bogotá; el mercado todavía está reacomodando cómo valorar al grupo sin el negocio centroamericano consolidado.",
+    "situacion_macro": "Como holding bancario depende directamente de la tasa de intervención del Banco de la República y del ciclo de crédito/calidad de cartera en Colombia; la escisión de BAC reduce su diversificación geográfica hacia Centroamérica justo cuando esa región podía compensar el riesgo país colombiano.",
+    "confianza": "media"
+  },
+
+  "MINEROS": {
+    "descripcion": "Compañía colombiana de minería aurífera, con operaciones propias en Colombia y, mayoritariamente, en Nicaragua (Hemco), donde concentra cerca del 60% de su producción; también produce plata como subproducto.",
+    "ceo": "Daniel Henao (presidente desde finales de 2025, en reemplazo de David Londoño, como parte de una reestructuración de la cúpula directiva)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Producción de oro en Nicaragua +22% en el 1T-2026, plata +109%",
+        "resumen": "Expansión de la capacidad de procesamiento de 1.750 a 2.500 toneladas/día antes de fin de 2026; con 122.634 onzas equivalentes vendidas en 1S-2026, eleva el techo de su guía de producción 2026 a 240.000 onzas.",
+        "fuente": "El Colombiano / Yahoo Noticias",
+        "url": "https://www.elcolombiano.com/negocios/mineros-eleva-guia-produccion-oro-2026-segundo-trimestre-LG38584384"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Proyecta duplicar su producción de oro hacia 2030",
+        "resumen": "Apoyada en la expansión de Nicaragua y nuevos proyectos como Porvenir, en fase de licenciamiento final.",
+        "fuente": "Yahoo Noticias",
+        "url": "https://es-us.noticias.yahoo.com/mineros-proyecta-duplicar-producci%C3%B3n-oro-210305604.html"
+      }
+    ],
+    "situacion_micro": "Cambio de presidente a finales de 2025 coincide con una fase de fuerte expansión operativa (Nicaragua ya es ~60% de la producción); la ejecución de la ampliación de capacidad de procesamiento es clave para sostener la guía elevada de 2026.",
+    "situacion_macro": "Ingresos altamente correlacionados con el precio internacional del oro (y en menor medida la plata); operar mayoritariamente en Nicaragua la expone a riesgo político/regulatorio distinto del riesgo colombiano; sensible a la tasa de cambio COP/USD dado que el oro se vende en dólares.",
+    "confianza": "media"
+  },
+
+  "GEB": {
+    "descripcion": "Holding de energía con participación mayoritaria del Distrito de Bogotá, dueño de TGI (transporte de gas en Colombia) y con inversiones en transporte/distribución de gas y electricidad en Perú (Cálidda, entre otras), Guatemala y Brasil.",
+    "ceo": "Juan Ricardo Ortega (presidente)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Utilidad neta del 1T-2026 cae 43% interanual a $568.000 millones",
+        "resumen": "EBITDA de US$2,4 millones (+4%), pero los segmentos controlados cayeron 18% por revaluación del peso, una restricción temporal en Transportadora de Gas del Perú (TGP) y mayores gastos administrativos; utilidad neta de TGI cayó 11% a $83.000 millones.",
+        "fuente": "Portafolio",
+        "url": "https://www.portafolio.co/negocios/empresas/en-el-primer-trimestre-de-2026-utilidad-neta-del-grupo-energia-bogota-cayo-43-totalizando-568-000-millones-494052"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Incluida por quinto año consecutivo en el Anuario de Sostenibilidad de S&P Global (score ESG 84/100)",
+        "resumen": "Planea inversiones de ~US$400 millones en una planta de regasificación en La Guajira y proyectos en Guatemala, Perú y Brasil.",
+        "fuente": "Bogota.gov.co",
+        "url": "https://bogota.gov.co/mi-ciudad/habitat/grupo-energia-bogota-fue-incluido-en-el-anuario-de-sostenibilidad-2026"
+      }
+    ],
+    "situacion_micro": "Caída relevante de la utilidad neta del 1T-2026 por factores no operativos (revaluación del peso, restricción temporal en TGP, mayores gastos administrativos) más que por deterioro del negocio regulado de base; en el radar circula el posible interés del Gobierno para que GEB compre la participación de Ecopetrol en ISA (ver perfil de ISA), operación transformacional si se concreta.",
+    "situacion_macro": "Negocio regulado en varios países (Colombia, Perú, Guatemala, Brasil) sensible a decisiones tarifarias y cambios regulatorios en cada jurisdicción; expuesto a la revaluación/devaluación del COP frente al dólar y a otras monedas de la región (PEN, BRL, GTQ).",
+    "confianza": "media"
+  },
+
+  "BANCO_DE_BOGOTA": {
+    "descripcion": "Banco comercial colombiano, uno de los más antiguos y grandes del país, filial de Grupo Aval; tras la escisión de BAC (Centroamérica) en marzo de 2026 queda enfocado en la operación bancaria en Colombia.",
+    "ceo": "Juan Carlos Echeverry (presidente desde mayo de 2026, en reemplazo de César Prado, quien renunció por motivos personales; exministro de Hacienda 2010-2012)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-03-27",
+        "titulo": "Participa (junto a Grupo Aval) en la escisión de BAC Holding International",
+        "resumen": "Su acción cayó 25,2% en la sesión posterior al anuncio de la escisión.",
+        "fuente": "Yahoo Noticias",
+        "url": "https://es-us.noticias.yahoo.com/colombiano-grupo-aval-escinde-filial-180709216.html"
+      },
+      {
+        "fecha": "2026-08-01",
+        "titulo": "Completa la adquisición de la banca minorista (préstamos y depósitos) de Banco Itaú en Colombia",
+        "resumen": "La originación digital ya es el 80% de los desembolsos de préstamos personales; proyecta crecimiento de cartera de ~14% en 2026.",
+        "fuente": "Investing.com",
+        "url": "https://es.investing.com/news/transcripts/informe-de-resultados-banco-de-bogota-logra-mayor-beneficio-en-el-q2-2026-93CH-3806646"
+      }
+    ],
+    "situacion_micro": "Cambio de presidente en 2026 en medio de la escisión de BAC y de la integración de la banca minorista adquirida a Itaú -- dos frentes de ejecución simultáneos; fuerte caída bursátil tras el anuncio de la escisión que el mercado todavía está reacomodando.",
+    "situacion_macro": "Como banco enfocado ahora en Colombia, depende directamente de la tasa del Banco de la República, la inflación y el ciclo de crédito doméstico; el impuesto al patrimonio corporativo colombiano es un costo recurrente que pesa sobre la utilidad.",
+    "confianza": "media"
+  },
+
+  "FABRICATO": {
+    "descripcion": "Textilera colombiana centenaria (más de 105 años), fabricante de telas e insumos textiles, que en 2026 cerró un largo proceso de reestructuración de deuda bajo la Ley 550 iniciado por una crisis financiera de comienzos de siglo.",
+    "ceo": "Gustavo Lenis (presidente desde 2020; previamente lideró Avianca, la Aerocivil y Hyundai Colombia)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026-05",
+        "titulo": "Anuncia el fin de su proceso de reestructuración de deuda, más de dos décadas después de haberlo iniciado",
+        "resumen": "La deuda en su momento superó el 70% de los activos de la compañía, con pérdidas de más de $72.000 millones que forzaron acogerse a la Ley 550.",
+        "fuente": "La República",
+        "url": "https://www.larepublica.co/empresas/fabricato-quedo-libre-de-deudas-3798291"
+      },
+      {
+        "fecha": "2026-02",
+        "titulo": "Deja de producir tela denim por baja rentabilidad y alto contrabando",
+        "resumen": "Según su presidente, la salida de ese negocio mejoró márgenes y abrió espacio a nuevas líneas, en un año en que perdió ~40% de la facturación de planta frente al año anterior.",
+        "fuente": "Portafolio",
+        "url": "https://www.portafolio.co/negocios/empresas/cual-es-el-panorama-de-fabricato-su-presidente-explica-el-rumbo-de-la-compania-en-medio-de-la-reestructuracion-487249"
+      }
+    ],
+    "situacion_micro": "Cierre formal de la reestructuración de deuda es un hito positivo de dos décadas, pero coincide con una caída fuerte de facturación (~40%) y con la salida estratégica del negocio de denim; el reto es encontrar líneas de negocio rentables en un sector textil colombiano golpeado por importaciones y contrabando.",
+    "situacion_macro": "Altamente expuesta a la competencia de importaciones asiáticas y al contrabando textil; sensible a la política arancelaria colombiana, al costo laboral local y a la tasa de cambio COP/USD (insumos importados).",
+    "confianza": "media"
+  },
+
+  "ETB": {
+    "descripcion": "Empresa de telecomunicaciones con matriz mayoritaria del Distrito de Bogotá, en proceso de transformación desde telefonía tradicional hacia fibra óptica, conectividad para hogares/pymes y nuevas líneas tecnológicas (EdTech, IA).",
+    "ceo": "Diego Molano Vega (presidente desde enero de 2025; exministro TIC de Colombia en 2010)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Revierte pérdidas en el 1S-2026: utilidad de $26.126 millones frente a una pérdida de $67.937 millones en 1S-2025",
+        "resumen": "Ingresos totales de $838.481 millones (+8,9% interanual); los 'drivers de transformación' generaron ~$197.000 millones de impacto en el semestre, tras $437.000 millones en 2025.",
+        "fuente": "Valora Analitik",
+        "url": "https://www.valoraanalitik.com/etb-revirtio-perdidas-en-primer-semestre-de-2026-utilidad-llego-a-26-126-millones-y-avanza-plan-de-recuperacion/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Ingresos del segmento Hogares y Pymes +24% en el 1S-2026",
+        "resumen": "Operación ya 100% fibra óptica; base de clientes de fibra +10%, ventas +151% e instalaciones +145%.",
+        "fuente": "Pulzo",
+        "url": "https://www.pulzo.com/economia/etb-bogota-crecimiento-financiero-record-y-liderazgo-en-transformacion-digital-2026-PP5277994A"
+      }
+    ],
+    "situacion_micro": "Primer año completo de resultados positivos tras el giro hacia fibra óptica y la venta de activos no estratégicos; el reto es sostener el ritmo de instalaciones/ventas y ejecutar las nuevas líneas EdTech/IA anunciadas como palancas futuras de ingreso.",
+    "situacion_macro": "Negocio de telecomunicaciones muy competido en Bogotá (frente a Claro, Movistar, Tigo, WOM); depende de la inversión en infraestructura de fibra y de tarifas reguladas por la CRC; controlada por el Distrito de Bogotá, lo que la expone a decisiones políticas del gobierno distrital de turno.",
+    "confianza": "media"
+  },
+
+  "CORFICOLOMBIANA": {
+    "descripcion": "Corporación financiera colombiana (holding de inversiones) filial de Grupo Aval, con participaciones en concesiones viales de infraestructura (vía Episol/Concesionaria Ruta del Sol y otras), energía/gas y, desde 2026, entretenimiento (estadio de Bogotá).",
+    "ceo": "Milena López Rocha (presidenta desde febrero de 2026, en reemplazo de María Lorena Gutiérrez, quien pasó a presidir Grupo Aval; exCFO de Ecopetrol y Cenit)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Utilidad neta del 1T-2026 sube 52% interanual a $318.238 millones",
+        "resumen": "Ingresos consolidados de $3,42 billones ($3,29 billones un año antes), impulsados por el negocio de infraestructura.",
+        "fuente": "Portafolio",
+        "url": "https://www.portafolio.co/negocios/empresas/utilidad-neta-de-corficolombiana-en-el-primer-trimestre-del-2026-crece-52-frente-al-494065"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Adquiere 51% de la concesionaria del nuevo estadio de Bogotá y avanza en el cierre de la compra de Zelestra",
+        "resumen": "Utilidad neta consolidada del 1S-2026 de $717.658 millones (+1,7%); tráfico promedio en concesiones viales sube de 115.000 a 117.000 vehículos/día (Coviandina, Covipacífico).",
+        "fuente": "Yahoo Noticias",
+        "url": "https://es-us.noticias.yahoo.com/concesiones-jalonan-crecimiento-corficolombiana-2026-162000421.html"
+      }
+    ],
+    "situacion_micro": "Cambio de presidenta en 2026 justo cuando el negocio de concesiones viales es el principal motor de crecimiento; la diversificación reciente hacia entretenimiento (estadio) y energía (Zelestra) amplía el perfil de riesgo del holding más allá de infraestructura vial tradicional.",
+    "situacion_macro": "Como matriz de concesiones viales depende del tráfico vehicular (ligado al ciclo económico) y de decisiones/pagos del Estado colombiano (ANI); sensible a tasas de interés para el refinanciamiento de la deuda de los proyectos de infraestructura.",
+    "confianza": "media"
+  },
+
+  "ENKA": {
+    "descripcion": "Empresa antioqueña productora de fibras sintéticas y resinas, líder en reciclaje de botellas PET en Suramérica (marca EKO®), con negocios de fibras para textiles/geotextiles, resina reciclada para contacto con alimentos y poliolefinas a partir de tapas y etiquetas.",
+    "ceo": "Álvaro Hincapié (presidente desde 2003)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Cierra 2025 con ingresos operacionales de $406.475 millones y EBITDA de $28.705 millones",
+        "resumen": "Los 'negocios verdes' representaron 65% de los ingresos de 2025, impulsados por crecimiento en exportación de resina reciclada.",
+        "fuente": "El Colombiano",
+        "url": "https://www.elcolombiano.com/negocios/enka-resultados-2025-ingresos-reciclaje-pet-economia-circular-NF34576812"
+      }
+    ],
+    "situacion_micro": "Modelo de negocio ya mayoritariamente ligado a economía circular/reciclaje (65% de ingresos) en vez de fibras sintéticas tradicionales; en 2026 ejecuta un programa de recompra de acciones que da soporte al precio en un emisor de baja liquidez.",
+    "situacion_macro": "Depende del precio internacional de resinas plásticas vírgenes (referencia de precio de la resina reciclada) y del petróleo (insumo indirecto); demanda de sus fibras ligada al ciclo textil y de geotextiles/construcción; expuesta a la regulación de plásticos de un solo uso y economía circular en la región.",
+    "confianza": "media"
+  },
+
+  "CELSIA": {
+    "descripcion": "Generador y comercializador de energía eléctrica del Grupo Argos, con operación en Colombia y Centroamérica (Panamá, Costa Rica), enfocado en transición hacia energías renovables (solar, eólica, hidro).",
+    "ceo": "Ricardo Sierra (presidente)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Matriz energética proyectada 96% renovable en 2026",
+        "resumen": "230 MW solares adicionales en construcción hacia una meta de 590 MW operativos en Colombia; meta de 200 MWp en el negocio B2B de generación distribuida.",
+        "fuente": "Portafolio",
+        "url": "https://www.portafolio.co/negocios/empresas/celsia-el-96-de-la-matriz-sera-renovable-en-2026-570309"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Su presidente advierte sobre un 'racionamiento silencioso' de energía y riesgo de escasez de gas en Colombia",
+        "resumen": "Riesgo de suspensión de contratos de Canacol hacia 2027-2028; ingresos 2025 de $6,8 billones (+9,3% interanual).",
+        "fuente": "Yahoo Noticias / El Colombiano",
+        "url": "https://es-us.noticias.yahoo.com/presidente-celsia-fondo-especie-racionamiento-130000522.html"
+      }
+    ],
+    "situacion_micro": "Fuerte expansión de capacidad renovable (solar) en curso, con metas concretas para 2026; su presidente ha sido vocal públicamente sobre riesgos de escasez energética en Colombia, señal tanto de oportunidad (más generación necesaria) como de riesgo regulatorio/de suministro.",
+    "situacion_macro": "Expuesta al precio de bolsa de energía en Colombia (ligado a El Niño/La Niña y a los niveles de embalses) y al suministro de gas natural (riesgo de escasez señalado por la propia compañía); su operación en Centroamérica la expone a esas monedas y regulaciones locales.",
+    "confianza": "media"
+  },
+
+  "CEMENTOS_ARGOS": {
+    "descripcion": "Cementera colombiana con operación en Colombia, Estados Unidos, Centroamérica y el Caribe, en proceso de separarse en dos compañías especializadas: Argos Materials (EE.UU.) y Argos Latam (Colombia, Centroamérica, Caribe).",
+    "ceo": "Juan Esteban Calle preside la junta directiva durante la transición (además de asumir la presidencia de Grupo Argos desde abril de 2026); operativamente, Jason Teter es CEO de Argos Materials y Carlos Horacio Yusty es CEO de Argos Latam",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Ingresos consolidados del 1T-2026 de $1,22 billones y utilidad neta de $120.000 millones",
+        "resumen": "EBITDA de $271.000 millones; avanza la transformación hacia Argos Materials y Argos Latam.",
+        "fuente": "Argos (resultados financieros)",
+        "url": "https://argos.co/resultados_financieros_1t_2026_argos/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Ingresos del 2T-2026 de $1,3 billones (+2,4% interanual), EBITDA ajustado de $280.000 millones",
+        "resumen": "Volúmenes de cemento en Argos Latam +2% (2,3 millones de toneladas); en Colombia cemento +5,5% y concreto +15,9%, con EBITDA de esa operación +13% a $201.000 millones.",
+        "fuente": "Argos (resultados financieros)",
+        "url": "https://argos.co/resultados-financieros-2t-2026-argos/"
+      }
+    ],
+    "situacion_micro": "La separación en dos compañías (Argos Materials / Argos Latam), con CEOs operativos ya nombrados para cada una, es el evento estructural más relevante de los próximos ~24 meses; la ejecución simultánea del proceso de separación y de la operación diaria es el principal riesgo/oportunidad a vigilar.",
+    "situacion_macro": "Demanda de cemento/concreto ligada al ciclo de construcción en EE.UU., Colombia y Centroamérica/Caribe; costos de energía y clínker, y regulación de transición de carbono, presionan márgenes; alta exposición cambiaria COP/USD por la operación en dólares en EE.UU.",
+    "confianza": "media"
+  },
+
+  "BVC": {
+    "descripcion": "Operador de la bolsa de valores colombiana (renta variable, renta fija, derivados), en proceso de integración regional bajo el holding 'nuam' junto con las bolsas de Chile y Perú.",
+    "ceo": "Andrés Restrepo Montoya (gerente general desde 2023/2024, tras la salida de Juan Pablo Córdoba, quien pasó a liderar la integración regional nuam)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Mercado de capitales colombiano con dinámica positiva en el 1S-2026",
+        "resumen": "Renta variable en nuevos niveles de negociación, renta fija en máximos históricos de operaciones de fondeo, y expansión de derivados estandarizados.",
+        "fuente": "El Universal",
+        "url": "https://www.eluniversal.com.co/economica/2026/08/05/asi-le-fue-al-mercado-de-capitales-de-colombia-en-el-primer-semestre-de-2026/"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Avanza la implementación de una nueva infraestructura tecnológica de negociación (motor de calce unificado)",
+        "resumen": "Se desplegará primero en Colombia y luego en Perú y Chile, como parte de la integración con nuam.",
+        "fuente": "El Tiempo",
+        "url": "https://www.eltiempo.com/economia/sector-financiero/bvc-fortalece-resultados-y-acelera-modernizacion-tecnologica-en-medio-de-integracion-regional-3544797"
+      }
+    ],
+    "situacion_micro": "La integración regional nuam (Colombia-Chile-Perú) es el evento estructural central de la BVC en curso, con inversión tecnológica relevante; su propio ingreso depende de los volúmenes negociados en el mercado colombiano, que a su vez dependen de la liquidez y del apetito de riesgo de los inversionistas locales.",
+    "situacion_macro": "Como operador de mercado, sus ingresos están correlacionados con el ciclo de tasas de interés (afecta volúmenes de renta fija) y con la confianza de los inversionistas en el mercado colombiano; el éxito de la integración con nuam depende también de decisiones regulatorias en los tres países.",
+    "confianza": "media"
+  },
+
+  "EXITO": {
+    "descripcion": "Mayor cadena de retail/supermercados de Colombia (marcas Éxito, Carulla, Surtimax, Super Inter, Surti Mayorista), controlada desde 2024 por el salvadoreño Grupo Calleja (dueño de Super Selectos).",
+    "ceo": "Carlos Calleja (presidente desde marzo de 2024, primer presidente no colombiano en la historia de la compañía; vicepresidente del Grupo Calleja)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Continúa la estrategia 'Precio InSUPERable' en Éxito y Carulla",
+        "resumen": "Junto con promociones 'ImPRECIOnantes' y días temáticos; en la primera quincena del año activó descuentos de hasta 70%.",
+        "fuente": "Portafolio",
+        "url": "https://www.portafolio.co/negocios/comercio/grupo-exito-activa-descuentos-de-hasta-70-para-maximizar-el-ahorro-en-la-primera-quincena-del-486317"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "Plan de inversión que busca duplicar los ~US$80 millones invertidos en 2025",
+        "resumen": "Mitad destinada a expansión/renovación de tiendas; reconversión de tiendas Éxito a la marca Carulla, con 19 intervenciones reportando +14% en ventas.",
+        "fuente": "La República",
+        "url": "https://www.larepublica.co/empresas/grupo-exito-espera-reconvertir-14-tiendas-a-carulla-durante-este-ano-y-avanzar-en-transformacion-4310257"
+      }
+    ],
+    "situacion_micro": "Bajo control salvadoreño desde 2024, la estrategia se ha enfocado en agresividad de precios y en reposicionar Carulla como 'supermercado de Colombia' más accesible -- un cambio de posicionamiento de marca en curso cuyo resultado final todavía se está probando en el mercado.",
+    "situacion_macro": "Como retailer de consumo masivo, muy expuesto al ciclo de consumo de los hogares colombianos, la inflación de alimentos y el poder adquisitivo; compite en un mercado de descuento duro cada vez más intenso (D1, Ara) que presiona márgenes en todo el sector.",
+    "confianza": "media"
+  },
+
+  "DAVIVIENDA_GROUP": {
+    "descripcion": "Holding financiero que agrupa a Banco Davivienda y las operaciones del antiguo Scotiabank en Colombia (ahora 'Davibank'), Panamá y Costa Rica, tras la adquisición de esos activos a Scotiabank.",
+    "ceo": "Javier José Suárez Esparragoza (presidente/CEO desde enero de 2022)",
+    "noticias_impacto": [
+      {
+        "fecha": "2026",
+        "titulo": "Utilidad neta del Grupo de $830.000 millones en el 2T-2026 (+$525.000 millones frente al trimestre anterior)",
+        "resumen": "Solo Banco Davivienda aportó $663.000 millones en el trimestre (+52,8%); utilidad acumulada del semestre de $945.000 millones frente a $724.000 millones un año antes.",
+        "fuente": "Yahoo Noticias",
+        "url": "https://es-us.noticias.yahoo.com/utilidad-davivienda-group-1-13-204700426.html"
+      },
+      {
+        "fecha": "2026",
+        "titulo": "El presidente descarta por ahora una escisión de DaviPlata",
+        "resumen": "La billetera digital/neobanco se espera alcance punto de equilibrio hacia finales de 2026 o 2027.",
+        "fuente": "Valora Analitik",
+        "url": "https://www.valoraanalitik.com/daviplata-equilibrio-2026-davivienda-group/"
+      }
+    ],
+    "situacion_micro": "Fuerte recuperación de utilidad trimestral en 2026, apoyada en la integración de los activos excomprados a Scotiabank; DaviPlata sigue sin llegar a punto de equilibrio, aunque la compañía descarta separarla del grupo por ahora.",
+    "situacion_macro": "Como grupo bancario con operación en Colombia, Panamá y Costa Rica, depende de las tasas de interés y el ciclo de crédito de cada país; la integración de la operación excomprada a Scotiabank sigue siendo un proceso en curso con riesgo de ejecución.",
     "confianza": "media"
   }
 }
