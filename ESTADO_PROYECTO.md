@@ -1334,3 +1334,19 @@ consolidación distinto en la misma serie. Detalle completo en `db/DOCTRINA_VALO
 **Estado final del universo de 24 emisores**: 6 huecos, todos FABRICATO -- los 5 aquí cerrados
 (permanentes) + 2019-T1 (nunca verificado, el único que sigue genuinamente abierto). Ningún otro
 emisor tiene huecos pendientes.
+
+## 21-sep-2026 (cont. 4) — 2019-T1 cargado, cierra también 2018-T2/T3 por alcance, no por ausencia
+
+Alex confirmó y cargó `2019-T1_EEFF-Consolidados-XBRL.xbrl` (verificado en disco, 6.127.707 bytes).
+`jobs/extraer_xbrl.py --emisor FABRICATO` lo extrajo bien (`xbrl_radicado`, balance cuadra:
+406,17+524,71=930,89 MMM). Mismo efecto colateral que con 2019-T4: extender el rango hacia atrás
+expuso 2018-T2 y 2018-T3 como huecos nuevos.
+
+Decisión: no perseguirlos. Es historia pre-2020 (fuera de la ventana del resto del universo),
+Fabricato no pasa la puerta de liquidez del Pilar 1, y seguir la cadena hacia atrás no tiene un fin
+claro -- cada archivo revela un trimestre más. Cerrados como "no perseguido, bajo impacto" por
+decisión de alcance, distinto de los 5 de 2021-2022 que están confirmados como genuinamente no
+radicados. Detalle y la regla para el futuro en `db/DOCTRINA_VALOR.md` §5F.
+
+**Estado final real del universo de 24 emisores**: 7 huecos, todos FABRICATO, todos cerrados por
+decisión explícita de no seguir. Ningún otro emisor tiene huecos pendientes.

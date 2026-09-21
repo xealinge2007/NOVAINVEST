@@ -488,6 +488,29 @@ de esta nota.
 (permanentes) + **2019-T1** (§5E, nunca verificado, el único que sigue genuinamente abierto).
 Ningún otro emisor tiene huecos.
 
+**Actualización 21-sep-2026 (cont.): 2019-T1 se cargó, y con eso se cierra también 2018-T2/T3.**
+Alex encontró y confirmó `2019-T1_EEFF-Consolidados-XBRL.xbrl` en disco (6.127.707 bytes, Consolidado
+Intermedio, corte 2019-03-31) — cargado con `jobs/extraer_xbrl.py --emisor FABRICATO`
+(`xbrl_radicado`, 9 campos, `cuadra_balance` correcto: 406,17+524,71=930,89 MMM). Mismo efecto
+colateral que con 2019-T4: extender el rango hacia atrás expuso **2018-T2 y 2018-T3** como huecos
+nuevos.
+
+**No se persigue esta vez.** Es historia pre-2020, fuera de la ventana estándar del resto del
+universo (todos arrancan en 2020-T1), Fabricato no pasa la puerta de liquidez del Pilar 1, y seguir
+seguiría el mismo patrón de rendimientos decrecientes ya identificado (cada archivo revela un
+trimestre más atrás, sin fin claro). Se cierran como "no perseguido, bajo impacto", igual
+tratamiento que los 5 de 2021-2022 pero por una razón distinta: aquellos están confirmados como
+genuinamente no radicados; estos (2018-T2/T3) simplemente no se buscaron — es una decisión de
+alcance, no un hallazgo de ausencia.
+
+**Regla para el futuro**: no seguir esta cadena hacia atrás de 2019 para FABRICATO sin una razón
+analítica nueva y explícita — cada trimestre adicional de historia pre-2020 de un emisor que ya
+falla la puerta de liquidez no vale el riesgo de seguir abriendo huecos nuevos indefinidamente.
+
+**Estado final real del universo de 24 emisores**: 7 huecos, todos FABRICATO, todos cerrados por
+decisión explícita de no perseguir más (5 confirmados no radicados + 2 de alcance, 2018-T2/T3).
+Ningún otro emisor tiene huecos.
+
 ## 7. W1 — esquema del motor de 4 pilares (18-sep-2026)
 
 Con W0 cerrado (§5C), se pasó a W1 por decisión de Alex. `db/migrate_w1_valor.sql` — **no aplicado
