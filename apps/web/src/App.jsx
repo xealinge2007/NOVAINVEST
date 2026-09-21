@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Objetivos from "./pages/Objetivos";
 import Perfil from "./pages/Perfil";
 import Portafolio from "./pages/Portafolio";
+import RankingValor from "./pages/RankingValor";
 import Senales from "./pages/Senales";
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="objetivos" element={<Objetivos />} />
           <Route path="portafolio" element={<Portafolio />} />
           <Route path="fundamentales" element={<Fundamentales />} />
+          <Route path="fundamentales/ranking" element={<RankingValor />} />
           <Route path="senales" element={<Senales />} />
           <Route path="etf" element={<FichasEtf />} />
           <Route path="cuenta" element={<Cuenta />} />

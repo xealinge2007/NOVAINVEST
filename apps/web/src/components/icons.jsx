@@ -86,6 +86,14 @@ export function IconFundamentales(props) {
   );
 }
 
+export function IconRanking(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M8 21V13M14 21V8M20 21V3M4 21v-6" />
+    </svg>
+  );
+}
+
 export function IconSenales(props) {
   return (
     <svg {...base} {...props}>

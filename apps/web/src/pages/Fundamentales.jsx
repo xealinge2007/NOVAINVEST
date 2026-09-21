@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { getFundamentales, getSupuestosMacro, getEvolucionFundamental, getPerfilCualitativo } from "../api/client";
 import EvolucionChart from "../components/EvolucionChart";
+import { esEstrella, fmt } from "../lib/fundamentalesUtils";
 
 const METRICAS_EVOLUCION = [
   { campo: "ebitda_ttm", etiqueta: "EBITDA (TTM)" },
@@ -26,16 +28,6 @@ const ETIQUETA_MACRO = {
   spread_corporativo: "Spread corporativo",
   tasa_renta: "Tarifa de renta",
 };
-
-// Crea valor por encima de su costo de capital y sin múltiplos fuera de rango.
-function esEstrella(f) {
-  return f.ranking_estrella && f.spread_valor > 0 && !f.alerta_multiplos;
-}
-
-function fmt(v, dec = 1) {
-  if (v === null || v === undefined) return "—";
-  return Number(v).toLocaleString("es-CO", { maximumFractionDigits: dec, minimumFractionDigits: 0 });
-}
 
 const MAX_COMPARACION = 3;
 const FILTROS_INICIALES = { busqueda: "", sector: "", soloEstrellas: false, peMax: "", spreadMin: "" };
@@ -87,17 +79,6 @@ export default function Fundamentales() {
     });
   }
 
-  // Todas las acciones, de mejor a peor puntaje (spread de valor ROIC-WACC).
-  // Sin dato de spread se manda al final -- no es "peor", es "sin calcular".
-  const filasOrdenadas = useMemo(() => {
-    return [...filas].sort((a, b) => {
-      if (a.spread_valor === null && b.spread_valor === null) return 0;
-      if (a.spread_valor === null) return 1;
-      if (b.spread_valor === null) return -1;
-      return b.spread_valor - a.spread_valor;
-    });
-  }, [filas]);
-
   return (
     <div className="flex flex-col gap-6">
       <div className="border-b border-slate-200 pb-4">
@@ -108,40 +89,14 @@ export default function Fundamentales() {
           márgenes, ROE, múltiplos de mercado y creación de valor (ROIC vs. costo de capital). Doble canal
           (PDF + XBRL radicado ante la Superfinanciera). No es asesoría financiera ni recomendación de inversión.
         </p>
+        <Link to="/fundamentales/ranking" className="mt-2 inline-block text-sm text-brand-700 underline">
+          Ver ranking de valor completo →
+        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {cargando && <p className="text-sm text-slate-500">Cargando…</p>}
       {!cargando && filas.length === 0 && <p className="text-sm text-slate-500">Todavía no hay análisis cargado.</p>}
-
-      {filasOrdenadas.length > 0 && (
-        <div>
-          <h2 className="font-serif text-base font-semibold text-slate-900">Ranking de valor — todas las acciones</h2>
-          <p className="mt-1 mb-3 text-xs text-slate-500">
-            Todos los emisores, de mejor a peor spread de creación de valor (ROIC − WACC; en bancos y holdings
-            financieros, ROE − Ke). Las marcadas con ★ crean valor por encima de su costo de capital y no tienen
-            múltiplos fuera de rango ("Estrellas de la BVC"). No es una recomendación de inversión — sin backtest todavía.
-          </p>
-          <div className="flex flex-col divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
-            {filasOrdenadas.map((f, i) => (
-              <div key={f.emisor_id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                <span className="w-6 shrink-0 text-right font-mono text-xs text-slate-400">{i + 1}</span>
-                <span className="w-4 shrink-0 text-center text-amber-500">{esEstrella(f) ? "★" : ""}</span>
-                <span className="flex-1 truncate font-medium text-slate-800">{f.nombre}</span>
-                <span className="hidden font-mono text-xs text-slate-400 sm:inline">{f.ticker}</span>
-                <span className="hidden text-xs text-slate-400 md:inline">{f.sector || "—"}</span>
-                <span
-                  className={`cifra w-20 shrink-0 text-right text-sm font-semibold ${
-                    f.spread_valor === null ? "text-slate-400" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
-                  }`}
-                >
-                  {f.spread_valor === null ? "—" : `${f.spread_valor >= 0 ? "+" : ""}${fmt(f.spread_valor)}pp`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {macro.length > 0 && (
         <details className="rounded-lg border border-slate-200 px-4 py-3 text-sm">
@@ -236,7 +191,7 @@ export default function Fundamentales() {
             Elige una acción para ver su ficha completa debajo. El porcentaje es el spread de creación de valor
             (ROIC − WACC / ROE − Ke) — placeholder del score de valor mientras se construye el motor de 4 pilares.
           </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
             {filasFiltradas.map((f) => {
               const activo = expandido === f.emisor_id;
               const seleccionado = seleccionados.includes(f.emisor_id);
@@ -249,7 +204,7 @@ export default function Fundamentales() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") setExpandido(activo ? null : f.emisor_id);
                   }}
-                  className={`relative flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-3 py-3 text-center transition-colors ${
+                  className={`relative flex cursor-pointer flex-col items-center gap-0.5 rounded-md border px-1.5 py-1.5 text-center transition-colors ${
                     activo
                       ? "border-brand-700 bg-brand-900/5 ring-2 ring-brand-700/20"
                       : "border-slate-200 bg-white hover:border-slate-300"
@@ -262,17 +217,17 @@ export default function Fundamentales() {
                     onChange={() => alternarSeleccion(f.emisor_id)}
                     onClick={(e) => e.stopPropagation()}
                     title={`Comparar (máx. ${MAX_COMPARACION})`}
-                    className="absolute left-2 top-2"
+                    className="absolute left-1 top-1 h-3 w-3"
                   />
                   {f.ranking_estrella && (
-                    <span className="absolute right-2 top-2 font-mono text-[10px] text-amber-600">
+                    <span className="absolute right-1 top-1 font-mono text-[9px] text-amber-600">
                       {esEstrella(f) ? `★${f.ranking_estrella}` : `#${f.ranking_estrella}`}
                     </span>
                   )}
-                  <span className="mt-3 line-clamp-2 text-sm font-medium text-slate-900">{f.nombre}</span>
-                  <span className="text-xs text-slate-400">{f.ticker}</span>
+                  <span className="mt-2.5 line-clamp-2 text-xs font-medium text-slate-900">{f.nombre}</span>
+                  <span className="text-[10px] text-slate-400">{f.ticker}</span>
                   <span
-                    className={`cifra text-lg font-semibold ${
+                    className={`cifra text-sm font-semibold ${
                       f.spread_valor === null ? "text-slate-400" : f.spread_valor >= 0 ? "text-emerald-700" : "text-red-700"
                     }`}
                   >

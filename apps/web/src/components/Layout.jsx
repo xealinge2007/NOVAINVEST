@@ -16,6 +16,7 @@ import {
   IconObjetivos,
   IconPerfil,
   IconPortafolio,
+  IconRanking,
   IconSalir,
   IconSenales,
 } from "./icons";
@@ -29,7 +30,8 @@ const SECCIONES_NAV = [
     titulo: "Inversiones",
     links: [
       { to: "/portafolio", texto: "Portafolio", Icono: IconPortafolio },
-      { to: "/fundamentales", texto: "Fundamentales", Icono: IconFundamentales },
+      { to: "/fundamentales", texto: "Fundamentales", Icono: IconFundamentales, fin: true },
+      { to: "/fundamentales/ranking", texto: "Ranking de valor", Icono: IconRanking },
       { to: "/senales", texto: "Señales", Icono: IconSenales },
       { to: "/etf", texto: "ETF", Icono: IconEtf },
     ],
