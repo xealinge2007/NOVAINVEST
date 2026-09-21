@@ -297,9 +297,9 @@ colisión con un patrón ya establecido es real** — ahí es cuando toca coorde
    `lector_xbrl.py` — no eran 4 causas distintas, era el mismo bug de contexto de duración/instante.
    Quedaron en 0.
 8. ✅ **Hecho (18-sep-2026): se le pidieron a Cowork los períodos pendientes** — 10 archivos nuevos
-   entregados, 6 confirmados ausentes en SIMEV (no es descarga fallida). Quedan **8** pendientes
-   reales tras la corrida más reciente de la matriz (§3B) — 7 canal C, 1 canal B (PEI 2025-T4, no
-   necesita descarga, necesita lectura visual).
+   entregados, 6 confirmados ausentes en SIMEV (no es descarga fallida). Quedaban **8** pendientes
+   reales tras esa corrida de la matriz (§3B) — 7 canal C, 1 canal B (PEI 2025-T4). El canal B se
+   cerró el 21-sep-2026 (ver §5D) — quedan **7, todos canal C**, todos de descarga.
 9. GRUPO_AVAL 2022-T1 tiene un bug DISTINTO al de §5C (no hay ni acciones ni utilidad por acción
    etiquetadas para deducir la escala) — no perseguido, 1 archivo, bajo impacto.
 
@@ -368,6 +368,40 @@ sin cifras, 0 errores. Los 6 casos conocidos ahora resuelven correctamente (Bogo
 consulta directa: 5/6 casos con `activos_totales` real; el sexto (GRUPO_AVAL 2022-T1) es un bug
 DISTINTO (el archivo no tiene ni acciones ni utilidad por acción etiquetadas, y la magnitud sola no
 alcanza para deducir la escala) -- no perseguido esta sesión, bajo impacto (1 archivo).
+
+## 5D. PEI 2025-T4 — canal B resuelto, 1 de los 8 huecos cerrado (21-sep-2026)
+
+Mismo método que GRUPO_SURA (§ arriba): `2025-T4_Informe-Fin-de-Ejercicio.pdf` (id 417) traía las
+páginas del Estado de Situación Financiera y el Estado de Resultados Integrales escaneadas (sin capa
+de texto, `extract_text()` devolvía 0 caracteres en pág. 8-11), por eso el triage nunca las ubicó.
+Leídas como imagen (`pdfplumber.to_image()`, resolución 200):
+
+- **Balance (pág. 8, en miles de pesos)**: activos 10.190.163.348 · pasivos 3.051.935.489 ·
+  patrimonio 7.138.227.859. Cuadra exacto: pasivos + patrimonio = activos.
+- **Resultados (pág. 9)**: ingresos operacionales 887.974.254 · utilidad del ejercicio 517.311.573.
+- **Cruce contra el comparativo Dic-2024 de este mismo documento vs. la fila ya cargada
+  `PEI/2024-ANUAL`**: patrimonio 6.347.908.339 (miles) = 6347.908 MMM y utilidad neta 509.241.022
+  (miles) = 509.241 MMM — **coinciden exactos, al peso**, con los valores ya en
+  `fundamentales_reportados` (6347.908 y 509.241). Confirma que la lectura y la conversión de unidad
+  son correctas antes de insertar el período nuevo.
+- `deuda_financiera` se define como "Obligaciones financieras" (corriente + no corriente), **sin**
+  bonos ordinarios ni cuentas por pagar — inferido cruzando la fila 2024 ya cargada
+  (`deuda_financiera=2509.549`) contra las líneas del balance hasta encontrar la combinación exacta,
+  no asumido a ojo.
+
+Insertado en `fundamentales_reportados` (`metodo_validacion='manual'`, igual que las filas T4 de
+GRUPO_SURA): `activos_totales=10190.163`, `pasivos_totales=3051.935`, `patrimonio=7138.228`,
+`ingresos=887.974`, `utilidad_neta=517.312`, `deuda_financiera=2146.247`. `utilidad_operacional`,
+`ebitda`, `flujo_caja_operativo` y `dividendos_decretados` quedan `null` a propósito: la única cifra
+parecida a "operacional" en el estado de resultados de un fideicomiso inmobiliario ("Utilidad
+Generada por la Operación") incluye valorización de propiedades de inversión, que no es
+directamente comparable al `utilidad_operacional` del resto del universo — se prefiere `null` a
+una cifra que compare manzanas con peras. `reportes_archivo` id 417 actualizado a `procesado`.
+
+**Verificado**: `python jobs/matriz_huecos_fundamentales.py` antes/después — huecos pendientes bajó
+de 8 (7 canal C + 1 canal B) a **7 (7 canal C, 0 canal B)**. Quedan solo los de descarga (Alex/Cowork):
+DAVIVIENDA_GROUP 2025-T3; FABRICATO 2019-T4, 2021-T2, 2021-T3, 2021-T4, 2022-T1, 2022-T4 — lista
+completa en `PEDIDOS_DESCARGA.csv` (regenerado, no trackeado en git).
 
 ## 7. W1 — esquema del motor de 4 pilares (18-sep-2026)
 

@@ -1253,3 +1253,22 @@ verificado por consulta directa.
   (`C:\Proyectos\novainvest` ni `C:\Proyectos`) -- la única copia está en el respaldo congelado de
   OneDrive, que la memoria del proyecto prohíbe tocar. Queda pendiente de que Alex diga dónde vive
   el archivo real o lo mueva al repo activo.
+
+## 21-sep-2026 — PEI 2025-T4 (canal B) cerrado: 8 huecos -> 7
+
+Alex pidió cerrar los huecos de datos pendientes. De los 8 (7 canal C + 1 canal B, ver
+`PEDIDOS_DESCARGA.csv`), el de canal B (PEI 2025-T4) no necesitaba descarga: el archivo
+`2025-T4_Informe-Fin-de-Ejercicio.pdf` ya existía, solo que sus páginas de balance y resultados
+están escaneadas (sin capa de texto) y el triage nunca las ubicó. Leídas visualmente
+(`pdfplumber.to_image()`), verificadas por cuadre del balance (activos = pasivos + patrimonio,
+exacto) y cruzadas contra la fila `PEI/2024-ANUAL` ya cargada (patrimonio y utilidad neta del
+comparativo Dic-2024 del propio documento coinciden al peso con lo ya en Supabase). Insertada en
+`fundamentales_reportados` (`metodo_validacion='manual'`) y `reportes_archivo` id 417 marcado
+`procesado`. Detalle completo, incluida la lógica de `deuda_financiera`, en
+`db/DOCTRINA_VALOR.md` §5D.
+
+Verificado con `python jobs/matriz_huecos_fundamentales.py`: huecos pendientes bajó de 8 a **7,
+los 7 restantes canal C** (descarga): DAVIVIENDA_GROUP 2025-T3; FABRICATO 2019-T4, 2021-T2,
+2021-T3, 2021-T4, 2022-T1, 2022-T4. Esos 7 necesitan que Alex (o Cowork) los descargue del
+SIMEV/página de relación con inversionistas del emisor — no son un problema de código ni de
+lectura, no se pueden cerrar desde esta sesión.
