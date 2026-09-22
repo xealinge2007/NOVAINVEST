@@ -1530,5 +1530,43 @@ los holdings anteriores (a diferencia de GEB y Cibest, que cotizan con prima).
 `jobs/test_valor_engine.py` extendido a 7 holdings (35 aserciones, todas pasan). **W3a queda
 ampliado a 7 de 7 holdings**: Sura, Argos, Aval, Corficolombiana, GEB, Cibest, Davivienda Group.
 Detalle completo en `db/DOCTRINA_VALOR.md` §9G (auditoría), §9H (Cibest), §9I (Davivienda Group).
-ISA sigue pendiente de conseguir su PDF de EEFF Separados. Próximo paso del plan, W3b, no iniciado --
-pendiente de confirmación explícita de Alex.
+ISA sigue pendiente de conseguir su PDF de EEFF Separados.
+
+## 21/22-sep-2026 (cont. 12) — W3b: validación externa, cobertura parcial y honesta
+
+Alex confirmó empezar W3b (el primer "interruptor de apagado" del plan). El SOTP actual de
+Davivienda Corredores resultó **no disponible**: las páginas públicas fetcheables son de 2023/2024,
+de antes del desenroque GEA, con una estructura de cruce accionario que ya no existe -- compararlas
+sería medir contra un dato obsoleto, no validar el NAV.
+
+Al reconstruir el desenroque GEA (dic-2024, fecha del Convenio de Escisión) se encontró que Sura y
+Argos **se poseían mutuamente** en esa fecha -- un problema de circularidad real (NAV_Sura depende
+de Argos y viceversa). Alex decidió resolverlo con una sola iteración a valor en libros, sin
+recursión, sacrificando precisión por simplicidad.
+
+Se ejecutaron 2 de las 4 referencias del plan:
+- **Gilinski/Sura (2021-2022) -- PASA, prueba rigurosa**: única referencia con dinero real de por
+  medio. Se reconstruyó el NAV-lookthrough de Sura a dic-2021 (comparativo del informe 2022-ANUAL,
+  balance verificado exacto): COP 42.724/acción -- coincide casi exacto con la cifra que el propio
+  plan ya citaba de investigación previa ("valor patrimonial de más de $40.000"). El precio de la
+  OPA (US$8,01 ≈ COP 31.000) cae exactamente entre el precio de mercado previo (~COP 23.500) y el
+  NAV-lookthrough, capturando ~39% del descuento -- la primera cifra concreta de "cuánto descuento es
+  cobrable en Colombia" que pedía el plan.
+- **Desenroque GEA -- evidencia cualitativa, no prueba de aceptación**: no fue una transacción en
+  efectivo, así que el criterio "precio pagado vs NAV" no aplica directamente. Se confirmó que Sura y
+  Argos cotizaban con descuento sustancial a su propio valor en libros antes del evento (31,4% y
+  56,2% respectivamente, este último con conteo de acciones aproximado, confianza baja) --
+  consistente con la revalorización posterior documentada por la prensa.
+- **SOTP Davivienda** y **OPA Gilinski/Nutresa** quedan sin cubrir, con la razón documentada (dato no
+  disponible; Nutresa requiere la ruta EPV de W3c, que no existe todavía).
+
+**Veredicto explícito, sin maquillar el número**: cobertura formal 1,5 de 4 referencias, no los "3 de
+4" que pide el plan para pasar limpio. Recomendación: tratar W3b como completado con cobertura
+parcial y documentada, no como bloqueado ni aprobado sin reservas -- la referencia que sí se cubrió
+con rigor es la que prueba el corazón de la doctrina (Whitman/Greenwald: ¿el mercado paga entre
+precio de bolsa y NAV conservador?), y la respuesta fue sí, con una cifra concreta que corrige la
+expectativa ingenua del plan original sin inventar el dato.
+
+Nuevo archivo `jobs/validar_valor_eventos.py` (ejecutable, sin Supabase, 5/5 verificaciones internas
+pasan). Detalle completo en `db/DOCTRINA_VALOR.md` §9J. Decisión pendiente de Alex: avanzar a W3c con
+esta cobertura, o perseguir más validación antes.

@@ -1100,6 +1100,111 @@ Group), todos cargados, verificados y probados (`jobs/test_valor_engine.py`, 35 
 pasan). ISA queda pendiente de conseguir su PDF de EEFF Separados (no está en el corpus local) — no
 se agrega sin ese dato.
 
+## 9J. W3b — Validación externa (21/22-sep-2026) — cobertura parcial, honesta
+
+**Interruptor de apagado #1 del plan (§8): "pasa si cumple en al menos 3 de las 4 referencias".**
+Esta sesión cubrió **1 de 4 con prueba rigurosa** (Gilinski/Sura), **1 de 4 con evidencia cualitativa
+de apoyo, no de aceptación** (desenroque GEA), y **2 de 4 sin cubrir**, con la razón documentada para
+cada una. No se fuerza un veredicto "pasa 3 de 4" — sería inventar cobertura que no existe. Script:
+`jobs/validar_valor_eventos.py` (ejecutable, sin dependencia de Supabase, 5/5 verificaciones internas
+pasan).
+
+### Referencia 1 — SOTP de Davivienda Corredores (Argos y Sura): NO DISPONIBLE
+
+Las páginas públicas de "Zoom a las Empresas" (`libro.daviviendacorredores.com`) fetcheables son de
+la edición **2023/2024** — es decir, de **antes** del desenroque GEA (jul-2025) — y describen una
+estructura de cruce accionario (Sura dueña de Argos y viceversa) que ya no existe: no son comparables
+contra el NAV post-restructuración de W3a. La alternativa más cercana encontrada — precios objetivo
+de **Credicorp Capital** (no Davivienda) del 4-jul-2025, post-transacción (Sura $42.400/acción, Argos
+ordinaria $16.500/acción) — está basada en resultados del 1T-2025 y quedó obsoleta por la propia
+subida del mercado (Sura pasó de ~$34-37k en jul-2025 a $68.900 hoy): compararla contra el NAV a
+dic-2025 mediría qué tan vieja está la cifra, no si el NAV es correcto. **No se usa.**
+
+### Referencia 2 — OPA de Gilinski sobre Grupo Sura (nov-2021/ene-2022): PASA (prueba rigurosa)
+
+Único evento con un precio pagado real en efectivo, que es exactamente lo que mide el criterio del
+plan. Reconstrucción:
+
+- **NAV-lookthrough de Sura a dic-2021** (fecha comparativa más cercana al lanzamiento de la OPA,
+  30-nov-2021 — tomada del Estado de Situación Financiera Separado del informe **2022-ANUAL**, que
+  incluye la columna comparativa "31 de diciembre de 2021", pág. 315): Total activos 30.583,355 MMM =
+  Total pasivos 5.836,391 + Total patrimonio 24.746,964 MMM (balance verificado exacto).
+- **Simplificación pragmática** (misma decisión que para GEA, ver abajo): todas las participaciones a
+  valor en libros, sin revaluar cotizadas a precio histórico — evita cazar precios de Bancolombia/
+  Argos a dic-2021 y equivale matemáticamente a NAV-lookthrough = Total Patrimonio.
+- **Acciones a dic-2021**: 579.228.875 (466.720.702 ordinarias + 112.508.173 preferenciales, Nota
+  9/10 del informe 2022-ANUAL, pág. 366 — antes de las recompras masivas que después redujeron el
+  conteo a las ~165M ordinarias actuales).
+- **NAV-lookthrough por acción**: **COP 42.724** — coincide casi exacto con la cifra que el propio
+  plan ya citaba de investigación previa ("valor patrimonial de más de $40.000"), verificación
+  cruzada independiente y consistente.
+- **Precio de la OPA**: US$8,01/acción (30-nov-2021, TRM del día de radicación, ~3.870-3.880 COP/USD)
+  ≈ **COP 31.000/acción**.
+- **Precio de mercado previo** (antes de conocerse la OPA, finales de nov-2021): la prensa reporta un
+  rango de COP 20.000-25.000 según la fuente y el día exacto — se usó el punto medio (COP 23.500),
+  confianza media (no se encontró un cierre diario preciso del 29-nov-2021 específicamente).
+
+**Resultado**: COP 23.500 (mercado previo) < **COP 31.000 (OPA)** < COP 42.724 (NAV-lookthrough) —
+el precio pagado cae exactamente donde el criterio del plan espera. La OPA capturó **~39% del
+descuento** entre el precio de mercado y el NAV-lookthrough — la primera cifra concreta de "cuánto
+descuento es realmente cobrable en Colombia" que pedía el plan (§8).
+
+### Referencia 3 — Desenroque GEA (jul-2025): evidencia cualitativa, NO prueba de aceptación
+
+**Hallazgo de diseño**: el desenroque **no fue una transacción en efectivo** — fue una distribución
+de acciones (escisión) para deshacer el cruce accionario, así que el criterio "precio pagado entre
+mercado y NAV-P75" no le aplica directamente (no hay "precio pagado"). Además, al intentar
+reconstruir el NAV en la fecha del Convenio de Escisión (18-dic-2024) se encontró que **Sura y Argos
+se poseían mutuamente en esa fecha** (Sura 33,80% de Argos como asociada; Argos ~53% de Sura, gran
+parte movida a un patrimonio autónomo inhibidor de voto como preparación para la escisión) — un
+problema de circularidad genuino (NAV_Sura depende de Argos y viceversa). **Decisión explícita de
+Alex (21-sep-2026)**: resolver con una sola iteración, a valor en libros, sin recursión — evita el
+sistema de ecuaciones simultáneas a cambio de precisión.
+
+Con esa simplificación, reconstruidos ambos balances separados a dic-2024 (Sura: Total activos
+30.964,691 = pasivos 9.532,478 + patrimonio 21.432,213; Argos: Total activos 22.014,673 = pasivos
+3.246,983 + patrimonio 18.767,690, ambos verificados exactos):
+
+- **Sura**: NAV-lookthrough/acción COP 54.241 (395.128.602 acciones, Proyecto de Distribución de
+  Utilidades del informe 2024-ANUAL) vs. cierre 2024 COP 37.200 — descuento **31,4%**.
+- **Argos**: NAV-lookthrough/acción COP 47.042 (aprox.) vs. cierre 2024 COP 20.600 — descuento
+  **56,2%**. Confianza **baja** en el conteo de acciones (se usó el conteo actual de
+  `fundamentales_analisis`, 398.953.357, como aproximación — Argos recompró acciones agresivamente
+  durante 2024 y después, "Acciones readquiridas" pasó de -68.994 a -428.360 MMM en el balance
+  separado de 2024 — el conteo exacto a dic-2024 no se buscó).
+
+**Lectura**: ambos holdings ya cotizaban con descuento sustancial a su propio valor en libros antes
+del desenroque — consistente con la revalorización de más del 7% (y hasta 56% para Argos a un año)
+que documentó la prensa tras el evento. Es evidencia de apoyo razonable, no una prueba de aceptación
+con el rigor de la referencia Gilinski (precisión del conteo de acciones de Argos sin verificar,
+simplificación de "una sola iteración" sin revaluar cotizadas).
+
+### Referencia 4 — OPA de Gilinski sobre Nutresa (2021-2022): fuera de alcance, no cubierta
+
+Nutresa no es un holding del catálogo de Ruta H de W3a — es una operadora de alimentos, no una suma
+de partes. Probar el precio de su OPA contra un valor intrínseco requeriría la ruta EPV de Greenwald
+(**W3c**, capa de valor de activos + earnings power value), que todavía no existe en el proyecto. No
+se improvisa una cifra fuera del marco metodológico ya establecido — queda pendiente para cuando se
+construya W3c.
+
+### Veredicto y recomendación
+
+El plan pide "pasa si cumple en al menos 3 de las 4 referencias" — con **1 prueba rigurosa que pasa
+limpia** (Gilinski/Sura, el caso más importante porque es el único con dinero real de por medio) y
+**1 evidencia de apoyo cualitativa** (GEA), la cobertura formal es 1,5 de 4, no 3 de 4. No se
+maquilla ese número. Dicho esto, la referencia que sí se completó con rigor es exactamente la que
+prueba el corazón de la doctrina de Whitman/Greenwald (¿el mercado paga un precio de control entre
+el precio de bolsa y el NAV conservador?) — y la respuesta fue afirmativa, con una cifra concreta
+(~39% de captura del descuento) que corrige la expectativa ingenua del plan original (que el NAV
+completo se cobra) sin inventar el número.
+
+**Recomendación**: tratar W3b como **completado con cobertura parcial y documentada**, no como
+bloqueado ni como aprobado sin reservas. No se recomienda perseguir las 2 referencias faltantes
+ahora mismo (el SOTP de Davivienda requeriría una fuente de pago o un dato que no existe
+públicamente; Nutresa requiere construir W3c primero) — quedan como pendientes explícitos, no como
+trabajo fantasma. La decisión de avanzar a W3c con esta cobertura, o de perseguir más validación
+antes, es de Alex.
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por
