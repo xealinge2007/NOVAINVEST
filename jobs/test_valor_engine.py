@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Prueba de `valor_engine.calcular_holding` contra un caso real de NAV
-conocido a mano (W3a, 21-sep-2026): GRUPO_SURA al 31-dic-2025.
+"""Prueba de `valor_engine.calcular_holding` contra casos reales de NAV
+calculados a mano (W3a, 21-sep-2026).
 
 Sin pytest a proposito -- correrse solo: `python jobs/test_valor_engine.py`.
-Necesita Supabase alcanzable y los datos de GRUPO_SURA ya cargados
-(`jobs/ingesta_participaciones.py --emisor GRUPO_SURA` seguido de
-`jobs/valor_engine.py --emisor GRUPO_SURA`) -- se salta con aviso si no
-estan.
+Necesita Supabase alcanzable y los datos de cada holding ya cargados
+(`jobs/ingesta_participaciones.py --emisor X` seguido de
+`jobs/valor_engine.py --emisor X`) -- cada holding se salta con aviso si
+no esta, en vez de fallar toda la prueba.
 
-Las cifras esperadas se calcularon a mano leyendo la Nota 9 (Inversiones en
-asociadas y subsidiarias) y el Estado de situacion financiera separado del
-informe 2025-ANUAL de Grupo Sura -- ver `db/DOCTRINA_VALOR.md` (seccion
-W3a) para el detalle linea por linea. Esta prueba no vuelve a leer el PDF:
-solo verifica que lo que quedo en `valor_estimado` coincide con lo
-calculado a mano, para detectar una regresion futura en la aritmetica del
-motor, no un error de lectura del documento.
+Las cifras esperadas se calcularon a mano leyendo la Nota de inversiones en
+asociadas/subsidiarias y el Estado de situacion financiera separado de cada
+informe -- ver `db/DOCTRINA_VALOR.md` (seccion W3a) para el detalle linea
+por linea de cada holding. Esta prueba no vuelve a leer los PDF: solo
+verifica que lo que quedo en `valor_estimado` coincide con lo calculado a
+mano, para detectar una regresion futura en la aritmetica del motor, no un
+error de lectura de los documentos.
 """
 
 import sys
@@ -33,32 +33,42 @@ except Exception:
 
 try:
     cliente = cliente_servicio()
-    emisor = cliente.table("emisores").select("id").eq("slug", "GRUPO_SURA").execute().data[0]
-    fila = cliente.table("valor_estimado").select("*").eq("emisor_id", emisor["id"]).eq(
-        "anio", 2025
-    ).eq("periodo", "ANUAL").execute().data
 except Exception as e:
     print(f"AVISO: Supabase no alcanzable ({e}) -- prueba saltada, no falla.")
     sys.exit(0)
 
-if not fila:
-    print("AVISO: GRUPO_SURA 2025-ANUAL no esta en valor_estimado todavia -- prueba saltada, no falla.")
-    sys.exit(0)
+# slug -> (anio, periodo, nav_mercado esperado, nav_lookthrough esperado)
+CASOS = {
+    # 2 cotizadas (Cibest a capitalizacion TOTAL, Enka solo directo para no
+    # duplicar el 3.70% indirecto ya contado en ICE) + 5 no cotizadas a libro.
+    "GRUPO_SURA": (2025, "ANUAL", 12493.0, 30203.3),
+    # Cementos Argos (54.98% economico) + Celsia cotizadas + Odinsa/Sator/
+    # Summa/Pactia a libro. Grupo Sura ya no aparece (escindida en 2025).
+    "GRUPO_ARGOS": (2025, "ANUAL", 11370.3, 14228.6),
+    # Banco de Bogota + Corficolombiana (capitalizacion TOTAL, ambas clases)
+    # cotizadas + 9 no cotizadas a libro, incluido Grupo Aval Limited con
+    # valor en libros NEGATIVO real (patrimonio negativo por perdidas).
+    "GRUPO_AVAL": (2025, "ANUAL", 8648.5, 17731.4),
+}
 
-f = fila[0]
+emisores = {e["slug"]: e["id"] for e in cliente.table("emisores").select("id,slug").execute().data}
 
-# Calculado a mano (DOCTRINA_VALOR.md, W3a): 2 participaciones cotizadas
-# (Cibest 24.65% de capitalizacion TOTAL -- ambas clases, ver comentario en
-# ingesta_participaciones.py -- y Enka 17.06% SOLO directo, el 3.70%
-# indirecto via ICE no se cuenta aparte para no duplicarlo con el valor en
-# libros de ICE) + 5 no cotizadas a libro, mas el neto de activos/deuda
-# propios del holding separado (-7,796.977 MMM).
-revisar("NAV-mercado (solo cotizadas + neto propio)", round(f["nav_mercado_mmm"], 1), 12493.0)
-revisar("NAV-lookthrough (todas + neto propio)", round(f["nav_lookthrough_mmm"], 1), 30203.3)
-revisar("balance: lookthrough > mercado (mas participaciones suman valor)",
-        f["nav_lookthrough_mmm"] > f["nav_mercado_mmm"], True)
-revisar("valor_central usa la conservadora (nav_mercado), no la lookthrough",
-        f["valor_central_mmm"], f["nav_mercado_mmm"])
-revisar("determinable (las 2 cifras principales SI se pudieron calcular)", f["determinable"], True)
+for slug, (anio, periodo, esperado_mercado, esperado_lookthrough) in CASOS.items():
+    if slug not in emisores:
+        print(f"AVISO: {slug} no existe en emisores -- prueba saltada, no falla.")
+        continue
+    fila = cliente.table("valor_estimado").select("*").eq("emisor_id", emisores[slug]).eq(
+        "anio", anio
+    ).eq("periodo", periodo).execute().data
+    if not fila:
+        print(f"AVISO: {slug} {anio}-{periodo} no esta en valor_estimado todavia -- prueba saltada, no falla.")
+        continue
+
+    f = fila[0]
+    revisar(f"{slug}: NAV-mercado", round(f["nav_mercado_mmm"], 1), esperado_mercado)
+    revisar(f"{slug}: NAV-lookthrough", round(f["nav_lookthrough_mmm"], 1), esperado_lookthrough)
+    revisar(f"{slug}: lookthrough > mercado", f["nav_lookthrough_mmm"] > f["nav_mercado_mmm"], True)
+    revisar(f"{slug}: valor_central usa la conservadora (nav_mercado)", f["valor_central_mmm"], f["nav_mercado_mmm"])
+    revisar(f"{slug}: determinable", f["determinable"], True)
 
 reportar_y_salir()

@@ -704,6 +704,111 @@ participadas (el ajuste de Cibest), y añadir un bloque a `jobs/ingesta_particip
 W3b (validar contra el SOTP de Davivienda Corredores para Argos y Sura, y contra los 3 eventos de
 control históricos).
 
+## 9B. W3a — GRUPO_ARGOS, segundo holding real (21-sep-2026)
+
+**GRUPO_ARGOS al 31-dic-2025** (fuente: `2025-ANUAL_Informe-Periodico-Fin-Ejercicio...pdf`, Estados
+Financieros Separados, Nota 15 — Inversiones en asociadas y negocios conjuntos, pág. 168-169 — y
+Nota 16 — Inversiones en subsidiarias, pág. 174-176):
+
+| Participada | % tenencia | Cotiza | Valor participación (MMM) |
+|---|---:|:---:|---:|
+| Cementos Argos S.A. | 54.98% (económico, no el 55.00% de voto) | Sí | 8.206,3 |
+| Celsia S.A. | 54.83% | Sí | 2.841,0 |
+| Odinsa S.A. | 94.99% | No (libro) | 1.698,1 |
+| Sator S.A.S. | 97.54% | No (libro) | 160,8 |
+| Summa S.A.S. | 25.00% | No (libro) | 7,0 |
+| Fondo Pactia Inmobiliario | 37.44% | No (a valor razonable, no cotiza) | 989,9 |
+| Otras asociadas menores (residual) | — | No | 2,4 |
+
+**Grupo de Inversiones Suramericana S.A. ya no aparece**: 0,00% al 31-dic-2025 (era 9,38% voto /
+45,99% económico a dic-2024) — misma escisión que ya vació la posición recíproca del lado de Sura
+(§9). Confirma cruzado, por un canal independiente, que la escisión GEA fue completa en ambas
+direcciones.
+
+**A diferencia de Cibest en Sura, Cementos Argos NO necesitó corrección a capitalización total.**
+La nota 16.1 explica que en 2024 se completó un programa de conversión de preferenciales a
+ordinarias con una tasa de éxito del 99,8%, dejando el remanente preferencial en solo ~0,04% del
+total — por eso el % de voto (55,00%) y el económico (54,98%) casi no difieren, y usar la
+capitalización solo-ordinaria de `fundamentales_analisis` sin ajustar introduce un error <0,1%,
+inmaterial. Verificado leyendo la nota, no asumido por analogía con Sura.
+
+**Neto de activos/pasivos propios del holding**: Total activos separado (13.828,8) − inversiones
+(10.692,6) − Total pasivos separado (2.813,3) = **+322,9 MMM**. A diferencia de Sura (negativo),
+este es **positivo** — Argos tiene activos propios sustanciales (propiedades de inversión 946,3
+MMM, inventario de tierras 924,1 MMM, caja 163,5 MMM) frente a deuda moderada (obligaciones
+financieras totales ~967,0 MMM).
+
+**Resultado**: NAV-mercado **11.370,3 MMM** · NAV-lookthrough **14.228,6 MMM** · precio de mercado
+(capitalización ordinaria) 8.737,1 MMM · **descuento 23,2% vs. mercado, 38,6% vs. lookthrough** —
+ambas cifras positivas y coherentes (a diferencia del primer intento con Sura antes de la
+auditoría), dentro del rango histórico esperado.
+
+## 9C. W3a — GRUPO_AVAL, tercer holding real (21-sep-2026)
+
+**GRUPO_AVAL al 31-dic-2025** (fuente: `2025-ANUAL_Informe-Fin-Ejercicio...pdf`, Estados Financieros
+Separados, Nota 11 — Inversiones en subsidiarias y asociadas, pág. 154 — y Estado Separado de
+Situación Financiera, pág. 269, **imagen escaneada** sin capa de texto, leída visualmente):
+
+| Participada | % tenencia | Cotiza | Valor participación (MMM) |
+|---|---:|:---:|---:|
+| Banco de Bogotá S.A. | 68.93% | Sí | 9.398,3 |
+| Corporación Financiera Colombiana S.A. | 8.71% | Sí | 718,8 |
+| Banco de Occidente S.A. | 72.27% | No (libro) | 4.400,3 |
+| Banco Comercial AV Villas S.A. | 79.86% | No (libro) | 1.275,4 |
+| Banco Popular S.A. | 93.87% | No (libro) | 2.778,1 |
+| Porvenir S.A. | 20.00% | No (libro) | 756,0 |
+| Grupo Aval Limited | 100% | No (libro, **negativo real**) | −271,2 |
+| Aval Fiduciaria S.A. | 94.50% | No (libro) | 93,6 |
+| Aval Casa de Bolsa S.A. | 40.77% | No (libro) | 19,5 |
+| Aval Banca de Inversión S.A.S. | 70.00% | No (libro) | 12,1 |
+| ADL Digital Lab S.A.S. (asociada) | 34.00% | No (libro) | 19,0 |
+
+**Grupo Aval Limited tiene valor en libros negativo, y es real, no un error de signo**: la
+información financiera resumida de la misma nota muestra activo 3.535,9 MMM / pasivo 3.807,1 MMM —
+patrimonio negativo por pérdidas acumuladas. Se carga tal cual (−271,2 MMM), restando del NAV, en
+vez de forzarlo a cero.
+
+**Corficolombiana SÍ tenía el mismo problema que Cibest** (participación de Aval definida sobre el
+total de acciones, capitalización de `fundamentales_analisis` solo-ordinaria) — pero a diferencia
+de Cibest, aquí no hubo que inferir el conteo de preferenciales por cruce: se leyó directo en los
+propios Estados Financieros Separados de Corficolombiana (Nota 28, "Capital suscrito y pagado"):
+346.403.766 ordinarias + 19.227.075 preferenciales = 365.630.841 total (preferencial es solo 5,26%
+del total, mucho menor que el ~47% de Cibest). Corregido con capitalización total de todas formas.
+
+**Hallazgo sin resolver, declarado explícito — el conteo de acciones de GRUPO_AVAL en
+`fundamentales_analisis` no cuadra con sus propios EEFF.** `fundamentales_analisis` usa 16.179.224.880
+acciones (ticker PFAVAL.CL, capitalización 13.590,5 MMM), pero el Estado Separado de Resultados del
+propio informe 2025-ANUAL (pág. 271, imagen escaneada) declara "Número de acciones en circulación:
+23.743.475.754" para el cálculo de utilidad neta por acción — **7.564.250.874 acciones de
+diferencia**. Grupo Aval solo tiene precio de mercado rastreado para su clase preferencial
+(`PFAVAL.CL`; la nota en `activos` dice explícito "sin ordinaria líquida en Yahoo"), así que no se
+pudo construir una capitalización de ambas clases para verificar cuál de los dos conteos es
+correcto — a diferencia de Cibest y Corficolombiana, donde sí había datos independientes para
+cruzar. **No se corrigió — se usó `fundamentales_analisis.capitalizacion_mmm` tal cual, por
+consistencia con el resto del pipeline**, pero queda anotado como una discrepancia real de datos
+para revisar en una sesión de F4 futura, no específica de W3a.
+
+**Neto de activos/pasivos propios del holding**: Total activos separado (21.784,6) − inversiones en
+subsidiarias y asociadas (20.416,96, coincide exacto con el "Total inversiones permanentes" de la
+Nota 11) − Total pasivos separado (2.836,2) = **−1.468,6 MMM**.
+
+**Resultado**: NAV-mercado **8.648,5 MMM** · NAV-lookthrough **17.731,4 MMM** · precio de mercado
+13.590,5 MMM (cifra con la discrepancia de acciones sin resolver arriba) · **NAV-mercado por debajo
+del precio** (mismo patrón ya documentado con Sura: solo 2 de 11 participaciones tienen precio
+verificable, y no son las más grandes del portafolio) · **descuento 23,4% vs. NAV-lookthrough** —
+coherente y dentro del rango esperado.
+
+## 9D. Estado de W3a a media sesión — 3 de 5 holdings, ritmo deliberadamente sin apurar
+
+GRUPO_SURA, GRUPO_ARGOS y GRUPO_AVAL cargados, auditados y verificados con `jobs/test_valor_engine.py`
+(15 aserciones, todas pasan). Cada holding tomó una investigación real (localizar la Nota correcta
+en un documento de 150-450 páginas, verificar cuadres, resolver problemas de clases de acción
+duales caso por caso) — no es trabajo mecánico repetible sin revisión. **CORFICOLOMBIANA y GEB
+quedan pendientes**, deliberadamente, para no bajar el nivel de rigor que pidió Alex ("completamente
+terminado y perfecto") por apuro. Nota para la próxima sesión: Corficolombiana ya tiene su
+estructura de capital verificada (Nota 28 de sus propios EEFF Separados, ver §9C) — reutilizar ese
+dato cuando se calcule su propio NAV como Ruta H, no volver a leerlo.
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por

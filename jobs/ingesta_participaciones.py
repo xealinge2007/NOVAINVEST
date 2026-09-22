@@ -185,8 +185,312 @@ PARTICIPACIONES_GRUPO_SURA = [
     ),
 ]
 
+FUENTE_ARGOS = (
+    "GRUPO_ARGOS/2025-ANUAL_Informe-Periodico-Fin-Ejercicio-Estados-Financieros-"
+    "Consolidados-y-Separados.pdf, Estados Financieros Separados, Nota 15 "
+    "(Inversiones en asociadas y negocios conjuntos, pag. 168-169) y Nota 16 "
+    "(Inversiones en subsidiarias, pag. 174-176)"
+)
+
+# Participaciones de GRUPO_ARGOS al 31-dic-2025. La inversion en Grupo Sura
+# (9.38% derecho a voto / 45.99% derecho economico a dic-2024) desaparece
+# por completo en 2025 -- Nota 15.1: "0,00%", valor en libros "-" -- misma
+# escision (Nota 17.2, Nota 40) que ya vacio la posicion reciproca del lado
+# de Sura (ver PARTICIPACIONES_GRUPO_SURA arriba). No se incluye aqui.
+#
+# Cementos Argos y Celsia son las UNICAS cotizadas (Nota 16.1, texto
+# explicito: "de estas inversiones las unicas que se encuentran listadas en
+# el mercado de valores son Cementos Argos S.A. y Celsia S.A."). Odinsa,
+# Sator y Summa NO cotizan.
+#
+# A diferencia de Cibest en Sura (donde el % de tenencia era sobre el total
+# de acciones y habia que corregir a capitalizacion total), aqui NO hace
+# falta esa correccion: Cementos Argos completo un programa de conversion
+# de preferenciales a ordinarias en 2024 que dejo las preferenciales en
+# ~0.04% del total (Nota 16.1: "el 99.8% de las acciones preferenciales se
+# convirtieron... representan el 99.96% de las acciones en circulacion"),
+# asi que el % voto (55.00%) y el % economico (54.98%) casi no difieren --
+# se usa el economico (54.98%, la base correcta cuando difieren) contra la
+# capitalizacion de fundamentales_analisis sin corregir, el error de usar
+# solo-ordinaria es <0.1%, inmaterial. Verificado, no asumido a ciegas.
+PARTICIPACIONES_GRUPO_ARGOS = [
+    dict(
+        participada_slug="CEMENTOS_ARGOS",
+        participada_nombre="Cementos Argos S.A.",
+        cotizada=True,
+        pct_tenencia=54.98,  # derecho economico (Nota 16.1, nota *) -- no el 55.00% de voto
+        metodo_valoracion="precio_mercado",
+        valor_100pct_mmm=14926.056,
+        valor_participacion_mmm=14926.056 * 0.5498,
+        detalle_metodo=(
+            "54.98% de participacion economica (Nota 16.1, nota *; difiere del 55.00% "
+            "de derecho a voto porque Cementos Argos tiene un remanente de acciones "
+            "preferenciales sin derecho a voto, ~0.04% del total tras el programa de "
+            "conversion de 2024). Valor 100% = capitalizacion bursatil de "
+            "fundamentales_analisis (convencion ordinaria del resto del pipeline -- "
+            "aqui no se corrige a total-clases como con Cibest/Sura porque la brecha "
+            "ordinaria/total de Cementos Argos es <0.1%, inmaterial)."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug="CELSIA",
+        participada_nombre="Celsia S.A.",
+        cotizada=True,
+        pct_tenencia=54.83,
+        metodo_valoracion="precio_mercado",
+        valor_100pct_mmm=5181.543,
+        valor_participacion_mmm=5181.543 * 0.5483,
+        detalle_metodo=(
+            "54.83% de participacion directa (Nota 16.1; sin nota de diferencia entre "
+            "voto y económico, Celsia no tiene el problema de clases duales que si "
+            "tiene Cementos Argos). Valor 100% = capitalizacion bursatil de "
+            "fundamentales_analisis."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Odinsa S.A.",
+        cotizada=False,
+        pct_tenencia=94.99,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=1698.079,
+        valor_100pct_mmm=1698.079 / 0.9499,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 16.1).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Sator S.A.S.",
+        cotizada=False,
+        pct_tenencia=97.54,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=160.847,
+        valor_100pct_mmm=160.847 / 0.9754,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 16.1).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Summa - Servicios Corporativos Integrales S.A.S.",
+        cotizada=False,
+        pct_tenencia=25.00,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=7.020,
+        valor_100pct_mmm=7.020 / 0.25,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 16.1).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Fondo de Capital Privado Pactia Inmobiliario",
+        cotizada=False,
+        pct_tenencia=37.44,
+        metodo_valoracion="libro_ajustado",  # a valor razonable en el balance de Argos, no a precio de mercado propio (no cotiza en bolsa)
+        valor_participacion_mmm=989.896,
+        valor_100pct_mmm=989.896 / 0.3744,
+        detalle_metodo=(
+            "Valor razonable (Nivel 2, avaluos independientes) al 31-dic-2025 (Nota "
+            "15.1) -- se contabiliza distinto al resto (a valor razonable, no a costo) "
+            "pero el Fondo mismo no cotiza en bolsa, por eso metodo_valoracion sigue "
+            "siendo 'libro_ajustado' y no 'precio_mercado'."
+        ),
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Otras inversiones menores en asociadas (residual)",
+        cotizada=False,
+        pct_tenencia=100.0,  # no aplica realmente -- residual de conciliacion, ver detalle
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=2.419,
+        valor_100pct_mmm=2.419,
+        detalle_metodo=(
+            "Residual para cuadrar el 'Total inversiones en asociadas y negocios "
+            "conjuntos' de la Nota 15.1 (992.315) contra Pactia sola (989.896): "
+            "992.315 - 989.896 = 2.419. Incluye P.A. Hacienda Niquia (51%, la nota "
+            "aclara explicitamente que NO presenta valor en libros) y otros items "
+            "menores no desagregados por la nota. Monto inmaterial (~0.02% del NAV)."
+        ),
+        confianza="baja",
+    ),
+]
+
+FUENTE_AVAL = (
+    "GRUPO_AVAL/2025-ANUAL_Informe-Fin-Ejercicio-Estados-Financieros-Consolidados-y-"
+    "Separados.pdf, Estados Financieros Separados, Nota 11 (Inversiones en "
+    "subsidiarias y asociadas, pag. 154) y Estado Separado de Situacion Financiera "
+    "(pag. 269, imagen escaneada -- ver comentario mas abajo)"
+)
+
+# Participaciones de GRUPO_AVAL al 31-dic-2025 (Nota 11, pag. 154). Solo
+# Banco de Bogota y Corficolombiana estan en el universo de 24 emisores de
+# NOVAINVEST -- el resto (Banco de Occidente, AV Villas, Banco Popular,
+# Porvenir, Grupo Aval Limited, Aval Fiduciaria, Aval Casa de Bolsa, Aval
+# Banca de Inversion, ADL Digital Lab) no cotiza o no se sigue, van a libro.
+#
+# Corficolombiana SI tenia el mismo problema que Cibest en Sura (clases
+# duales, % sobre el total) -- pero a diferencia de Cibest, aqui la
+# preferencial es chica: verificado en sus propios EEFF Separados (Nota 28,
+# "Capital suscrito y pagado"): 346,403,766 ordinarias + 19,227,075
+# preferenciales = 365,630,841 total (preferencial es solo 5.26% del
+# total). Se corrige con capitalizacion TOTAL de todas formas, ya que el
+# dato exacto SI estaba disponible (no hubo que inferir por cruce).
+PARTICIPACIONES_GRUPO_AVAL = [
+    dict(
+        participada_slug="BANCO_DE_BOGOTA",
+        participada_nombre="Banco de Bogota S.A.",
+        cotizada=True,
+        pct_tenencia=68.93,
+        metodo_valoracion="precio_mercado",
+        valor_100pct_mmm=13634.536,
+        valor_participacion_mmm=13634.536 * 0.6893,
+        detalle_metodo=(
+            "68.93% de participacion (Nota 11, pag. 154). Banco de Bogota solo tiene "
+            "una clase de accion (BOGOTA.CL), sin el problema de clases duales. Valor "
+            "100% = capitalizacion bursatil de fundamentales_analisis."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug="CORFICOLOMBIANA",
+        participada_nombre="Corporacion Financiera Colombiana S.A.",
+        cotizada=True,
+        pct_tenencia=8.71,
+        metodo_valoracion="precio_mercado",
+        # Capitalizacion TOTAL: ordinaria (fundamentales_analisis, 7,898.006 MMM) +
+        # preferencial (19,227,075 acciones x $18,460 PFCORFICOL.CL 2026-09-18 =
+        # 354.988 MMM, cifra de acciones verificada en los EEFF Separados propios
+        # de Corficolombiana, Nota 28 -- no inferida por cruce como con Cibest).
+        valor_100pct_mmm=7898.006 + 19227075 * 18460 / 1e9,
+        valor_participacion_mmm=(7898.006 + 19227075 * 18460 / 1e9) * 0.0871,
+        detalle_metodo=(
+            "8.71% de participacion (Nota 11, pag. 154; Grupo Aval es minoritario "
+            "aqui, el controlante es Banco Popular via acuerdo de accionistas, nota "
+            "3 de la misma pagina). Valor 100% = capitalizacion TOTAL (ordinaria + "
+            "preferencial), con el conteo de acciones verificado en los propios EEFF "
+            "Separados de Corficolombiana (Nota 28): 346,403,766 + 19,227,075 = "
+            "365,630,841. Precio preferencial y ordinaria de fechas ligeramente "
+            "distintas (18460 al 2026-09-18 vs precio ordinaria de "
+            "fundamentales_analisis, fecha no confirmada) -- imprecision menor, "
+            "preferencial es solo 5.26% del total."
+        ),
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Banco de Occidente S.A.",
+        cotizada=False,
+        pct_tenencia=72.27,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=4400.294,
+        valor_100pct_mmm=4400.294 / 0.7227,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Banco Comercial AV Villas S.A.",
+        cotizada=False,
+        pct_tenencia=79.86,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=1275.389,
+        valor_100pct_mmm=1275.389 / 0.7986,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Banco Popular S.A.",
+        cotizada=False,
+        pct_tenencia=93.87,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=2778.128,
+        valor_100pct_mmm=2778.128 / 0.9387,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Sociedad Administradora de Fondos de Pensiones y Cesantias Porvenir S.A.",
+        cotizada=False,
+        pct_tenencia=20.00,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=756.036,
+        valor_100pct_mmm=756.036 / 0.20,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Grupo Aval Limited",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=-271.208,  # NEGATIVO -- real, patrimonio negativo por perdidas acumuladas (Nota 11)
+        valor_100pct_mmm=-271.208,
+        detalle_metodo=(
+            "Valor en libros metodo de participacion al 31-dic-2025 (Nota 11). "
+            "Negativo real (no error de signo): la informacion financiera resumida "
+            "de la misma nota muestra activo 3,535,887 / pasivo 3,807,095, patrimonio "
+            "negativo por perdidas acumuladas."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Aval Fiduciaria S.A.",
+        cotizada=False,
+        pct_tenencia=94.50,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=93.570,
+        valor_100pct_mmm=93.570 / 0.945,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Aval Casa de Bolsa S.A.",
+        cotizada=False,
+        pct_tenencia=40.77,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=19.528,
+        valor_100pct_mmm=19.528 / 0.4077,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Aval Banca de Inversion S.A.S.",
+        cotizada=False,
+        pct_tenencia=70.00,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=12.148,
+        valor_100pct_mmm=12.148 / 0.70,
+        detalle_metodo=(
+            "Valor en libros metodo de participacion al 31-dic-2025 (Nota 11). "
+            "Sociedad constituida en enero de 2025."
+        ),
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="ADL Digital Lab S.A.S.",
+        cotizada=False,
+        pct_tenencia=34.00,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=18.970,
+        valor_100pct_mmm=18.970 / 0.34,
+        detalle_metodo="Valor en libros metodo de participacion al 31-dic-2025 (Nota 11, entidad asociada).",
+        confianza="media",
+    ),
+]
+
 CATALOGOS = {
     "GRUPO_SURA": (PARTICIPACIONES_GRUPO_SURA, "2025-12-31", FUENTE_SURA),
+    "GRUPO_ARGOS": (PARTICIPACIONES_GRUPO_ARGOS, "2025-12-31", FUENTE_ARGOS),
+    "GRUPO_AVAL": (PARTICIPACIONES_GRUPO_AVAL, "2025-12-31", FUENTE_AVAL),
 }
 
 # Neto de activos/pasivos propios del holding a nivel SEPARADO (caja,
@@ -214,6 +518,46 @@ AJUSTES_HOLDING = {
         monto_mmm=23588.565 - (5641.321 + 17710.275) - 8033.946,  # -7,796.977
         fuente=FUENTE_SURA.replace("Nota 9", "Estado de situacion financiera separado, pag. 7 / Nota 9"),
         pagina_fuente=7,
+        confianza="alta",
+    ),
+    "GRUPO_ARGOS": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios del holding a nivel separado (caja, "
+            "propiedades de inversion, inventarios de tierra, PP&E, obligaciones "
+            "financieras, bonos, etc.), fuera de las participaciones ya "
+            "contabilizadas en participaciones_holding. = Total activos separado "
+            "(13,828.839) - inversiones en asociadas+subsidiarias (10,692.592) - "
+            "Total pasivos separado (2,813.309). A diferencia de Sura, este neto es "
+            "POSITIVO -- Argos tiene activos propios sustanciales (propiedades de "
+            "inversion, inventario de tierras) frente a deuda moderada."
+        ),
+        monto_mmm=13828.839 - (992.315 + 9700.277) - 2813.309,  # +322.938
+        fuente=FUENTE_ARGOS.replace(
+            "Nota 15", "Estado de situacion financiera separado, pag. 91-92 / Nota 15"
+        ),
+        pagina_fuente=91,
+        confianza="alta",
+    ),
+    "GRUPO_AVAL": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios del holding a nivel separado, fuera "
+            "de las participaciones ya contabilizadas en participaciones_holding. = "
+            "Total activos separado (21,784.589) - inversiones en subsidiarias y "
+            "asociadas (20,416.959) - Total pasivos separado (2,836.222). Fuente: "
+            "Estado Separado de Situacion Financiera -- pagina ESCANEADA (imagen, "
+            "sin capa de texto), leida visualmente y verificada: Total activos = "
+            "Total pasivos + Total patrimonio exacto (2,836,222+18,948,367=21,784,589 "
+            "millones), y el renglon 'Inversiones en subsidiarias y asociadas' "
+            "(20,416,959) coincide exacto con el 'Total inversiones permanentes' de "
+            "la Nota 11."
+        ),
+        monto_mmm=21784.589 - 20416.959 - 2836.222,  # -1,468.592
+        fuente=FUENTE_AVAL,
+        pagina_fuente=269,
         confianza="alta",
     ),
 }

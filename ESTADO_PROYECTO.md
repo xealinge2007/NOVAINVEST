@@ -1415,3 +1415,32 @@ reportante en esa fecha, debutó el 21-nov-2025) era correcta desde el principio
 **Estado real del universo de 24 emisores: 8 huecos** (los 7 de FABRICATO + este de
 DAVIVIENDA_GROUP), verificado con `jobs/matriz_huecos_fundamentales.py`. Detalle completo y la
 fuente de la verificación en `db/DOCTRINA_VALOR.md` §5E (actualizada).
+
+## 21-sep-2026 (cont. 8) — W3a: GRUPO_ARGOS y GRUPO_AVAL, 3 de 5 holdings
+
+Alex pidió seguir con los 4 holdings restantes de W3a. Se cargaron GRUPO_ARGOS y GRUPO_AVAL con el
+mismo rigor que Sura (leer la Nota de inversiones a mano, verificar cuadres exactos contra la
+propia nota y contra el balance separado antes de insertar).
+
+**GRUPO_ARGOS**: NAV-mercado 11.370,3 MMM, NAV-lookthrough 14.228,6 MMM, precio 8.737,1 MMM --
+descuento 23,2%/38,6%. Confirmado cruzado que Grupo Sura ya no está en su portafolio (0,00% a
+dic-2025, escindida) -- coincide con lo que Sura mismo ya había mostrado. Cementos Argos no
+necesitó la corrección de clases duales de Cibest (Argos ya explica en su propia nota que las
+preferenciales son solo ~0,04% del total tras un programa de conversión en 2024).
+
+**GRUPO_AVAL**: NAV-mercado 8.648,5 MMM, NAV-lookthrough 17.731,4 MMM, precio 13.590,5 MMM --
+descuento 23,4% vs. lookthrough. Corficolombiana sí necesitó la correción de Cibest (participación
+de Aval definida sobre el total de acciones), esta vez con el conteo exacto de preferenciales
+verificado en los propios EEFF Separados de Corficolombiana, no inferido. Grupo Aval Limited entra
+con valor en libros negativo real (patrimonio negativo, no error). **Hallazgo sin resolver,
+declarado**: el conteo de acciones de Grupo Aval en `fundamentales_analisis` (16,18B) no cuadra con
+el que declara su propio estado de resultados (23,74B) -- no se pudo cruzar porque solo hay precio
+de mercado rastreado para la clase preferencial, queda anotado para revisión futura, no se
+inventó una corrección.
+
+Extendida `jobs/test_valor_engine.py` a los 3 holdings (15 aserciones, todas pasan). **Se decide no
+apurar los 2 restantes (CORFICOLOMBIANA, GEB) en la misma sesión** -- cada holding requiere una
+investigación real, no trabajo mecánico, y Alex pidió explícitamente que el trabajo quede
+"completamente terminado y perfecto". Corficolombiana ya tiene su estructura de capital verificada
+de paso (útil para cuando se calcule su propio NAV). Detalle completo de ambos holdings en
+`db/DOCTRINA_VALOR.md` §9B, §9C, §9D.
