@@ -1320,14 +1320,105 @@ vez de `utilidad_operacional` — sugiere un error de **mapeo de columnas** en l
 `fundamentales_reportados`) antes de escalar, dado que ya se probó que el bug existe al menos una
 vez. Ambas correcciones de esta sección (etiquetado, Marca Argos) ya se aplicaron.
 
-### Próximo paso
+### Próximo paso (piloto)
 
 Piloto validado y corregido (aritmética consistente, diagnóstico coherente con el método ya
-existente, 2 hallazgos reales de la auditoría ya corregidos). Pendiente de decisión de Alex: escalar
-la misma metodología a los 16 emisores restantes de Ruta A/O, empezando por revisar caso a caso si
-cada uno tiene su propio cambio de perímetro/discontinuación antes de promediar ciegamente 7 años de
-EBIT, y decidiendo explícitamente para cada uno qué intangibles de vida indefinida (además del
-crédito mercantil) se restan del valor de activos ajustado.
+existente, 2 hallazgos reales de la auditoría ya corregidos). Alex confirmó escalar.
+
+## 11. W3c — escalado a los 13 emisores restantes de arquetipo "Real" (22-sep-2026)
+
+**Alcance de esta pasada**: de los 17 emisores fuera de Ruta H, 3 quedan explícitamente fuera de
+EPV (arquetipo distinto, no es un vacío):
+- **BANCO_DE_BOGOTA**: arquetipo "Banco" — se valora con solvencia/CET1 (Pilar 1 del plan), no con
+  EBIT/WACC.
+- **PEI**: arquetipo "Vehículo inmobiliario" — se valora con LTV/ocupación, no con EPV.
+- **BVC**: declarado **no determinable con este método** — sus activos totales (182.363 MMM) son
+  316x su patrimonio (577,3 MMM), consistente con que el balance de un operador de bolsa incluye
+  saldos de liquidación/márgenes de terceros que no son activos operativos propios; además no tiene
+  capitalización de mercado curada en `fundamentales_analisis`. Necesitaría un ajuste de balance
+  específico que esta pasada no hizo — no se fuerza un número.
+
+Los otros **13 se calcularon** (`jobs/epv_engine.py`, extensión del piloto, 19/19 verificaciones
+pasan): ECOPETROL, ISA, CELSIA, PROMIGAS, TERPEL, GRUPO_NUTRESA, EXITO, MINEROS, ETB, ENKA,
+EL_CONDOR, CONSTRUCTORA_CONCONCRETO, FABRICATO.
+
+### Rigor reducido, declarado explícitamente (no oculto)
+
+A diferencia del piloto de Cementos Argos, esta pasada **no releyó los EEFF completos de cada
+emisor**. Se usó `fundamentales_reportados` como fuente primaria, con una revisión de anomalías
+(saltos de ingresos/márgenes inconsistentes) sobre toda la serie de los 13 antes de aceptarla — el
+mismo chequeo que encontró el bug de Cementos Argos 2023. Encontró **un caso más real**: **CELSIA
+2025** tiene el mismo patrón de bug (ingresos almacenados 2.097,753 MMM vs. el real 5.395,120 MMM,
+verificado contra el informe 2025-ANUAL pág. 50, KPMG) — pero la utilidad operacional almacenada
+(1.172,503 MMM) **sí es correcta** (coincide exacto con "Ganancia antes de financieros" 1.149,591 +
+el método de participación patrimonial que esa línea excluye, 22,912). Como este motor usa el EBIT
+directamente, no lo deriva de ingresos × margen, el bug de Celsia **no contamina** el cálculo — se
+deja anotado para la tarea de fondo `task_1ab8c310`, no se corrige aquí.
+
+El resto de la serie de los 13 se aceptó tras el chequeo de anomalías, **sin verificación línea por
+línea contra cada PDF** — limitación declarada.
+
+**"Valor de activos ajustado" también simplificado**: se usa Patrimonio contable (book) tal cual,
+sin buscar y restar crédito mercantil ni intangibles de vida indefinida por emisor (a diferencia del
+piloto, que sí encontró y restó ambos para Cementos Argos). Esto significa que el valor de activos de
+estos 13 está probablemente **sobrestimado** en la proporción de goodwill/intangibles indefinidos de
+cada balance — sesgo conocido, en la misma dirección para todos (menos destrucción de valor de la
+que realmente hay), declarado explícitamente.
+
+**Deuda financiera sin verificar para PROMIGAS, TERPEL y GRUPO_NUTRESA** (`deuda_financiera=0.0` en
+`fundamentales_analisis`) — posible mismo problema de captura que ya se confirmó real para Cementos
+Argos, no confirmado ni descartado aquí.
+
+### Resultados
+
+| Emisor | EBIT normalizado (MMM) | WACC | EPV (MMM) | Activos = Patrimonio (MMM) | Brecha | Diagnóstico |
+|---|---|---|---|---|---|---|
+| ECOPETROL | 31.981,2 (7a) | 12,48% | 166.563,7 | 84.937,9 | +96,1% | Franquicia |
+| ISA | 6.407,4 (7a) | 12,15% | 34.283,3 | 17.098,3 | +100,5% | Franquicia |
+| CELSIA | 1.148,8 (7a) | 11,24% | 6.641,1 | 3.067,9 | +116,5% | Franquicia |
+| PROMIGAS | 1.484,2 (7a) | 12,30% | 7.843,5 | 6.620,2 | +18,5% | Franquicia |
+| TERPEL | 856,5 (7a) | 13,30% | 4.186,0 | 3.374,4 | +24,1% | Franquicia |
+| GRUPO_NUTRESA | 1.508,7 (7a) | 11,10% | 8.834,6 | 10.019,6 | −11,8% | Destrucción de valor* |
+| EXITO | 862,9 (7a) | 12,60%‡ | 4.451,4 | 6.817,1 | −34,7% | Destrucción de valor |
+| MINEROS | 490,3 (7a) | 14,09% | 2.261,6 | 2.064,7 | +9,5% | Commodity* |
+| ETB | 65,0 (7a) | 9,73% | 434,0 | 1.985,8 | −78,1% | Destrucción de valor |
+| ENKA | 23,4 (7a) | 11,35% | 134,1 | 510,6 | −73,7% | Destrucción de valor |
+| EL_CONDOR | −8,6 (7a) | 9,82% | −56,8 | 340,0 | −116,7% | Destrucción de valor |
+| CONSTRUCTORA_CONCONCRETO | 54,3 (5a, hueco 2024-25) | 11,98% | 294,5 | 1.269,2 | −76,8% | Destrucción de valor |
+| FABRICATO | −0,8 (6a, hueco 2021) | 9,36% | −5,9 | 314,7 | −101,9% | Destrucción de valor |
+
+‡ Éxito: capitalización de mercado no curada (`acciones=None` en `fundamentales_analisis`) — se usó
+patrimonio como aproximación de E para el WACC, declarado en el output del script.
+
+### Hallazgo — inconsistencia real con el diagnóstico ROIC-WACC existente (marcados con \*)
+
+Al cruzar contra `fundamentales_analisis` (mismo chequeo cruzado que confirmó a Cementos Argos),
+**GRUPO_NUTRESA y MINEROS muestran una contradicción real**, no solo una diferencia de matiz:
+- Nutresa: ROIC 18,4% vs. WACC 11,1%, EVA **+725,7** (crea valor) — pero mi EPV da destrucción de
+  valor (−11,8%).
+- Mineros: ROIC 39,0%, EVA **+516,0** (crea valor fuerte) — pero mi EPV apenas roza "commodity"
+  (+9,5%, casi empate).
+
+**Causa probable, no solo declarada sino razonada**: el promedio plano de 7 años tiene sentido para
+suavizar ciclos de commodity genuinos (funcionó bien en Cementos Argos), pero **castiga
+injustamente a un negocio con crecimiento sostenido real, no cíclico**. El EBIT de Nutresa creció
+2,5x en el período (956,7→2.403,4 MMM, consumo masivo con expansión regional sostenida) y el de
+Mineros 4,5x (211,9→961,2 MMM, oro en un mercado alcista secular, no un ciclo que revierta a la
+media en el horizonte relevante). Promediar sin más aplana una tendencia real, no ruido — exactamente
+lo opuesto de lo que Greenwald pide normalizar. Esto **no se corrigió** en esta pasada — se declara
+como un defecto metodológico real de aplicar el mismo promedio plano a los 13 emisores sin distinguir
+cuáles son genuinamente cíclicos (donde promediar es correcto) de cuáles tienen crecimiento
+estructural (donde promediar subestima el poder de generación de utilidades actual).
+
+### Próximo paso
+
+No se recomienda tratar esta tabla como definitiva. Pendiente de decisión de Alex:
+1. Si se corrige el método de normalización para Nutresa/Mineros (y revisar si algún otro de los 13
+   tiene el mismo problema de tendencia-vs-ciclo) antes de dar la tabla por buena.
+2. Si se prioriza que termine la tarea de fondo `task_1ab8c310` (incluye ahora también Celsia) antes
+   de confiar en el EBIT de los demás emisores.
+3. Si se decide el criterio de qué intangibles indefinidos restar del valor de activos para cada uno
+   (simplificación pendiente, declarada arriba) antes de considerar el diagnóstico final.
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

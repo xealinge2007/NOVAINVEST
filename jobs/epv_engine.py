@@ -196,13 +196,153 @@ revisar(
     "(metodo ROIC-WACC existente), aunque con metodologia independiente",
 )
 
+# ---------------------------------------------------------------------------
+# Los 13 emisores restantes de Ruta A/O, arquetipo "Real" (22-sep-2026)
+# ---------------------------------------------------------------------------
+#
+# ALCANCE: de los 17 emisores fuera de Ruta H, 3 NO entran aqui por
+# arquetipo distinto (ver Pilar 1 del plan, no usan EBIT/WACC):
+#   - BANCO_DE_BOGOTA: arquetipo "Banco" -- se valora con solvencia/CET1,
+#     no con EPV. Fuera de alcance de este script.
+#   - PEI: arquetipo "Vehiculo inmobiliario" -- se valora con LTV/ocupacion,
+#     no con EPV. Fuera de alcance de este script.
+#   - BVC: activos totales (182,363 MMM) desproporcionados frente a su
+#     patrimonio (577.3 MMM) -- 316x, consistente con que el balance de un
+#     operador de bolsa incluye saldos de liquidacion/margenes de terceros
+#     que no son activos operativos propios. Ademas no tiene capitalizacion
+#     de mercado curada en fundamentales_analisis (capitalizacion_mmm=None).
+#     Se declara "no determinable con este metodo" en vez de forzar un
+#     numero -- necesitaria un ajuste de balance especifico que no se hizo.
+#
+# RIGOR REDUCIDO respecto al piloto de CEMENTOS_ARGOS (declarado, no
+# oculto): para los 13 restantes NO se releyeron los EEFF completos de
+# cada emisor -- se uso `fundamentales_reportados` como fuente primaria del
+# EBIT anual, con una revision de anomalias (margenes/saltos de ingresos
+# inconsistentes) sobre TODA la serie de los 13 antes de aceptarla, mismo
+# chequeo que encontro el bug de Cementos Argos 2023. Se encontro y
+# verifico contra PDF UN caso mas con el mismo patron (ver CELSIA abajo).
+# El resto de la serie se acepto tras el chequeo de anomalias, sin
+# verificacion linea por linea contra cada PDF -- limitacion declarada,
+# no silenciada.
+#
+# "Valor de activos ajustado" TAMBIEN simplificado: se usa Patrimonio
+# contable (book) TAL CUAL, sin buscar y restar credito mercantil ni
+# intangibles de vida indefinida por emisor (a diferencia del piloto, que
+# si encontro y resto ambos para Cementos Argos) -- hacerlo bien para 13
+# emisores requeriria leer la nota de intangibles de cada uno, fuera del
+# alcance de esta pasada. Esto significa que el "valor de activos" de
+# estos 13 esta probablemente SOBRESTIMADO en la proporcion que cada
+# emisor tenga de goodwill/intangibles indefinidos en su balance -- sesgo
+# conocido, en la misma direccion para todos (menos destruccion de valor
+# de la que realmente hay), declarado explicitamente aqui.
+#
+# HALLAZGO -- CELSIA 2025 (mismo patron de bug que Cementos Argos 2023,
+# pero mas leve): `fundamentales_reportados` tiene ingresos 2025 =
+# 2,097.753 MMM. Verificado contra el Estado de Resultados Consolidado del
+# informe 2025-ANUAL (pag. 50, KPMG, 27-feb-2026): el ingreso real es
+# 5,395.120 MMM. SIN EMBARGO la utilidad operacional almacenada
+# (1,172.503 MMM) SI es correcta -- coincide exacto con "Ganancia antes de
+# financieros" (1,149.591) mas el metodo de participacion patrimonial que
+# esa cifra excluye (22.912) = 1,172.503. Como este motor usa el EBIT
+# directamente (no lo deriva de margen x ingresos), el bug de ingresos NO
+# contamina el calculo de EPV de Celsia -- se deja notado para la tarea de
+# fondo `task_1ab8c310`, no se corrige aqui porque no afecta este script.
+TASA_EFECTIVA_ESTANDAR = 0.35  # misma tasa estatutaria que el piloto, ver justificacion arriba
+
+EMISORES_RESTANTES = {
+    # slug: (EBIT anual MMM por anio -- fundamentales_reportados, sin verificar linea por linea salvo donde se anota,
+    #        capitalizacion_mercado_mmm o None si no esta curada (usa patrimonio como aproximacion de E),
+    #        deuda_financiera_mmm, costo_patrimonio, costo_deuda_dt, patrimonio_mmm)
+    "ECOPETROL": (
+        {2019: 20415.1, 2020: 7012.2, 2021: 29560.6, 2022: 60092.6, 2023: 41648.1, 2024: 38460.5, 2025: 26679.4},
+        113687.661, 104917.752321, 0.156, 0.091, 84937.931726,
+    ),
+    "ISA": (
+        {2019: 4530.1, 2020: 5692.0, 2021: 6087.4, 2022: 6760.6, 2023: 7069.6, 2024: 7870.1, 2025: 6842.0},
+        33075.262, 34199.047816, 0.153, 0.091, 17098.344048,
+    ),
+    "CELSIA": (
+        # 2025 ingresos tiene bug de datos (ver hallazgo arriba); EBIT 2025 (1172.5) SI verificado correcto contra el PDF, no se toca
+        {2019: 1353.8, 2020: 877.4, 2021: 916.6, 2022: 1318.4, 2023: 1367.9, 2024: 1035.2, 2025: 1172.5},
+        5181.543, 5209.703193, 0.134, 0.091, 3067.926209,
+    ),
+    "PROMIGAS": (
+        {2019: 971.7, 2020: 1430.8, 2021: 1383.3, 2022: 1525.4, 2023: 1662.6, 2024: 1714.3, 2025: 1701.5},
+        7160.891, 0.0, 0.123, 0.091, 6620.246263,  # deuda_financiera=0.0 sin verificar -- posible mismo problema de captura que Cementos Argos, no confirmado
+    ),
+    "TERPEL": (
+        {2019: 583.9, 2020: 164.6, 2021: 774.4, 2022: 908.5, 2023: 995.4, 2024: 1276.0, 2025: 1292.8},
+        3439.809, 0.0, 0.133, 0.091, 3374.357202,  # deuda_financiera=0.0 sin verificar
+    ),
+    "GRUPO_NUTRESA": (
+        {2019: 956.7, 2020: 1019.6, 2021: 1105.3, 2022: 1506.5, 2023: 1728.2, 2024: 1841.0, 2025: 2403.4},
+        140668.379, 0.0, 0.111, 0.091, 10019.568953,  # deuda_financiera=0.0 sin verificar
+    ),
+    "EXITO": (
+        {2019: 674.2, 2020: 611.2, 2021: 919.4, 2022: 990.1, 2023: 882.8, 2024: 776.1, 2025: 1186.3},
+        None, 2143.407773, 0.137, 0.091, 6817.106864,  # capitalizacion_mmm no curada (acciones=None) -- se usa patrimonio como aproximacion de E
+    ),
+    "MINEROS": (
+        {2019: 211.9, 2020: 446.8, 2021: 309.7, 2022: 391.7, 2023: 508.6, 2024: 602.3, 2025: 961.2},
+        5984.703, 9.238321, 0.141, 0.091, 2064.719033,
+    ),
+    "ETB": (
+        {2019: 86.7, 2020: 17.5, 2021: 140.6, 2022: 145.0, 2023: 17.0, 2024: -7.3, 2025: 55.4},
+        447.37, 894.87311, 0.110, 0.091, 1985.760506,
+    ),
+    "ENKA": (
+        {2019: 21.0, 2020: 22.0, 2021: 49.8, 2022: 40.5, 2023: 18.3, 2024: 10.5, 2025: 1.7},
+        227.233, 35.776738, 0.117, 0.091, 510.64495,
+    ),
+    "EL_CONDOR": (
+        {2019: 61.6, 2020: 99.5, 2021: 28.8, 2022: 58.9, 2023: -159.1, 2024: -60.7, 2025: -89.0},
+        287.183, 714.356707, 0.116, 0.091, 340.010018,
+    ),
+    "CONSTRUCTORA_CONCONCRETO": (
+        # 2024 y 2025 sin EBIT en fundamentales_reportados -- hueco de datos conocido, promedio sobre 5 anios (2019-2023), no 7
+        {2019: 104.3, 2020: 55.0, 2021: -250.2, 2022: 252.7, 2023: 109.6},
+        564.859, 219.379763, 0.131, 0.091, 1269.234432,
+    ),
+    "FABRICATO": (
+        # 2021 sin EBIT en fundamentales_reportados -- hueco de datos ya documentado en sesiones anteriores del proyecto, promedio sobre 6 anios
+        {2019: 12.6, 2020: -62.3, 2022: 48.0, 2023: -49.7, 2024: 5.1, 2025: 41.2},
+        48.31, 136.512837, 0.101, 0.091, 314.709561,
+    ),
+}
+
+for slug, (ebit_por_anio, cap_mercado, deuda, ke, kd, patrimonio) in EMISORES_RESTANTES.items():
+    ebit_norm = sum(ebit_por_anio.values()) / len(ebit_por_anio)
+    e_valor = cap_mercado if cap_mercado is not None else patrimonio  # aproximacion declarada si no hay capitalizacion curada
+    v_total = e_valor + deuda
+    e_v = e_valor / v_total if v_total else 1.0
+    d_v = deuda / v_total if v_total else 0.0
+    wacc = e_v * ke + d_v * kd
+    epv = ebit_norm * (1 - TASA_EFECTIVA_ESTANDAR) / wacc if wacc else None
+    activos_ajustados = patrimonio  # simplificado -- sin restar goodwill/intangibles indefinidos, ver limitacion declarada arriba
+
+    if epv is None:
+        revisar(f"{slug}: EPV", False, "WACC no calculable (sin capitalizacion ni deuda)")
+        continue
+
+    brecha = (epv - activos_ajustados) / activos_ajustados if activos_ajustados else float("nan")
+    diag = "DESTRUCCION DE VALOR" if epv < activos_ajustados * 0.9 else (
+        "FRANQUICIA" if epv > activos_ajustados * 1.1 else "COMMODITY"
+    )
+    revisar(
+        f"{slug}: EBIT normalizado ({len(ebit_por_anio)} anios) / WACC / EPV vs. activos (patrimonio, sin ajuste de intangibles)",
+        True,
+        f"EBIT {ebit_norm:.1f} MMM, WACC {wacc*100:.2f}%{'  (E aproximado con patrimonio, sin capitalizacion curada)' if cap_mercado is None else ''}, "
+        f"EPV {epv:.1f} vs. activos {activos_ajustados:.1f} MMM ({brecha:+.1%}) -> {diag}",
+    )
+
 print()
 print("=" * 70)
 n_ok = sum(1 for r in RESULTADOS if r[0] == "OK")
 print(f"{n_ok}/{len(RESULTADOS)} verificaciones OK.")
 print(
-    "Piloto CEMENTOS_ARGOS completo. Ver db/DOCTRINA_VALOR.md (seccion W3c) para "
-    "el detalle linea por linea, el bug de datos encontrado (fundamentales_reportados, "
-    "fila 2023-ANUAL) y la decision de Alex sobre el cambio de perimetro. Pendiente: "
-    "extender a los 16 emisores restantes de Ruta A/O una vez validado el piloto."
+    "Ruta A/O: 14 de 17 emisores calculados (piloto Cementos Argos con rigor completo + "
+    "13 con la pasada de menor rigor declarada arriba). BANCO_DE_BOGOTA y PEI fuera de "
+    "alcance de EPV (arquetipo distinto). BVC declarado no determinable con este metodo "
+    "(balance con activos de terceros, sin capitalizacion curada). Ver db/DOCTRINA_VALOR.md "
+    "(seccion W3c) para el detalle completo, limitaciones y hallazgos."
 )

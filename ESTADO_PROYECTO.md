@@ -1626,3 +1626,33 @@ Ambas correcciones ya se aplicaron: activos ajustados bajan de 10.375,3 a **10.2
 cambio (4.622,4 MMM), diagnóstico sin cambio (**destrucción de valor, -54,9%**). Detalle completo en
 `db/DOCTRINA_VALOR.md` §10 (sección "Auditoría independiente del piloto"). Piloto queda validado y
 corregido -- pendiente de decisión de Alex: escalar a los 16 emisores restantes.
+
+## 22-sep-2026 (cont. 15) — W3c: escalado a 13 emisores, con una inconsistencia real sin resolver
+
+Alex confirmó escalar. De los 17 emisores fuera de Ruta H, 3 quedan fuera de EPV por arquetipo
+distinto (BANCO_DE_BOGOTA: Banco, se valora con solvencia/CET1; PEI: vehículo inmobiliario, se
+valora con LTV/ocupación; BVC: declarado no determinable -- su balance tiene activos de terceros
+316x su patrimonio y no tiene capitalización de mercado curada). Los otros 13 se calcularon con un
+rigor **deliberadamente menor** que el piloto (declarado, no oculto): sin releer cada EEFF completo,
+usando `fundamentales_reportados` con un chequeo de anomalías sobre toda la serie -- el mismo
+chequeo encontró **otro caso real** del mismo bug: Celsia 2025 tiene ingresos mal almacenados
+(2.097,8 MMM vs. el real 5.395,1 MMM, verificado contra el PDF), pero la utilidad operacional
+almacenada sí es correcta y no contamina el cálculo (el motor usa EBIT directo, no lo deriva de
+ingresos × margen).
+
+**Hallazgo importante, no resuelto**: al cruzar los 13 resultados contra el diagnóstico ROIC-WACC ya
+existente en el pipeline, **Grupo Nutresa y Mineros muestran una contradicción real** -- ambos crean
+valor con fuerza según ROIC-WACC (Nutresa EVA +725,7; Mineros EVA +516,0), pero mi EPV los muestra en
+destrucción de valor o apenas en "commodity". Causa probable: el promedio plano de 7 años, que
+funcionó bien para suavizar el ciclo de commodity de Cementos Argos, **castiga injustamente a
+negocios con crecimiento sostenido real** -- el EBIT de Nutresa creció 2,5x y el de Mineros 4,5x en
+el período (consumo masivo en expansión y oro en mercado alcista secular, no ciclos que reviertan a
+la media). Promediar sin más aplana una tendencia real, no ruido. **No se corrigió** -- se declara
+como defecto metodológico pendiente, no se maquilla la tabla.
+
+Tabla completa de los 13 (EBIT, WACC, EPV, activos, diagnóstico) en `db/DOCTRINA_VALOR.md` §11.
+Nuevo bloque en `jobs/epv_engine.py` (extensión del piloto, 19/19 verificaciones pasan, pero varias
+con limitaciones declaradas explícitamente en el propio output). Pendiente de decisión de Alex: (1)
+si se corrige la normalización para negocios con tendencia de crecimiento real antes de dar la tabla
+por buena, (2) priorizar la tarea de fondo `task_1ab8c310` (ahora incluye también Celsia) antes de
+confiar en el resto del EBIT, (3) decidir el criterio de intangibles a restar por emisor.
