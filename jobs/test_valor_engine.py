@@ -49,6 +49,13 @@ CASOS = {
     # cotizadas + 9 no cotizadas a libro, incluido Grupo Aval Limited con
     # valor en libros NEGATIVO real (patrimonio negativo por perdidas).
     "GRUPO_AVAL": (2025, "ANUAL", 8648.5, 17731.4),
+    # Unica cotizada: 2.28% en GEB a valor razonable (FVOCI, ya a mercado) +
+    # 12 no cotizadas a libro + residual. NAV-mercado NEGATIVO real: Corfi es
+    # estructuralmente un banco (capta depositos) sin holdings cotizados
+    # propios significativos -- el pasivo de captacion excede los activos
+    # propios no invertidos. NAV-lookthrough coincide exacto con el Total
+    # Patrimonio del balance separado (13,198.933), verificacion cruzada.
+    "CORFICOLOMBIANA": (2025, "ANUAL", -5564.1, 13198.9),
 }
 
 emisores = {e["slug"]: e["id"] for e in cliente.table("emisores").select("id,slug").execute().data}

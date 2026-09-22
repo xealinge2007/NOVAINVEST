@@ -9,8 +9,8 @@ subagente lee la nota a mano, este script guarda lo leído con su fuente, y
 exacto contra el total que la propia nota declara antes de insertar nada.
 
 Uso: `python jobs/ingesta_participaciones.py --emisor GRUPO_SURA`
-(por ahora solo GRUPO_SURA tiene datos cargados aquí; los otros 4 holdings
-del MVP -- GRUPO_ARGOS, GRUPO_AVAL, CORFICOLOMBIANA, GEB -- se agregan
+(4 de los 5 holdings del MVP ya tienen datos cargados: GRUPO_SURA,
+GRUPO_ARGOS, GRUPO_AVAL, CORFICOLOMBIANA. Falta GEB -- se agrega
 repitiendo el mismo patrón: leer la Nota de inversiones en asociadas y
 subsidiarias de los EEFF Separados más recientes, verificar cuadre contra
 el total declarado, añadir un bloque a PARTICIPACIONES abajo).
@@ -487,10 +487,227 @@ PARTICIPACIONES_GRUPO_AVAL = [
     ),
 ]
 
+FUENTE_CORFI = (
+    "CORFICOLOMBIANA/2025-ANUAL_EEFF-Separados.pdf, Estados Financieros Separados, "
+    "Nota 12 (Inversiones en subsidiarias, pag. 68-72), Nota 13 (Inversiones en "
+    "asociadas, pag. 73-74) y Estado Separado de Situacion Financiera (pag. 1)"
+)
+
+# Participaciones de CORFICOLOMBIANA al 31-dic-2025 (Nota 12/13, pag. 68-74).
+# A diferencia de Sura/Argos/Aval, NINGUNA subsidiaria o asociada de Corfi
+# (Nota 12/13) cotiza en el universo de 24 emisores de NOVAINVEST -- son
+# vehiculos de concesiones viales, gas y fondos privados (Promigas incluida:
+# es una inversion NO cotizada en la BVC, no confundir con que si sea un
+# emisor grande). Por eso, a diferencia de los otros 3 holdings, aqui NO hay
+# ninguna fila "cotizada" proveniente de la Nota 12/13.
+#
+# La UNICA participacion cotizada de Corfi es su 2.28% en Grupo Energia
+# Bogota (GEB), pero esa inversion NO esta en la Nota 12/13 -- esta
+# clasificada aparte, como "Instrumentos financieros a valor razonable con
+# cambios en otro resultado integral" (FVOCI, pag. 78 del PDF, dentro de la
+# linea de balance "Inversiones disponibles para la venta", Nota 8b), junto
+# con otras participaciones minoritarias menores (Fiduciaria de Occidente,
+# NUAM, Camara de Riesgo Central de Contraparte, Adecana, AV Villas
+# ordinaria/preferencial) que SI son inmateriales o no cotizan y se dejan
+# embebidas en el ajuste de balance propio (ver AJUSTES_HOLDING abajo) en
+# vez de desagregarse aqui. Solo GEB se separa porque es del universo de 24
+# emisores.
+#
+# Como GEB ya esta contabilizada a VALOR RAZONABLE (no a costo/metodo de
+# participacion como las subsidiarias de la Nota 12), su valor en libros YA
+# es su valor de mercado -- no hace falta "revaluar a precio de mercado"
+# como con las demas cotizadas de este catalogo, solo declarar la cifra tal
+# como esta en el balance separado. Cruce de verificacion: 2.28% x
+# capitalizacion de GEB en fundamentales_analisis (27,543.531 MMM, a
+# 2026-09-10) = 628.19 MMM, vs. 620.863 MMM declarado por Corfi al
+# 31-dic-2025 -- diferencia de fecha de precio (~9 meses), consistente, sin
+# indicio de problema de clase de accion (GEB tiene una sola clase).
+PARTICIPACIONES_CORFICOLOMBIANA = [
+    dict(
+        participada_slug="GEB",
+        participada_nombre="Grupo Energia Bogota S.A. ESP",
+        cotizada=True,
+        pct_tenencia=2.28,
+        metodo_valoracion="precio_mercado",
+        valor_100pct_mmm=27543.531,  # fundamentales_analisis.capitalizacion_mmm de GEB
+        valor_participacion_mmm=620.863,  # valor razonable declarado por Corfi al 31-dic-2025 (FVOCI), no 2.28% x cap. de GEB -- ver nota arriba sobre la pequena diferencia de fecha
+        detalle_metodo=(
+            "2.28% de GEB, clasificado como instrumento financiero a valor razonable "
+            "con cambios en ORI (FVOCI, pag. 78 del PDF), NO como asociada (Nota 12/13 "
+            "no la incluye). Valor = 620.863 MMM declarado directamente por Corfi al "
+            "31-dic-2025 (ya a valor razonable, no requiere revaluacion). Cruce contra "
+            "2.28% x capitalizacion GEB de fundamentales_analisis (27,543.531 MMM) da "
+            "628.19 MMM -- diferencia atribuible a que fundamentales_analisis usa "
+            "precio a 2026-09-10, ~9 meses despues del cierre de Corfi."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Colombiana de Licitaciones y Concesiones S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=7311.887,
+        valor_100pct_mmm=7311.887,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Proyectos y Desarrollos Viales del Pacifico S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=3391.267,
+        valor_100pct_mmm=3391.267,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Promigas S.A. E.S.P.",
+        cotizada=False,  # no cotiza en la BVC pese a su tamano -- verificado, no esta en el universo de 24 emisores
+        pct_tenencia=34.87,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=2343.275,
+        valor_100pct_mmm=2343.275 / 0.3487,
+        detalle_metodo=(
+            "Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota "
+            "12). Corfi registro control formal sobre Promigas el 9-jul-2025 (acuerdo "
+            "de accionistas con CfC Gas Holding y Promigas CFC SAS, nota 1 de la "
+            "tabla) -- Promigas NO cotiza en la BVC, es privada."
+        ),
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Estudios Proyectos e Inversiones de Los Andes S.A.S.",
+        cotizada=False,
+        pct_tenencia=99.99,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=1333.686,
+        valor_100pct_mmm=1333.686 / 0.9999,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="CFC Gas Holding S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=1249.695,
+        valor_100pct_mmm=1249.695,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Hoteles Estelar S.A.",
+        cotizada=False,
+        pct_tenencia=89.81,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=460.855,
+        valor_100pct_mmm=460.855 / 0.8981,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Proyectos y Desarrollos Viales del Mar S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=481.289,
+        valor_100pct_mmm=481.289,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Valora S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=453.214,
+        valor_100pct_mmm=453.214,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Fondo de Capital Privado Corredores Capital I",
+        cotizada=False,
+        pct_tenencia=97.30,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=358.279,
+        valor_100pct_mmm=358.279 / 0.9730,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="CFC Private Equity Holdings S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=239.502,
+        valor_100pct_mmm=239.502,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Estudios y Proyectos del Sol S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=234.070,
+        valor_100pct_mmm=234.070,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Organizacion Pajonales S.A.S.",
+        cotizada=False,
+        pct_tenencia=99.78,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=219.207,
+        valor_100pct_mmm=219.207 / 0.9978,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 12).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Otras subsidiarias y asociadas menores (residual)",
+        cotizada=False,
+        pct_tenencia=100.0,  # no aplica realmente -- residual de conciliacion, ver detalle
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=686.842,
+        valor_100pct_mmm=686.842,
+        detalle_metodo=(
+            "Residual para cuadrar el Total de subsidiarias (Nota 12, 18,708.359 -- "
+            "ya neto del deterioro 100% de Concesionaria Vial del Pacifico S.A.S., "
+            "que por eso no tiene fila propia aqui) y el Total de asociadas (Nota 13, "
+            "54.709) contra las 12 lineas principales listadas arriba (18,076.226): "
+            "(18,708.359 - 18,076.226) + 54.709 = 686.842. Incluye 14 subsidiarias "
+            "pequenas (Andino, Infraestructura, Unipalma, al Llano, Tejidos, "
+            "Santamar, Mavalle, Ingenieria, Pagos Electronicos, Corfiinvest, "
+            "Gestora, CFC Energy, Coviandes, Urbanos) y las 5 asociadas de la Nota 13 "
+            "(Aerocali, Ventas y Servicios, Extrucol, Aval Banca de Inversiones, "
+            "Metrex) -- ninguna cotiza en el universo de 24 emisores."
+        ),
+        confianza="baja",
+    ),
+]
+
 CATALOGOS = {
     "GRUPO_SURA": (PARTICIPACIONES_GRUPO_SURA, "2025-12-31", FUENTE_SURA),
     "GRUPO_ARGOS": (PARTICIPACIONES_GRUPO_ARGOS, "2025-12-31", FUENTE_ARGOS),
     "GRUPO_AVAL": (PARTICIPACIONES_GRUPO_AVAL, "2025-12-31", FUENTE_AVAL),
+    "CORFICOLOMBIANA": (PARTICIPACIONES_CORFICOLOMBIANA, "2025-12-31", FUENTE_CORFI),
 }
 
 # Neto de activos/pasivos propios del holding a nivel SEPARADO (caja,
@@ -558,6 +775,31 @@ AJUSTES_HOLDING = {
         monto_mmm=21784.589 - 20416.959 - 2836.222,  # -1,468.592
         fuente=FUENTE_AVAL,
         pagina_fuente=269,
+        confianza="alta",
+    ),
+    "CORFICOLOMBIANA": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios de Corfi a nivel separado (depositos, "
+            "posiciones de mercado monetario, inversiones negociables/disponibles "
+            "para la venta que NO son GEB, cartera de creditos, obligaciones "
+            "financieras, etc.), fuera de las participaciones ya contabilizadas en "
+            "participaciones_holding. = Total activos separado (28,910.352) - "
+            "inversiones en subsidiarias+asociadas (18,708.359+54.709=18,763.068) - "
+            "2.28% en GEB ya contado aparte como cotizada (620.863, para no "
+            "duplicarlo: esta embebido en 'Inversiones disponibles para la venta' "
+            "dentro de Total activos) - Total pasivos separado (15,711.419). "
+            "RESULTADO NEGATIVO real y significativo (-6,184.998): a diferencia de "
+            "Sura/Argos/Aval, Corfi es estructuralmente un banco/entidad financiera "
+            "(capta depositos, Nota 20: 9,330.532 MMM) que fondea su portafolio de "
+            "inversiones -- el pasivo de captacion excede largamente los activos "
+            "propios no invertidos. Verificado: Total activos = Total pasivos + "
+            "Total patrimonio exacto (15,711.419+13,198.933=28,910.352)."
+        ),
+        monto_mmm=28910.352 - (18708.359 + 54.709 + 620.863) - 15711.419,  # -6,184.998
+        fuente=FUENTE_CORFI,
+        pagina_fuente=1,
         confianza="alta",
     ),
 }

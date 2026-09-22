@@ -809,6 +809,72 @@ terminado y perfecto") por apuro. Nota para la próxima sesión: Corficolombiana
 estructura de capital verificada (Nota 28 de sus propios EEFF Separados, ver §9C) — reutilizar ese
 dato cuando se calcule su propio NAV como Ruta H, no volver a leerlo.
 
+## 9E. W3a — CORFICOLOMBIANA (21-sep-2026)
+
+**Fuente**: `CORFICOLOMBIANA/2025-ANUAL_EEFF-Separados.pdf`, Estados Financieros Separados —
+Nota 12 "Inversiones en subsidiarias" (pág. 68-70), Nota 13 "Inversiones en asociadas" (pág. 71-73),
+Estado Separado de Situación Financiera (pág. 1, texto plano, sin bug de escaneo).
+
+**Hallazgo estructural que cambia el patrón de los 3 holdings anteriores**: ninguna de las
+subsidiarias o asociadas de la Nota 12/13 cotiza en el universo de 24 emisores de NOVAINVEST — son
+vehículos de concesiones viales, gas y fondos privados (incluida Promigas, que pese a su tamaño
+**no cotiza en la BVC**, es privada — Corficolombiana registró control formal el 9-jul-2025). La
+única participación cotizada real es el **2,28% en Grupo Energía Bogotá (GEB)**, y esa inversión
+**no está en la Nota 12/13** — está clasificada aparte como instrumento financiero a **valor
+razonable con cambios en ORI** (FVOCI, pág. 78 del PDF), dentro de la línea de balance "Inversiones
+disponibles para la venta" (Nota 8b), junto con otras participaciones minoritarias menores
+(Fiduciaria de Occidente, NUAM, Cámara de Riesgo Central de Contraparte, Adecañá, AV Villas
+ordinaria/preferencial) que se dejan embebidas en el ajuste de balance propio en vez de
+desagregarse — igual que las demás partidas de "Inversiones disponibles para la venta" que no son
+del universo de 24 emisores.
+
+**Participaciones cargadas** (14 filas, `jobs/ingesta_participaciones.py`):
+- **GEB 2,28%** (cotizada) — valor = **620,863 MMM**, tomado directamente del valor razonable que
+  Corfi ya declara al 31-dic-2025 (no requiere revaluación a precio de mercado como las demás
+  cotizadas del catálogo, porque FVOCI ya ES valor de mercado). Cruce de verificación: 2,28% ×
+  capitalización de GEB en `fundamentales_analisis` (27.543,531 MMM, a 2026-09-10) = 628,19 MMM —
+  diferencia de ~9 meses de fecha de precio, consistente, sin indicio de problema de clase de acción
+  (GEB tiene una sola clase).
+- **12 subsidiarias principales** (no cotizadas, a valor en libros método de participación
+  patrimonial, Nota 12): Colombiana de Licitaciones y Concesiones (7.311,887), Proyectos y
+  Desarrollos Viales del Pacífico (3.391,267), Promigas (2.343,275), Estudios Proyectos e
+  Inversiones de Los Andes (1.333,686), CFC Gas Holding (1.249,695), Hoteles Estelar (460,855),
+  Proyectos y Desarrollos Viales del Mar (481,289), Valora (453,214), Fondo de Capital Privado
+  Corredores Capital I (358,279), CFC Private Equity Holdings (239,502), Estudios y Proyectos del
+  Sol (234,070), Organización Pajonales (219,207).
+- **Residual "Otras subsidiarias y asociadas menores"** (686,842 MMM) — las 14 subsidiarias pequeñas
+  restantes de la Nota 12 más las 5 asociadas completas de la Nota 13 (Aerocali, Ventas y Servicios,
+  Extrucol, Aval Banca de Inversiones, Metrex), ninguna cotizada.
+- Concesionaria Vial del Pacífico S.A.S. **no tiene fila propia**: su participación (89,90%) está
+  100% deteriorada desde 2021 (Nota 12, nota (2)), valor neto = 0 — se omite en vez de listar una
+  fila en cero.
+
+**Verificación de cuadre**: suma no cotizadas cargada = **18.763,068 MMM**, exacto contra Nota 12
+(18.708,359, neto del deterioro) + Nota 13 (54,709). Balance separado verificado exacto: Total
+Activos 28.910,352 = Total Pasivos 15.711,419 + Total Patrimonio 13.198,933.
+
+**Ajuste de balance propio** (`ajustes_nav`): = Total activos (28.910,352) − inversiones en
+subsidiarias+asociadas (18.763,068) − GEB ya contado aparte como cotizada (620,863, para no
+duplicarlo — está embebido en "Inversiones disponibles para la venta" dentro de Total activos) −
+Total pasivos (15.711,419) = **−6.184,998 MMM**. Negativo y significativo, a diferencia de
+Argos (+322,9): Corfi es estructuralmente una entidad financiera que capta depósitos (Nota 20:
+9.330,532 MMM) para fondear su portafolio de inversiones — el pasivo de captación excede largamente
+los activos propios no invertidos, mismo patrón que Grupo Aval (−1.468,6) pero de mayor magnitud
+relativa.
+
+**Resultado**: NAV-mercado **−5.564,1 MMM** (negativo real — la única participación con precio
+verificable, GEB, no compensa el neto propio negativo) · NAV-lookthrough **13.198,9 MMM**
+(coincide exacto con el Total Patrimonio del balance separado, verificación cruzada matemática: al
+no haber cotizadas de peso, look-through = Total Activos − Total Pasivos) · precio de mercado
+7.898,006 MMM · **descuento 40,2% vs. NAV-lookthrough**.
+
+**Lectura**: bajo el criterio conservador (solo lo cotizado a mercado), Corficolombiana no pasa el
+filtro — el mercado paga más que el NAV-mercado estrictamente verificable. Bajo el look-through
+(que asume que el valor en libros de sus participaciones privadas es razonable), luce 40% barata.
+Esta es exactamente la brecha que la doctrina pide reportar sin promediar ni elegir una sola cifra
+"con asterisco" — se documentan ambas y se deja al usuario juzgar cuánto confía en los valores en
+libros de una cartera casi enteramente privada.
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por

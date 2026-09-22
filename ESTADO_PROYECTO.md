@@ -1444,3 +1444,25 @@ investigación real, no trabajo mecánico, y Alex pidió explícitamente que el 
 "completamente terminado y perfecto". Corficolombiana ya tiene su estructura de capital verificada
 de paso (útil para cuando se calcule su propio NAV). Detalle completo de ambos holdings en
 `db/DOCTRINA_VALOR.md` §9B, §9C, §9D.
+
+## 21-sep-2026 (cont. 9) — W3a: CORFICOLOMBIANA, 4 de 5 holdings
+
+Alex confirmó "Continua" -- se procesó CORFICOLOMBIANA con el mismo rigor. **Hallazgo distinto a
+los 3 anteriores**: ninguna subsidiaria/asociada de su Nota 12/13 cotiza en el universo de 24
+emisores (son concesiones viales, gas y fondos privados -- Promigas incluida, pese a su tamaño no
+cotiza en la BVC). La única cotizada real es el 2,28% en GEB, pero está contabilizada aparte, como
+instrumento a valor razonable con cambios en ORI (FVOCI, no en la Nota de subsidiarias/asociadas) --
+se separó como participación cotizada para no perder la desagregación, con cuidado de restarla
+también del ajuste de balance propio para no duplicarla (misma disciplina que el caso Enka/ICE de
+Sura).
+
+**Resultado**: NAV-mercado **-5.564,1 MMM** (negativo real -- Corfi es estructuralmente una entidad
+financiera que capta depósitos para fondear su portafolio, el pasivo de captación excede los activos
+propios no invertidos) · NAV-lookthrough **13.198,9 MMM** (coincide exacto con el Total Patrimonio
+del balance separado -- verificación cruzada matemática limpia) · precio de mercado 7.898,0 MMM --
+descuento 40,2% vs. lookthrough. Primer caso del proyecto con NAV-mercado negativo; documentado sin
+suavizar, coherente con la disciplina de "no inventar, declarar". Balance separado verificado exacto
+(28.910,352 = 15.711,419 + 13.198,933).
+
+`jobs/test_valor_engine.py` extendido a 4 holdings (20 aserciones, todas pasan). Falta solo GEB para
+cerrar el MVP de W3a. Detalle completo en `db/DOCTRINA_VALOR.md` §9E.
