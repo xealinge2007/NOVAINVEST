@@ -69,6 +69,22 @@ CASOS = {
     # NAV de suma de partes, consistente con su perfil de utility regulada
     # con flujo de caja estable (franquicia, en terminos de Greenwald).
     "GEB": (2025, "ANUAL", -855.1, 19486.4),
+    # Agregado al MVP tras la auditoria del 21-sep-2026 (estaba mal
+    # clasificado como "Banco" -- 84% de su activo separado son
+    # participaciones). CERO cotizadas: Bancolombia S.A. (94.50%) no tiene
+    # accion residual cotizando aparte (verificado por WebSearch, a
+    # diferencia del caso Davivienda). NAV-mercado negativo (pasivo propio
+    # -- acciones preferenciales + deuda -- supera los activos propios).
+    # SEGUNDO caso del proyecto con precio por encima del NAV-lookthrough
+    # (premio de ~17%).
+    "GRUPO_CIBEST_BANCOLOMBIA": (2025, "ANUAL", -576.7, 40157.3),
+    # Agregado al MVP tras la misma auditoria (96.5% de su activo separado
+    # son participaciones). CERO cotizadas: la Nota 8 no desagrega valor de
+    # inversion por entidad (a diferencia de los 6 holdings anteriores),
+    # se carga como una sola fila agregada. Unico holding financiero del
+    # catalogo con neto propio POSITIVO (holding recien constituido, sin
+    # deuda propia). Descuento 28.8% vs. lookthrough.
+    "DAVIVIENDA_GROUP": (2025, "ANUAL", 487.8, 22450.2),
 }
 
 emisores = {e["slug"]: e["id"] for e in cliente.table("emisores").select("id,slug").execute().data}

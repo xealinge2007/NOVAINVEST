@@ -9,11 +9,12 @@ subagente lee la nota a mano, este script guarda lo leído con su fuente, y
 exacto contra el total que la propia nota declara antes de insertar nada.
 
 Uso: `python jobs/ingesta_participaciones.py --emisor GRUPO_SURA`
-(4 de los 5 holdings del MVP ya tienen datos cargados: GRUPO_SURA,
-GRUPO_ARGOS, GRUPO_AVAL, CORFICOLOMBIANA. Falta GEB -- se agrega
-repitiendo el mismo patrón: leer la Nota de inversiones en asociadas y
-subsidiarias de los EEFF Separados más recientes, verificar cuadre contra
-el total declarado, añadir un bloque a PARTICIPACIONES abajo).
+(W3a: los 5 holdings del MVP (GRUPO_SURA, GRUPO_ARGOS, GRUPO_AVAL,
+CORFICOLOMBIANA, GEB) más 2 holdings agregados tras la auditoría del
+21-sep-2026 -- GRUPO_CIBEST_BANCOLOMBIA y DAVIVIENDA_GROUP estaban
+clasificados como arquetipo "Banco" pero son estructuralmente holdings
+(84% y 96.5% de su activo separado son inversiones en subsidiarias) -- ver
+`db/DOCTRINA_VALOR.md` §9G).
 """
 
 import argparse
@@ -808,12 +809,313 @@ PARTICIPACIONES_GEB = [
     ),
 ]
 
+FUENTE_CIBEST = (
+    "GRUPO_CIBEST_BANCOLOMBIA/2025-ANUAL_Informe-de-Gestion-Estados-Financieros-"
+    "Consolidados-y-Separados.pdf, Estados Financieros Separados, Nota 5 (Inversiones "
+    "en subsidiarias, pag. 372-374), Nota 6 (Inversiones en asociadas y negocios "
+    "conjuntos, pag. 377-378), Nota 7 (Activo mantenido para la venta -- Banistmo, "
+    "pag. 379) y Estado de Situacion Financiera Separado (pag. 343)"
+)
+
+# CIBEST agregado al MVP tras la auditoria del 21-sep-2026 (ver
+# db/DOCTRINA_VALOR.md §9G): estaba clasificado como arquetipo "Banco" pero
+# 84% de su activo separado (35,406.058 de 42,187.088) es "Inversiones en
+# subsidiarias" -- estructuralmente un holding.
+#
+# Verificado por WebSearch antes de cargar (para NO repetir el error de
+# Davivienda/Davivienda Group de la sesion anterior, donde se asumio sin
+# verificar que una fusion habia sido "intercambio total"): Bancolombia S.A.
+# NO tiene una accion residual que siga cotizando aparte -- la escision fue
+# un CAMBIO DE NOMBRE de la misma entidad matriz (Bancolombia S.A. paso a
+# llamarse Grupo Cibest S.A. en mayo 2025), los ~48,000 accionistas de
+# Bancolombia simplemente pasaron a tener el mismo numero de acciones de
+# Cibest, sin doble listado. Por eso Bancolombia S.A., la subsidiaria
+# bancaria remanente bajo Cibest (94.50%), es correctamente NO cotizada --
+# no hay un precio de mercado independiente para ella.
+#
+# NINGUNA de las 13 subsidiarias + 3 asociadas/negocios conjuntos + Banistmo
+# (activo mantenido para la venta) cotiza en el universo de 24 emisores --
+# son bancos centroamericanos privados (Banagricola, Grupo Agromercantil),
+# vehiculos de inversion internos de Cibest, y fintech (Nequi, Wompi,
+# Wenia). Cibest tiene, por tanto, CERO participaciones cotizadas -- todo
+# el NAV pasa por el "neto propio del holding".
+PARTICIPACIONES_GRUPO_CIBEST_BANCOLOMBIA = [
+    dict(
+        participada_slug=None,
+        participada_nombre="Bancolombia S.A.",
+        cotizada=False,  # verificado: sin accion residual cotizando aparte, ver nota arriba
+        pct_tenencia=94.50,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=26029.103,
+        valor_100pct_mmm=26029.103 / 0.9450,
+        detalle_metodo=(
+            "Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota "
+            "5). Bancolombia S.A. cambio su nombre a Grupo Cibest S.A. en mayo 2025 "
+            "(la entidad cotizada es la misma, no una escision) -- lo que hoy se llama "
+            "'Bancolombia S.A.' es la subsidiaria bancaria remanente, SIN listado "
+            "propio en la BVC, verificado por WebSearch antes de cargar (ver "
+            "comentario arriba, para no repetir el error de Davivienda/Davivienda "
+            "Group)."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Banagricola S.A. y Filiales",
+        cotizada=False,
+        pct_tenencia=99.17,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=4092.596,
+        valor_100pct_mmm=4092.596 / 0.9917,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Holding financiero en El Salvador, no cotiza en la BVC.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Grupo Agromercantil Holding S.A.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=3157.573,
+        valor_100pct_mmm=3157.573,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Holding financiero en Guatemala, no cotiza en la BVC.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Inversiones Cibest S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=1226.484,
+        valor_100pct_mmm=1226.484,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Vehiculo interno de inversion, constituido en 2024.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Renting Colombia S.A.S.",
+        cotizada=False,
+        pct_tenencia=94.58,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=347.338,
+        valor_100pct_mmm=347.338 / 0.9458,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Negocios Digitales Colombia S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=105.679,
+        valor_100pct_mmm=105.679,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Cibest Panama Assets S.A.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=94.723,
+        valor_100pct_mmm=94.723,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Wompi S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=80.537,
+        valor_100pct_mmm=80.537,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Servicios de tecnologia (pagos).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Nequi S.A. Compania de Financiamiento",
+        cotizada=False,
+        pct_tenencia=94.99,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=59.612,
+        valor_100pct_mmm=59.612 / 0.9499,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Cibest Investment Management S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=54.945,
+        valor_100pct_mmm=54.945,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Vehiculo interno, constituido en 2024.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Valores Cibest S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=54.945,
+        valor_100pct_mmm=54.945,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Vehiculo interno, constituido en 2024.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Cibest Inversiones Estrategicas S.A.S.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=54.945,
+        valor_100pct_mmm=54.945,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Vehiculo interno, constituido en 2024.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Wenia Ltd.",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=47.578,
+        valor_100pct_mmm=47.578,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 5). Servicios de tecnologia, Bermudas.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Puntos Colombia S.A.S. (negocio conjunto)",
+        cotizada=False,
+        pct_tenencia=50.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=28.862,
+        valor_100pct_mmm=28.862 / 0.50,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 6).",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Internacional Ejecutiva de Aviacion S.A.S. (negocio conjunto)",
+        cotizada=False,
+        pct_tenencia=50.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=12.962,
+        valor_100pct_mmm=12.962 / 0.50,
+        detalle_metodo=(
+            "Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota "
+            "6). Reclasificada de asociada (37.50%) a negocio conjunto (50.00%) el "
+            "31-oct-2025 tras comprar 562,500 acciones a Grupo Argos S.A."
+        ),
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Proteccion S.A. (asociada)",
+        cotizada=False,
+        pct_tenencia=0.69,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=22.087,
+        valor_100pct_mmm=22.087 / 0.0069,
+        detalle_metodo="Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota 6). Administradora de fondos de pensiones, no cotiza en la BVC.",
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Banistmo S.A. (activo mantenido para la venta)",
+        cotizada=False,
+        pct_tenencia=100.0,
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=5263.986,
+        valor_100pct_mmm=5263.986,
+        detalle_metodo=(
+            "Valor neto realizable (precio de venta menos costos de transaccion) al "
+            "31-dic-2025 (Nota 7), NO 'Inversiones en subsidiarias' -- es una linea de "
+            "balance separada por NIIF 5, reclasificada tras el acuerdo de venta del "
+            "100% firmado el 18-dic-2025 con Inversiones Cuscatlan Centroamerica S.A. "
+            "Se incluye aqui como participacion (representa una ex-subsidiaria con "
+            "valor de realizacion casi cierto) y se resta aparte en el ajuste de "
+            "balance propio para no duplicarla, igual que el caso GEB dentro de "
+            "Corficolombiana."
+        ),
+        confianza="alta",
+    ),
+]
+
+FUENTE_DAVIVIENDA_GROUP = (
+    "DAVIVIENDA_GROUP/2025-ANUAL_Informe-Fin-Ejercicio-Estados-Financieros-"
+    "Consolidados-y-Separados.pdf, Estados Financieros Separados, Nota 8 (Inversiones "
+    "en Subsidiarias y Asociadas, pag. 22-23) y Estado Separado de Situacion "
+    "Financiera (pag. 8)"
+)
+
+# DAVIVIENDA_GROUP agregado al MVP tras la auditoria del 21-sep-2026 (ver
+# db/DOCTRINA_VALOR.md §9G): 96.5% de su activo separado (21,962.419 de
+# 22,460.857) es "Inversiones en subsidiarias y asociadas" -- el holding
+# casi puro creado por la reorganizacion de 2025 (ver §5E de esta
+# doctrina).
+#
+# A diferencia de los 6 holdings anteriores, la Nota 8 de Davivienda Group
+# NO da un "valor de la inversion" por entidad -- da el % de participacion
+# y el balance PROPIO de cada participada (Total Activos/Pasivos/Patrimonio
+# de la participada, no el valor que Davivienda Group reconoce por su
+# tenencia). Estimar valor_participacion = % x patrimonio de la participada
+# seria una aproximacion no verificada contra ningun total declarado (el
+# metodo de participacion patrimonial real incluye ajustes de compra que
+# esa formula simple no captura) -- siguiendo la misma disciplina que las
+# subordinadas de GEB (Nota 12, mismo problema), se carga como UNA fila
+# agregada, al valor que SI declara el balance separado.
+#
+# Se verifico por WebSearch/Nota 2 del propio PDF que Banco Davivienda
+# (93.92% directo) sigue teniendo una fraccion de sus acciones cotizando
+# por separado (PFDAVVNDA.CL, ~1.1% que nunca se intercambio -- ver §5E de
+# esta doctrina) -- pero sin un valor de inversion propio desagregado en la
+# Nota 8 para revaluar solo esa linea a mercado, y con un free float
+# residual demasiado delgado para una capitalizacion de mercado confiable,
+# se deja dentro del agregado no cotizado en vez de estimarla.
+PARTICIPACIONES_DAVIVIENDA_GROUP = [
+    dict(
+        participada_slug=None,
+        participada_nombre="Inversiones en subsidiarias y asociadas (agregado, Nota 8)",
+        cotizada=False,
+        pct_tenencia=100.0,  # no aplica realmente -- agregado de 7 participadas con % variables, ver detalle
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=21962.419,
+        valor_100pct_mmm=21962.419,
+        detalle_metodo=(
+            "Valor de 'Inversiones en subsidiarias y asociadas' del Estado Separado de "
+            "Situacion Financiera al 31-dic-2025 (linea de balance directa, no suma de "
+            "componentes -- la Nota 8 no desagrega valor de inversion por entidad, solo "
+            "da % de participacion y el balance propio de cada participada). Incluye "
+            "Banco Davivienda S.A. (93.92%, Total Patrimonio de la participada "
+            "17,560.958 -- por lejos la mayor), Davivienda Capital (100%), Davivienda "
+            "Global (100%), Holding Davivienda Internacional (17.80%, incluye el "
+            "acuerdo con IFC y las operaciones centroamericanas de Scotiabank), "
+            "Multiacciones S.A.S. (100%, holding de Scotiabank Colpatria y "
+            "subsidiarias, integrada 1-dic-2025), Davibank S.A. (5.00%) y Comisionista "
+            "de Bolsa Davibank (2.55%). Ninguna cotiza por separado con un valor de "
+            "inversion propio desagregado -- ver nota arriba sobre Banco Davivienda."
+        ),
+        confianza="media",
+    ),
+]
+
 CATALOGOS = {
     "GRUPO_SURA": (PARTICIPACIONES_GRUPO_SURA, "2025-12-31", FUENTE_SURA),
     "GRUPO_ARGOS": (PARTICIPACIONES_GRUPO_ARGOS, "2025-12-31", FUENTE_ARGOS),
     "GRUPO_AVAL": (PARTICIPACIONES_GRUPO_AVAL, "2025-12-31", FUENTE_AVAL),
     "CORFICOLOMBIANA": (PARTICIPACIONES_CORFICOLOMBIANA, "2025-12-31", FUENTE_CORFI),
     "GEB": (PARTICIPACIONES_GEB, "2025-12-31", FUENTE_GEB),
+    "GRUPO_CIBEST_BANCOLOMBIA": (PARTICIPACIONES_GRUPO_CIBEST_BANCOLOMBIA, "2025-12-31", FUENTE_CIBEST),
+    "DAVIVIENDA_GROUP": (PARTICIPACIONES_DAVIVIENDA_GROUP, "2025-12-31", FUENTE_DAVIVIENDA_GROUP),
 }
 
 # Neto de activos/pasivos propios del holding a nivel SEPARADO (caja,
@@ -930,6 +1232,53 @@ AJUSTES_HOLDING = {
         monto_mmm=31739.548 - (9172.774 + 12317.296) - 12195.855,  # -1,946.377
         fuente=FUENTE_GEB,
         pagina_fuente=1,
+        confianza="alta",
+    ),
+    "GRUPO_CIBEST_BANCOLOMBIA": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios de Cibest a nivel separado (efectivo, "
+            "instrumentos financieros de inversion, otros activos, obligaciones "
+            "financieras, acciones preferenciales, otros pasivos), fuera de las "
+            "participaciones ya contabilizadas en participaciones_holding. = Total "
+            "activo separado (42,187.088) - inversiones en subsidiarias+asociadas "
+            "(35,406.058+63.911=35,469.969) - Banistmo, activo mantenido para la "
+            "venta, ya contado aparte como participacion (5,263.986, para no "
+            "duplicarlo: es una linea de balance NIIF 5 distinta de 'Inversiones en "
+            "subsidiarias', igual que el caso GEB dentro de Corficolombiana) - Total "
+            "pasivo separado (2,029.824). RESULTADO NEGATIVO (-576.691): las acciones "
+            "preferenciales (583.477, Nota 10, pasivo por NIIF) y las obligaciones "
+            "financieras del propio holding (1,412.752) superan el efectivo y otros "
+            "activos propios. Verificado: Total activo = Total pasivo + Total "
+            "patrimonio exacto (2,029.824+40,157.264=42,187.088)."
+        ),
+        monto_mmm=42187.088 - (35406.058 + 63.911 + 5263.986) - 2029.824,  # -576.691
+        fuente=FUENTE_CIBEST,
+        pagina_fuente=343,
+        confianza="alta",
+    ),
+    "DAVIVIENDA_GROUP": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios de Davivienda Group a nivel separado "
+            "(depositos en bancos, inversiones en valores a costo amortizado, cuentas "
+            "por cobrar, otros pasivos), fuera de las participaciones ya "
+            "contabilizadas en participaciones_holding. = Total de activos separado "
+            "(22,460.857) - Inversiones en subsidiarias y asociadas, linea unica de "
+            "balance, Nota 8 (21,962.419) - Total de pasivos separado (10.654). "
+            "RESULTADO POSITIVO (+487.784, a diferencia de los demas holdings "
+            "financieros de este catalogo -- Cibest, Corfi, Aval, todos negativos): "
+            "Davivienda Group es una sociedad holding recien constituida (Panama, "
+            "6-mar-2025) sin depositos ni cartera propia, solo caja e inversiones de "
+            "tesoreria (422.361) que superan su pasivo minimo (10.654, sin deuda "
+            "financiera propia). Verificado: Total de activos = Total de pasivos + "
+            "Total de patrimonio exacto (10.654+22,450.203=22,460.857)."
+        ),
+        monto_mmm=22460.857 - 21962.419 - 10.654,  # +487.784
+        fuente=FUENTE_DAVIVIENDA_GROUP,
+        pagina_fuente=8,
         confianza="alta",
     ),
 }

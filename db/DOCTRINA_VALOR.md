@@ -996,6 +996,110 @@ cada nombre de cada nota contra el universo de 24 emisores). `jobs/test_valor_en
 holdings en vez de 5), y si se consigue el PDF de EEFF Separados de ISA para evaluarlo. No se
 implementa nada de esto sin confirmación explícita de Alex — cambia el alcance de W3a.
 
+## 9H. W3a — GRUPO_CIBEST_BANCOLOMBIA (21-sep-2026) — aplicando la recomendación de §9G
+
+Alex confirmó agregar Cibest y Davivienda Group; ISA queda pendiente de conseguir el PDF de EEFF
+Separados (no está en el corpus local).
+
+**Fuente**: `GRUPO_CIBEST_BANCOLOMBIA/2025-ANUAL_Informe-de-Gestion-Estados-Financieros-Consolidados-y-Separados.pdf`,
+Estados Financieros Separados — Nota 5 "Inversiones en subsidiarias" (pág. 372-374), Nota 6
+"Inversiones en asociadas y negocios conjuntos" (pág. 377-378), Nota 7 "Activo mantenido para la
+venta" (pág. 379), Estado de Situación Financiera Separado (pág. 343).
+
+**Verificación previa a cargar, para no repetir el error de Davivienda (§9G / §5E)**: se confirmó
+por WebSearch si Bancolombia S.A. tiene una acción residual cotizando aparte tras la reorganización
+en Grupo Cibest (mayo 2025). Resultado: **no la tiene** — a diferencia de Davivienda (donde el banco
+y el holding son dos entidades separadas con un intercambio parcial), la escisión de Cibest fue un
+**cambio de nombre de la misma entidad matriz**: Bancolombia S.A. pasó a llamarse Grupo Cibest S.A.,
+sus ~48.000 accionistas conservaron el mismo número de acciones (ahora de Cibest), sin doble
+listado. Lo que hoy se llama "Bancolombia S.A." en la Nota 5 es la subsidiaria bancaria remanente
+(94,50%), sin precio de mercado independiente — correctamente no cotizada.
+
+**Participaciones cargadas** (17 filas): **cero cotizadas**. Bancolombia S.A. (94,50%, 26.029,103
+MMM), Banagrícola S.A. y Filiales (El Salvador, 99,17%, 4.092,596), Grupo Agromercantil Holding
+(Guatemala, 100%, 3.157,573), Inversiones Cibest S.A.S. (100%, 1.226,484), Renting Colombia (94,58%,
+347,338), Negocios Digitales Colombia/Nequi-relacionada (100%, 105,679), Cibest Panamá Assets (100%,
+94,723), Wompi (100%, 80,537), Nequi S.A. (94,99%, 59,612), Cibest Investment Management/Valores
+Cibest/Cibest Inversiones Estratégicas (3 vehículos internos, 100% c/u, 54,945 c/u), Wenia Ltd.
+(Bermudas, 100%, 47,578), Puntos Colombia (negocio conjunto, 50%, 28,862), Internacional Ejecutiva
+de Aviación (negocio conjunto, 50%, 12,962 — reclasificada de asociada el 31-oct-2025 tras comprar
+562.500 acciones a Grupo Argos), Protección S.A. (asociada, 0,69%, 22,087), y **Banistmo S.A.**
+(activo mantenido para la venta, NIIF 5, 5.263,986 MMM — venta del 100% acordada el 18-dic-2025 con
+Inversiones Cuscatlán Centroamérica, valor neto realizable, no "Inversiones en subsidiarias").
+Ninguna cotiza en el universo de 24 emisores.
+
+**Verificación de cuadre**: suma no cotizadas cargada = **40.733,955 MMM**, exacto contra Nota 5
+(35.406,058) + Nota 6 (63,911) + Nota 7/Banistmo (5.263,986). Balance separado verificado exacto:
+Total Activo 42.187,088 = Total Pasivo 2.029,824 + Total Patrimonio 40.157,264.
+
+**Ajuste de balance propio**: = Total activo (42.187,088) − subsidiarias+asociadas (35.469,969) −
+Banistmo ya contado aparte (5.263,986, para no duplicarlo — es una línea de balance NIIF 5 distinta
+de "Inversiones en subsidiarias", mismo patrón que GEB dentro de Corficolombiana) − Total pasivo
+(2.029,824) = **−576,691 MMM**. Negativo: las acciones preferenciales (583,477 MMM, Nota 10,
+pasivo por NIIF) y las obligaciones financieras del propio holding (1.412,752 MMM) superan el
+efectivo y otros activos propios.
+
+**Resultado**: NAV-mercado **−576,7 MMM** (negativo real — cero cotizadas, el neto propio negativo
+queda solo) · NAV-lookthrough **40.157,3 MMM** (coincide exacto con el Total Patrimonio, misma
+identidad matemática que Cibest-sin-cotizadas) · precio de mercado 47.137,48 MMM.
+
+**Segundo caso del proyecto con precio por encima del NAV-lookthrough**: prima de **~17,4%**. Menor
+que la de GEB (~41%) pero en la misma dirección — coherente con que Bancolombia es la franquicia
+bancaria líder de Colombia, con retorno sobre patrimonio (ROE) que supera lo que el valor en libros
+de sus subsidiarias por sí solo capturaría.
+
+## 9I. W3a — DAVIVIENDA_GROUP (21-sep-2026) — MVP ampliado a 7 holdings
+
+**Fuente**: `DAVIVIENDA_GROUP/2025-ANUAL_Informe-Fin-Ejercicio-Estados-Financieros-Consolidados-y-Separados.pdf`,
+Estados Financieros Separados — Nota 8 "Inversiones en Subsidiarias y Asociadas" (pág. 22-23),
+Estado Separado de Situación Financiera (pág. 8). Domiciliada en Panamá, estados financieros en
+pesos colombianos (moneda funcional).
+
+**Estructura distinta a los 6 holdings anteriores**: la Nota 8 **no da un "valor de la inversión"
+por entidad** — da el % de participación y el balance PROPIO de cada participada (Total
+Activos/Pasivos/Patrimonio de la participada), no el valor que Davivienda Group reconoce por su
+tenencia. Estimar valor_participación = % × patrimonio de la participada sería una aproximación no
+verificada contra ningún total declarado (el método de participación patrimonial real incluye
+ajustes de compra que esa fórmula simple no captura) — siguiendo la misma disciplina que las
+subordinadas de GEB (mismo problema de la nota), se carga como **una sola fila agregada**, al valor
+que sí declara el balance separado.
+
+**Sobre Banco Davivienda (93,92% directo) — verificado, no estimado**: la Nota 2 del propio PDF y
+`db/DOCTRINA_VALOR.md` §5E ya documentan que una fracción de Banco Davivienda (~1,1%, ticker
+`PFDAVVNDA.CL`) nunca se intercambió y sigue cotizando por separado. Pero sin un valor de inversión
+propio desagregado en la Nota 8 para revaluar solo esa línea, y con un free float residual demasiado
+delgado para una capitalización de mercado confiable, se deja dentro del agregado no cotizado en vez
+de estimarla — no inventar un número que la fuente no declara.
+
+**Participación cargada** (1 fila agregada, **cero cotizadas**): "Inversiones en subsidiarias y
+asociadas" = **21.962,419 MMM**, exacto contra la línea del balance separado. Incluye Banco
+Davivienda S.A. (93,92%, Total Patrimonio de la participada 17.560,958 — por lejos la mayor),
+Davivienda Capital (100%), Davivienda Global (100%), Holding Davivienda Internacional (17,80%,
+incluye el acuerdo con IFC y las operaciones centroamericanas de Scotiabank), Multiacciones S.A.S.
+(100%, holding de Scotiabank Colpatria y subsidiarias, integrada 1-dic-2025), Davibank S.A. (5,00%)
+y Comisionista de Bolsa Davibank (2,55%).
+
+**Verificación de cuadre**: Total de activos 22.460,857 = Total de pasivos 10,654 + Total de
+patrimonio 22.450,203 (balance separado exacto).
+
+**Ajuste de balance propio**: = Total de activos (22.460,857) − Inversiones en subsidiarias y
+asociadas (21.962,419) − Total de pasivos (10,654) = **+487,784 MMM**. **Único holding financiero
+del catálogo con neto propio POSITIVO** (a diferencia de Cibest, Corfi y Aval, todos negativos):
+Davivienda Group es una sociedad holding recién constituida (Panamá, 6-mar-2025) sin depósitos ni
+cartera propia, solo caja e inversiones de tesorería (422,361 MMM) que superan su pasivo mínimo
+(10,654 MMM, sin deuda financiera propia).
+
+**Resultado**: NAV-mercado **+487,8 MMM** (positivo — el único caso entre los holdings financieros
+sin cotizadas donde el neto propio por sí solo ya es positivo) · NAV-lookthrough **22.450,2 MMM**
+(coincide exacto con el Total de patrimonio) · precio de mercado 15.992,808 MMM · **descuento 28,8%
+vs. NAV-lookthrough** — vuelve al patrón de descuento de los holdings anteriores (Sura, Argos, Aval,
+Corfi), a diferencia de GEB y Cibest que cotizan con prima.
+
+**W3a queda ampliado a 7 de 7 holdings** (Sura, Argos, Aval, Corficolombiana, GEB, Cibest, Davivienda
+Group), todos cargados, verificados y probados (`jobs/test_valor_engine.py`, 35 aserciones, todas
+pasan). ISA queda pendiente de conseguir su PDF de EEFF Separados (no está en el corpus local) — no
+se agrega sin ese dato.
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por

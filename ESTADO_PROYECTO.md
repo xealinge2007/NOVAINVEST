@@ -1496,3 +1496,39 @@ completo: 5 de 5 holdings del MVP** (Sura, Argos, Aval, Corficolombiana, GEB). D
 `db/DOCTRINA_VALOR.md` §9E (corregido) y §9F. Próximo paso del plan, W3b (validación externa contra
 SOTP de Davivienda Corredores y eventos de control históricos), no iniciado -- pendiente de
 confirmación explícita de Alex.
+
+## 21-sep-2026 (cont. 11) — auditoría independiente + MVP ampliado a 7 holdings
+
+Alex pidió lanzar al agente auditor `critico` con doble encargo: verificar la aritmética de los 5
+holdings ya cargados, y evaluar si el universo de holdings está completo. **Parte 1**: sin
+discrepancias -- releyó los PDF fuente directamente (no la documentación) y confirmó balances, notas
+de inversión y la lógica de "neto propio" sin doble conteo en ningún caso. **Parte 2**: encontró que
+**GRUPO_CIBEST_BANCOLOMBIA** (84% de su activo separado son "Inversiones en subsidiarias") y
+**DAVIVIENDA_GROUP** (96,5%) están clasificados como arquetipo "Banco" pero son estructuralmente
+holdings -- inconsistencia real, porque el propio proyecto ya trata a Cibest como holding cuando lo
+mira desde Sura. ISA es candidato plausible pero sin EEFF Separados en el corpus local.
+
+Alex confirmó aplicar la recomendación: agregar Cibest y Davivienda Group, dejar ISA pendiente de
+datos.
+
+**GRUPO_CIBEST_BANCOLOMBIA**: antes de cargar, se verificó por WebSearch si Bancolombia S.A. tiene
+una acción residual cotizando aparte (para no repetir el error de Davivienda de la sesión anterior)
+-- **no la tiene**: la escisión de mayo-2025 fue un cambio de nombre de la misma entidad matriz, sin
+doble listado. Cero participaciones cotizadas (todo el portafolio -- Bancolombia S.A. 94,50%,
+Banagrícola, Grupo Agromercantil, Nequi, Wompi, Wenia, etc. -- es no cotizado). Incluye Banistmo S.A.
+como activo mantenido para la venta (NIIF 5, 5.263,986 MMM, venta acordada 18-dic-2025). NAV-mercado
+-576,7 MMM, NAV-lookthrough 40.157,3 MMM, precio 47.137,48 MMM -- **segundo caso del proyecto con
+precio por encima del lookthrough** (prima ~17,4%, coherente con la franquicia bancaria líder de
+Colombia).
+
+**DAVIVIENDA_GROUP**: su Nota de inversiones no desagrega valor por entidad (mismo problema que
+GEB) -- se cargó como una sola fila agregada (21.962,419 MMM). Único holding financiero del catálogo
+con neto propio POSITIVO (+487,8 MMM): holding recién constituido en Panamá en 2025, sin deuda
+propia. NAV-lookthrough 22.450,2 MMM, precio 15.992,808 MMM -- descuento 28,8%, vuelve al patrón de
+los holdings anteriores (a diferencia de GEB y Cibest, que cotizan con prima).
+
+`jobs/test_valor_engine.py` extendido a 7 holdings (35 aserciones, todas pasan). **W3a queda
+ampliado a 7 de 7 holdings**: Sura, Argos, Aval, Corficolombiana, GEB, Cibest, Davivienda Group.
+Detalle completo en `db/DOCTRINA_VALOR.md` §9G (auditoría), §9H (Cibest), §9I (Davivienda Group).
+ISA sigue pendiente de conseguir su PDF de EEFF Separados. Próximo paso del plan, W3b, no iniciado --
+pendiente de confirmación explícita de Alex.
