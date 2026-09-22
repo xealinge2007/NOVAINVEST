@@ -1202,8 +1202,89 @@ completo se cobra) sin inventar el número.
 bloqueado ni como aprobado sin reservas. No se recomienda perseguir las 2 referencias faltantes
 ahora mismo (el SOTP de Davivienda requeriría una fuente de pago o un dato que no existe
 públicamente; Nutresa requiere construir W3c primero) — quedan como pendientes explícitos, no como
-trabajo fantasma. La decisión de avanzar a W3c con esta cobertura, o de perseguir más validación
-antes, es de Alex.
+trabajo fantasma.
+
+**Decisión de Alex (22-sep-2026)**: W3b queda cerrado como completado-con-reservas (cobertura 1,5/4,
+documentada, no bloqueante) — se avanza a W3c.
+
+## 10. W3c — Ruta A/O (Greenwald): EPV vs. valor de activos — piloto CEMENTOS_ARGOS (22-sep-2026)
+
+**Alcance**: de los 24 emisores, 7 ya están en Ruta H (holdings, W3a). Los 17 restantes van por Ruta
+A/O: BANCO_DE_BOGOTA, BVC, CELSIA, CEMENTOS_ARGOS, CONSTRUCTORA_CONCONCRETO, ECOPETROL, EL_CONDOR,
+ENKA, ETB, EXITO, FABRICATO, GRUPO_NUTRESA, ISA, MINEROS, PEI, PROMIGAS, TERPEL. A diferencia de W3a
+(repetir el mismo patrón de lectura de notas), W3c necesita infraestructura nueva: EBIT normalizado
+de ciclo, WACC en COP con peso real de deuda, y revaluación de activos bajo NIIF 13. Por eso se
+empezó con **un solo piloto** (CEMENTOS_ARGOS, elegido por Alex — caso clásico Whitman/Greenwald:
+commodity cíclico con activos pesados) antes de escalar a los otros 16. Script:
+`jobs/epv_engine.py` (ejecutable, sin Supabase para el cálculo en sí, 6/6 verificaciones pasan).
+
+### Hallazgo 1 — bug de datos real en `fundamentales_reportados` (fila 2023-ANUAL de Cementos Argos)
+
+Al construir el piloto, los ingresos/utilidad operacional 2023 almacenados (3.916,013 / 467,298 MMM)
+resultaron **incorrectos** — no son los resultados anuales auditados de 2023, sino la columna
+comparativa de **9 meses sin auditar** que aparece dentro del informe **2024-ANUAL** (pág. 95, dice
+explícitamente "Por el periodo de nueve meses terminado al 31 de diciembre del 2024 y 2023 (No
+auditado)"). Los resultados anuales auditados reales de 2023 (informe **2023-ANUAL**, pág. 92,
+firmado por KPMG el 20-feb-2024) son **12.717,345 MMM de ingresos y 1.640,441 MMM de utilidad
+operativa** — casi 3,5x más. Se usaron estos últimos, verificados directo contra el PDF, para el
+piloto — no se esperó a que se corrigiera la base de datos.
+
+Se lanzó una tarea de fondo (`spawn_task`, `task_1ab8c310`) para auditar sistemáticamente
+`fundamentales_reportados` por el mismo patrón de bug (confundir una columna comparativa parcial de
+un informe posterior con el período ANUAL real) en otros emisores/años — no se investigó más allá de
+Cementos Argos 2023 en esta sesión, para no desviarse del piloto.
+
+### Hallazgo 2 — cambio real de perímetro (no ajustado, por decisión explícita de Alex)
+
+Cementos Argos discontinuó una operación grande en 2024 (Nota "operaciones discontinuadas" en los
+informes 2024-ANUAL y 2025-ANUAL) — consistente con la venta de su participación en Summit Materials
+Inc. (EE.UU.), ya mencionada en la Nota 9.3.2 de los EEFF de Grupo Sura sobre la oferta de Quikrete
+Holdings a USD 52,5/acción. Esto parte la serie histórica en dos escalas no comparables:
+- **2019-2023** (negocio completo, con EE.UU.): ingresos ~9.000-12.700 MMM/año.
+- **2024-2025** (solo operaciones continuadas, sin EE.UU.): ingresos ~5.150-5.300 MMM/año.
+
+**Decisión explícita de Alex (22-sep-2026)**: usar los 7 años completos **sin ajustar** por el
+cambio de perímetro, pese a que esto mezcla ambas escalas y previsiblemente **sobrestima** el EBIT
+normalizado del negocio tal como existe hoy — el promedio de solo 2024-2025 (ya en la escala actual)
+es 655,2 MMM, muy por debajo del promedio de los 7 años sin ajustar (982,5 MMM). Se documenta la
+elección y su sesgo conocido; no se corrigió por iniciativa propia.
+
+### Cálculo del piloto
+
+- **EBIT normalizado** (promedio simple 2019-2025, sin ajustar): **982,5 MMM** (rango anual
+  648,7-1.640,4 MMM).
+- **Tasa efectiva**: 35% (tasa estatutaria colombiana vigente desde la reforma de 2022), no el
+  promedio de tasas efectivas reportadas (17,4%-49,65% en el período) — tan ruidosa como la utilidad
+  neta misma, por el mismo motivo que Greenwald pide normalizar el EBIT.
+- **WACC recalculado**: **13,82%**, no el 14,7% ya almacenado en `fundamentales_analisis` — esa
+  cifra coincide exacto con el costo de patrimonio, lo que implica peso CERO a la deuda (consistente
+  con que esa tabla tiene `deuda_financiera=0.0` para este emisor, que es incorrecto: el balance
+  separado a dic-2025 muestra obligaciones financieras + bonos por 2.801,211 MMM, verificado). Se
+  recalculó con los pesos reales: E/V 84,2%, D/V 15,8% (capitalización de mercado 14.926,056 MMM,
+  deuda financiera verificada 2.801,211 MMM).
+- **EPV**: 982,5 × (1−35%) / 0,1382 = **4.622,4 MMM**.
+- **Valor de activos ajustado**: Total Patrimonio dic-2025 (11.248,007, balance verificado exacto)
+  **menos** crédito mercantil (872,719 MMM, Nota 18 — no es un activo reproducible) = **10.375,3
+  MMM**. Se verificó si PP&E (4.764,367 MMM) tenía revelación NIIF 13 de valor razonable — **no la
+  tiene** (Nota 16, movimiento a costo histórico, modelo de costo, sin columna de revaluación) — no
+  se estimó un ajuste a ojo, se declaró "sin ajuste". Propiedades de inversión (195,204 MMM, Nota 17)
+  ya está a valor razonable en el balance (NIC 40), no requiere ajuste adicional.
+
+### Diagnóstico
+
+**EPV (4.622,4 MMM) < Activos ajustados (10.375,3 MMM), brecha −55,4% → DESTRUCCIÓN DE VALOR.**
+Consistente en dirección con el diagnóstico ROIC-WACC que ya existía en el pipeline
+(`fundamentales_analisis`: roic=5,1% vs. wacc=14,7%, spread −9,7%, eva_mmm=−878,4) — buena
+verificación cruzada entre dos metodologías independientes. Nota: dado que el EBIT normalizado está
+inflado por el cambio de perímetro no ajustado, la destrucción de valor real (a escala actual, solo
+operaciones continuadas) es probablemente **peor**, no mejor, que lo que muestra esta cifra.
+
+### Próximo paso
+
+Piloto validado (aritmética consistente, diagnóstico coherente con el método ya existente). Pendiente
+de decisión de Alex: escalar la misma metodología a los 16 emisores restantes de Ruta A/O, empezando
+por revisar caso a caso si cada uno tiene su propio cambio de perímetro/discontinuación antes de
+promediar ciegamente 7 años de EBIT.
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

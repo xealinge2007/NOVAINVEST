@@ -1568,5 +1568,36 @@ precio de bolsa y NAV conservador?), y la respuesta fue sí, con una cifra concr
 expectativa ingenua del plan original sin inventar el dato.
 
 Nuevo archivo `jobs/validar_valor_eventos.py` (ejecutable, sin Supabase, 5/5 verificaciones internas
-pasan). Detalle completo en `db/DOCTRINA_VALOR.md` §9J. Decisión pendiente de Alex: avanzar a W3c con
-esta cobertura, o perseguir más validación antes.
+pasan). Detalle completo en `db/DOCTRINA_VALOR.md` §9J. **Decisión de Alex (22-sep-2026): W3b se
+trata como completado-con-reservas** (cobertura 1,5/4, documentada, no bloqueante) — se avanza a
+W3c.
+
+## 22-sep-2026 (cont. 13) — W3c: piloto CEMENTOS_ARGOS (EPV de Greenwald)
+
+Arranca W3c (Ruta A/O, los 17 emisores que no son holding). A diferencia de W3a, requiere
+infraestructura nueva (EBIT normalizado de ciclo, WACC con peso real de deuda, ajuste de activos
+NIIF 13) -- se empezó con un solo piloto, CEMENTOS_ARGOS (elegido por Alex), antes de escalar.
+
+Se encontraron dos cosas reales al construir el piloto, no solo el cálculo:
+1. **Bug de datos en `fundamentales_reportados`**: la fila 2023-ANUAL de Cementos Argos tenía
+   ingresos/utilidad operacional de una columna comparativa de 9 meses SIN AUDITAR (del informe
+   2024-ANUAL) en vez de los resultados anuales auditados reales (12.717,345 MMM vs. 3.916,013 MMM
+   almacenado -- casi 3,5x de diferencia). Se usó la cifra correcta, verificada contra el PDF, para
+   el piloto. Se lanzó una tarea de fondo para auditar si el mismo patrón de bug afecta otros
+   emisores/años.
+2. **Cambio real de perímetro**: Cementos Argos vendió su participación en Summit Materials
+   (EE.UU.) en 2024, partiendo la serie histórica en dos escalas no comparables (2019-2023 con
+   EE.UU., ~9.000-12.700 MMM/año de ingresos; 2024-2025 sin EE.UU., ~5.150-5.300 MMM/año). Alex
+   decidió explícitamente NO ajustar por este cambio para el piloto -- se documentó el sesgo
+   conocido (el EBIT normalizado resultante sobrestima el poder de generación de utilidades actual).
+
+**Resultado del piloto**: EBIT normalizado 982,5 MMM (7 años, sin ajustar), WACC recalculado 13,82%
+(el 14,7% ya almacenado en `fundamentales_analisis` ignoraba el peso de la deuda -- otro hallazgo
+menor), EPV 4.622,4 MMM vs. activos ajustados 10.375,3 MMM (patrimonio menos crédito mercantil, sin
+ajuste NIIF 13 a PP&E porque no hay revelación de valor razonable) -- **destrucción de valor, brecha
+-55,4%**, consistente en dirección con el diagnóstico ROIC-WACC que ya existía en el pipeline (roic
+5,1% vs wacc 14,7%, eva negativo) -- buena verificación cruzada entre dos metodologías.
+
+Nuevo archivo `jobs/epv_engine.py` (ejecutable, sin Supabase, 6/6 verificaciones pasan). Detalle
+completo en `db/DOCTRINA_VALOR.md` §10. Pendiente de decisión de Alex: escalar a los 16 emisores
+restantes de Ruta A/O.
