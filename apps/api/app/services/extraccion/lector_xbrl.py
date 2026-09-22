@@ -78,6 +78,22 @@ CONCEPTOS = {
     "utilidad_operacional": ["ProfitLossFromOperatingActivities"],
     "utilidad_neta": ["ProfitLossAttributableToOwnersOfParent", "ProfitLoss"],
     "flujo_caja_operativo": ["CashFlowsFromUsedInOperatingActivities"],
+    # deuda_financiera: INTENTO DE CORRECCION REVERTIDO (22-sep-2026, ver
+    # db/DOCTRINA_VALOR.md seccion W3c, "deuda_financiera=0.0 -- causa raiz
+    # encontrada, fix intentado y revertido"). "Borrowings"/"BorrowingsNoncurrent"
+    # confirmado que NO son las etiquetas correctas (BorrowingsNoncurrent no
+    # existe en el XBRL de ningun emisor probado). Se probo sumar 4 etiquetas
+    # (CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings +
+    # LongtermBorrowings + las 2 de bonos) pero para CEMENTOS_ARGOS dio
+    # 4,096.899 MMM cuando el total real verificado contra la Nota 20.4 del
+    # propio informe (conciliacion de pasivos financieros) es 2,801.211 MMM
+    # -- LongtermBorrowings ya parece incluir parte de los bonos en la forma
+    # en que este preparador etiqueto su XBRL, asi que sumarla aparte con las
+    # etiquetas de bonos duplica el conteo. No se sabe si esto es consistente
+    # entre emisores o cada uno etiqueta distinto. Se deja la lista original
+    # (sabidamente incompleta, da 0.0/None con frecuencia) en vez de una
+    # correccion sin validar que demostradamente sobreestima -- preferible
+    # declarar el hueco a inventar un numero que parece mejor pero esta mal.
     "deuda_financiera": ["Borrowings", "BorrowingsNoncurrent"],
 }
 

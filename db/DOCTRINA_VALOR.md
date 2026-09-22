@@ -1501,6 +1501,41 @@ para reemplazar la cifra de deuda desactualizada (dic-2022). Limitaciones que si
 verificación línea por línea de cada PDF para los 13 (salvo Celsia e ISA, revisadas); sin restar
 goodwill/intangibles indefinidos por emisor (solo se hizo para el piloto).
 
+### `deuda_financiera=0.0` — causa raíz encontrada en el pipeline, fix intentado y revertido (22-sep-2026)
+
+Alex pidió aplicar la recomendación de corregir el bug de raíz en `fundamentales_analisis` (no solo
+en este script), dado que ya se confirmó dos veces (Cementos Argos, Promigas). Se encontró la causa
+exacta en `apps/api/app/services/extraccion/lector_xbrl.py`: el mapeo de conceptos XBRL para
+`deuda_financiera` busca las etiquetas `Borrowings` y `BorrowingsNoncurrent` — **`BorrowingsNoncurrent`
+no existe en ningún XBRL del corpus probado** (Cementos Argos, Promigas, Terpel, Nutresa comparten la
+misma taxonomía). Además `_buscar()` usa "primera etiqueta que calce gana", no suma — así que aunque
+la etiqueta correcta existiera, capturaría solo una porción (corriente O no corriente), nunca el
+total. Esto explica por qué el campo sale en `0.0` o `None` en la inmensa mayoría de los períodos.
+
+**Se intentó un fix**: cambiar la lista a las 4 etiquetas reales del balance
+(`CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings`, `LongtermBorrowings`,
+`CurrentBondsIssuedAndCurrentPortionOfNoncurrentBondsIssued`,
+`NoncurrentPortionOfNoncurrentBondsIssued`) y sumarlas (función nueva `_sumar_conceptos`, análoga a
+`_suma_todas_ocurrencias` que ya usa el extractor de PDF para el mismo propósito).
+
+**Se probó contra Cementos Argos antes de confiar en el fix — y falló**: dio 4.096,899 MMM. El total
+real, verificado contra la Nota 20.4 del propio informe 2025-ANUAL (conciliación de pasivos
+financieros, "Saldo a 31 de diciembre de 2025"): Obligaciones y otros pasivos financieros (854,879) +
+Bonos e instrumentos financieros compuestos (1.946,332) = **2.801,211 MMM** — exactamente la cifra ya
+usada en el piloto de W3c, verificada independientemente dos veces. La etiqueta `LongtermBorrowings`
+en el XBRL de este preparador ya parece incluir parte de los bonos — sumarla aparte con las etiquetas
+de bonos duplicaba el conteo. No hay forma de saber, sin probar cada emisor uno por uno contra su
+propia nota de conciliación, si este comportamiento es consistente entre preparadores o cada uno
+etiquetó distinto.
+
+**Decisión**: se revirtió el cambio de mapeo (queda `["Borrowings", "BorrowingsNoncurrent"]`, sabido
+incompleto) en vez de desplegar una corrección que demostradamente sobreestima. Se dejó documentada
+la causa raíz exacta en el propio código (comentario en `CONCEPTOS["deuda_financiera"]`,
+`lector_xbrl.py`) para que la próxima persona que lo intente no repita la misma ruta ya descartada.
+Corregir esto bien requeriría validar emisor por emisor contra su nota de conciliación de pasivos
+financieros — no es un cambio de una línea, es trabajo de verificación caso por caso, del mismo
+calibre que ya se hizo para cada holding de W3a. Queda fuera del alcance de esta sesión.
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por

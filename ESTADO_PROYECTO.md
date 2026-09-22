@@ -1719,3 +1719,23 @@ Tabla final y explicación completa en `db/DOCTRINA_VALOR.md` §11. Pendiente de
 vale la pena corregir también `fundamentales_analisis` (el ROIC/EVA existente, fuera de alcance de
 esta sesión) para esos 3 emisores, y si se busca un EEFF más reciente de Nutresa fuera del corpus
 local.
+
+## 22-sep-2026 (cont. 18) — causa raíz del bug de deuda encontrada, fix intentado y revertido
+
+Alex pidió aplicar la recomendación de corregir el bug en la fuente (`lector_xbrl.py`, no solo el
+script de W3c). Se encontró la causa exacta: el mapeo de conceptos XBRL busca `Borrowings` y
+`BorrowingsNoncurrent` -- esta última etiqueta **no existe en ningún XBRL del corpus probado**
+(mismo patrón en Cementos Argos, Promigas, Terpel, Nutresa), y la función de búsqueda usa "primera
+etiqueta que calce gana", no suma -- así que aunque existiera, solo traería una porción.
+
+Se implementó un fix (4 etiquetas reales del balance, sumadas) y **se probó contra Cementos Argos
+antes de confiar en él** -- dio 4.096,9 MMM, pero el total real (verificado contra la Nota 20.4 del
+propio informe, conciliación de pasivos financieros) es 2.801,2 MMM, la misma cifra ya usada y
+verificada dos veces en el piloto de W3c. La etiqueta `LongtermBorrowings` de este preparador ya
+parece incluir parte de los bonos -- sumarla aparte con las etiquetas de bonos duplicaba el conteo.
+
+**Se revirtió el fix** en vez de desplegar algo que demostradamente sobreestima. Corregirlo bien
+requeriría validar emisor por emisor contra su propia nota de conciliación -- trabajo del mismo
+calibre que cada holding de W3a, no un cambio de una línea. Queda documentado en el propio código
+(`lector_xbrl.py`) y en `db/DOCTRINA_VALOR.md` §6 para que no se repita la misma ruta ya descartada.
+Fuera de alcance de esta sesión.
