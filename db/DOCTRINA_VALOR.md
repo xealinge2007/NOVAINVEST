@@ -809,39 +809,44 @@ terminado y perfecto") por apuro. Nota para la próxima sesión: Corficolombiana
 estructura de capital verificada (Nota 28 de sus propios EEFF Separados, ver §9C) — reutilizar ese
 dato cuando se calcule su propio NAV como Ruta H, no volver a leerlo.
 
-## 9E. W3a — CORFICOLOMBIANA (21-sep-2026)
+## 9E. W3a — CORFICOLOMBIANA (21-sep-2026, corregido el mismo día al procesar GEB)
 
 **Fuente**: `CORFICOLOMBIANA/2025-ANUAL_EEFF-Separados.pdf`, Estados Financieros Separados —
 Nota 12 "Inversiones en subsidiarias" (pág. 68-70), Nota 13 "Inversiones en asociadas" (pág. 71-73),
 Estado Separado de Situación Financiera (pág. 1, texto plano, sin bug de escaneo).
 
-**Hallazgo estructural que cambia el patrón de los 3 holdings anteriores**: ninguna de las
-subsidiarias o asociadas de la Nota 12/13 cotiza en el universo de 24 emisores de NOVAINVEST — son
-vehículos de concesiones viales, gas y fondos privados (incluida Promigas, que pese a su tamaño
-**no cotiza en la BVC**, es privada — Corficolombiana registró control formal el 9-jul-2025). La
-única participación cotizada real es el **2,28% en Grupo Energía Bogotá (GEB)**, y esa inversión
-**no está en la Nota 12/13** — está clasificada aparte como instrumento financiero a **valor
-razonable con cambios en ORI** (FVOCI, pág. 78 del PDF), dentro de la línea de balance "Inversiones
-disponibles para la venta" (Nota 8b), junto con otras participaciones minoritarias menores
-(Fiduciaria de Occidente, NUAM, Cámara de Riesgo Central de Contraparte, Adecañá, AV Villas
+**CORRECCIÓN (21-sep-2026)**: la carga original de esta sección marcó **Promigas como no cotizada**
+("no cotiza en la BVC, es privada"). Es falso — Promigas **sí está en el universo de 24 emisores**
+de NOVAINVEST (ticker `PROMIGAS.CL`, capitalización propia en `fundamentales_analisis`). El error se
+detectó al procesar GEB (§9F), que también tiene una participación en Promigas y obligó a revisar si
+cotizaba. Se corrigió reclasificando la fila de Promigas a cotizada, a precio de mercado — ver
+detalle abajo. El resto de la Nota 12/13 (concesiones viales, gas y fondos privados) sí es
+correctamente no cotizado, verificado contra la lista real de 24 emisores, no por analogía.
+
+**Hallazgo estructural que cambia el patrón de los 3 holdings anteriores**: solo dos participaciones
+de Corfi cotizan en el universo de 24 emisores: **Promigas (34,87%, Nota 12)** y **GEB (2,28%)**, y
+esta última **no está en la Nota 12/13** — está clasificada aparte como instrumento financiero a
+**valor razonable con cambios en ORI** (FVOCI, pág. 78 del PDF), dentro de la línea de balance
+"Inversiones disponibles para la venta" (Nota 8b), junto con otras participaciones minoritarias
+menores (Fiduciaria de Occidente, NUAM, Cámara de Riesgo Central de Contraparte, Adecañá, AV Villas
 ordinaria/preferencial) que se dejan embebidas en el ajuste de balance propio en vez de
-desagregarse — igual que las demás partidas de "Inversiones disponibles para la venta" que no son
-del universo de 24 emisores.
+desagregarse.
 
 **Participaciones cargadas** (14 filas, `jobs/ingesta_participaciones.py`):
 - **GEB 2,28%** (cotizada) — valor = **620,863 MMM**, tomado directamente del valor razonable que
-  Corfi ya declara al 31-dic-2025 (no requiere revaluación a precio de mercado como las demás
-  cotizadas del catálogo, porque FVOCI ya ES valor de mercado). Cruce de verificación: 2,28% ×
-  capitalización de GEB en `fundamentales_analisis` (27.543,531 MMM, a 2026-09-10) = 628,19 MMM —
-  diferencia de ~9 meses de fecha de precio, consistente, sin indicio de problema de clase de acción
-  (GEB tiene una sola clase).
-- **12 subsidiarias principales** (no cotizadas, a valor en libros método de participación
-  patrimonial, Nota 12): Colombiana de Licitaciones y Concesiones (7.311,887), Proyectos y
-  Desarrollos Viales del Pacífico (3.391,267), Promigas (2.343,275), Estudios Proyectos e
-  Inversiones de Los Andes (1.333,686), CFC Gas Holding (1.249,695), Hoteles Estelar (460,855),
-  Proyectos y Desarrollos Viales del Mar (481,289), Valora (453,214), Fondo de Capital Privado
-  Corredores Capital I (358,279), CFC Private Equity Holdings (239,502), Estudios y Proyectos del
-  Sol (234,070), Organización Pajonales (219,207).
+  Corfi ya declara al 31-dic-2025 (no requiere revaluación a precio de mercado, porque FVOCI ya ES
+  valor de mercado). Cruce de verificación: 2,28% × capitalización de GEB en `fundamentales_analisis`
+  (27.543,531 MMM, a 2026-09-10) = 628,19 MMM — diferencia de ~9 meses de fecha de precio,
+  consistente, sin indicio de problema de clase de acción (GEB tiene una sola clase).
+- **Promigas 34,87%** (cotizada, corregida) — valor = **2.497,003 MMM** (34,87% × capitalización de
+  Promigas en `fundamentales_analisis`, 7.160,891 MMM), no el valor en libros método de
+  participación (2.343,275 MMM) que se usó por error la primera vez. Diferencia +153,7 MMM.
+- **11 subsidiarias no cotizadas restantes** (a valor en libros método de participación patrimonial,
+  Nota 12): Colombiana de Licitaciones y Concesiones (7.311,887), Proyectos y Desarrollos Viales del
+  Pacífico (3.391,267), Estudios Proyectos e Inversiones de Los Andes (1.333,686), CFC Gas Holding
+  (1.249,695), Hoteles Estelar (460,855), Proyectos y Desarrollos Viales del Mar (481,289), Valora
+  (453,214), Fondo de Capital Privado Corredores Capital I (358,279), CFC Private Equity Holdings
+  (239,502), Estudios y Proyectos del Sol (234,070), Organización Pajonales (219,207).
 - **Residual "Otras subsidiarias y asociadas menores"** (686,842 MMM) — las 14 subsidiarias pequeñas
   restantes de la Nota 12 más las 5 asociadas completas de la Nota 13 (Aerocali, Ventas y Servicios,
   Extrucol, Aval Banca de Inversiones, Metrex), ninguna cotizada.
@@ -849,31 +854,101 @@ del universo de 24 emisores.
   100% deteriorada desde 2021 (Nota 12, nota (2)), valor neto = 0 — se omite en vez de listar una
   fila en cero.
 
-**Verificación de cuadre**: suma no cotizadas cargada = **18.763,068 MMM**, exacto contra Nota 12
-(18.708,359, neto del deterioro) + Nota 13 (54,709). Balance separado verificado exacto: Total
-Activos 28.910,352 = Total Pasivos 15.711,419 + Total Patrimonio 13.198,933.
+**Verificación de cuadre**: suma no cotizadas cargada = **16.419,793 MMM**, exacto contra Nota 12
+(18.708,359, neto del deterioro) + Nota 13 (54,709) − Promigas reclasificada (2.343,275, valor en
+libros que sale del bucket de no-cotizadas). Balance separado verificado exacto: Total Activos
+28.910,352 = Total Pasivos 15.711,419 + Total Patrimonio 13.198,933.
 
-**Ajuste de balance propio** (`ajustes_nav`): = Total activos (28.910,352) − inversiones en
-subsidiarias+asociadas (18.763,068) − GEB ya contado aparte como cotizada (620,863, para no
-duplicarlo — está embebido en "Inversiones disponibles para la venta" dentro de Total activos) −
-Total pasivos (15.711,419) = **−6.184,998 MMM**. Negativo y significativo, a diferencia de
-Argos (+322,9): Corfi es estructuralmente una entidad financiera que capta depósitos (Nota 20:
+**Ajuste de balance propio** (`ajustes_nav`, sin cambio por la corrección de Promigas — su valor en
+libros sigue embebido en el mismo total de subsidiarias que ya se resta, reclasificarla a "cotizada"
+solo cambia cómo se reporta su valor para el NAV, no la resta contable): = Total activos (28.910,352)
+− inversiones en subsidiarias+asociadas (18.763,068) − GEB ya contado aparte como cotizada (620,863,
+para no duplicarlo — está embebido en "Inversiones disponibles para la venta" dentro de Total
+activos) − Total pasivos (15.711,419) = **−6.184,998 MMM**. Negativo y significativo, a diferencia
+de Argos (+322,9): Corfi es estructuralmente una entidad financiera que capta depósitos (Nota 20:
 9.330,532 MMM) para fondear su portafolio de inversiones — el pasivo de captación excede largamente
 los activos propios no invertidos, mismo patrón que Grupo Aval (−1.468,6) pero de mayor magnitud
 relativa.
 
-**Resultado**: NAV-mercado **−5.564,1 MMM** (negativo real — la única participación con precio
-verificable, GEB, no compensa el neto propio negativo) · NAV-lookthrough **13.198,9 MMM**
-(coincide exacto con el Total Patrimonio del balance separado, verificación cruzada matemática: al
-no haber cotizadas de peso, look-through = Total Activos − Total Pasivos) · precio de mercado
-7.898,006 MMM · **descuento 40,2% vs. NAV-lookthrough**.
+**Resultado (corregido)**: NAV-mercado **−3.067,1 MMM** (negativo real — las dos participaciones con
+precio verificable, GEB y Promigas, no compensan el neto propio negativo) · NAV-lookthrough
+**13.352,7 MMM** (ya NO coincide exacto con el Total Patrimonio — 13.198,933 + 153,728 de la
+revaluación de Promigas a mercado, verificación cruzada consistente con el delta esperado) · precio
+de mercado 7.898,006 MMM · **descuento 40,85% vs. NAV-lookthrough**.
 
 **Lectura**: bajo el criterio conservador (solo lo cotizado a mercado), Corficolombiana no pasa el
 filtro — el mercado paga más que el NAV-mercado estrictamente verificable. Bajo el look-through
-(que asume que el valor en libros de sus participaciones privadas es razonable), luce 40% barata.
+(que asume que el valor en libros de sus participaciones privadas es razonable), luce ~41% barata.
 Esta es exactamente la brecha que la doctrina pide reportar sin promediar ni elegir una sola cifra
 "con asterisco" — se documentan ambas y se deja al usuario juzgar cuánto confía en los valores en
 libros de una cartera casi enteramente privada.
+
+## 9F. W3a — GEB (21-sep-2026) — cierra el MVP de 5 holdings
+
+**Fuente**: `GEB/2025-ANUAL_EEFF-Separados.pdf`, Estados Financieros Separados — Nota 12
+"Inversiones en subordinadas" (pág. 28-32), Nota 13 "Inversiones en asociadas y negocios conjuntos"
+(pág. 36-38), Estado Separado de Situación Financiera (pág. 1, texto plano).
+
+**Estructura distinta a los 4 holdings anteriores**: la Nota 12 de GEB (subordinadas: TGI, TRECSA,
+EEB Perú Holdings, Grupo Dunas, Cantalloc, Contugas, GEBBRAS, EEB Energy RE, Enlaza, Conecta
+Energía) **no da un "valor de la inversión" por entidad para 2025** — solo el movimiento agregado
+(saldo final 9.172,774 MMM) y el detalle de activos/pasivos/patrimonio/ingresos por entidad, sin
+columna de valor de inversión individual (a diferencia de Sura/Argos/Aval/Corfi, cuya Nota de
+subsidiarias sí desagrega valor por entidad). Como ninguna subordinada cotiza en el universo de 24
+emisores de todas formas (son infraestructura de gas/energía en Colombia, Perú, Guatemala y Brasil,
+sin listado en la BVC), se cargó como una sola fila agregada — no se perdió información relevante
+para el NAV al no desagregar.
+
+La Nota 13 (asociadas y negocios conjuntos) sí desagrega valor por entidad. De sus 8 asociadas, la
+única del universo de 24 emisores es **Promigas (15,24%)** — Enel Colombia (delistada de la BVC tras
+la OPA/fusión de Enel), Vanti, Electrificadora del Meta, Agencia Analítica de Datos, Red de Energía
+del Perú, Consorcio Transmantaro y Argo Energia (Brasil) no cotizan o no están en el universo.
+
+**Participaciones cargadas** (3 filas):
+- **Promigas 15,24%** (cotizada) — valor = **1.091,320 MMM** (15,24% × capitalización de Promigas
+  en `fundamentales_analisis`, 7.160,891 MMM), no el valor en libros método de participación
+  (1.148,657 MMM) que declara la propia Nota 13. A diferencia de la misma participación vista desde
+  Corficolombiana (§9E, donde el valor de mercado era MAYOR al libro), aquí resulta **menor**
+  (−57,3 MMM) — mismo método, dirección distinta, ambas verificadas contra el mismo dato fuente
+  (`fundamentales_analisis.capitalizacion_mmm` de Promigas).
+- **Subordinadas (agregado, Nota 12)** — no cotizada, 9.172,774 MMM, sin desagregación de valor por
+  entidad (ver arriba).
+- **Otras asociadas y negocios conjuntos (residual, Nota 13)** — no cotizada, 11.168,639 MMM
+  (12.317,296 total de la nota − 1.148,657 de Promigas): Enel Colombia (7.896,117), Vanti (389,464),
+  Electrificadora del Meta (64,159), Agencia Analítica de Datos (0,997), Red de Energía del Perú
+  (234,985), Consorcio Transmantaro (787,519), Argo Energia (1.795,398).
+
+**Verificación de cuadre**: suma no cotizadas cargada = **20.341,413 MMM**, exacto contra Nota 12
+(9.172,774) + Nota 13 (12.317,296) − Promigas reclasificada (1.148,657). Balance separado verificado
+(con redondeo de 1 MM, inmaterial): Total Activos 31.739,548 ≈ Total Pasivos 12.195,855 + Total
+Patrimonio 19.543,694 (= 31.739,549).
+
+**Ajuste de balance propio**: = Total activos (31.739,548) − inversiones en subordinadas+asociadas
+(9.172,774+12.317,296=21.490,070) − Total pasivos (12.195,855) = **−1.946,377 MMM**. Negativo, mismo
+patrón que Corfi y Aval (deuda a nivel holding para financiar el portafolio de inversiones y la
+operación propia de transmisión), de menor magnitud relativa que Corfi.
+
+**Resultado**: NAV-mercado **−855,1 MMM** (negativo real — la única participación cotizada, Promigas,
+no compensa el neto propio negativo) · NAV-lookthrough **19.486,4 MMM** · precio de mercado
+**27.543,531 MMM**.
+
+**Hallazgo notable — primer caso del proyecto con precio POR ENCIMA del NAV-lookthrough**: GEB cotiza
+con una **prima de ~41,3%** sobre su propio NAV de suma de partes, no un descuento. Los 4 holdings
+anteriores (Sura, Argos, Aval, Corfi) cotizaban todos con descuento significativo vs. su
+NAV-lookthrough (23%-41%); GEB es el primer caso donde el mercado paga más que la suma de sus
+partes a valor en libros/mercado. Es económicamente coherente con el perfil de GEB: utility
+regulada de transmisión de gas/energía con flujo de caja contractual estable y control estatal
+(Distrito de Bogotá) — exactamente el tipo de franquicia donde, en términos de Greenwald, el EPV
+(poder de generación de utilidades) puede exceder el valor de los activos, a diferencia de los
+holdings puramente de cartera. Bajo el marco de cuatro cuadrantes del plan (§6), GEB cae en **"Safe
+pero cara"**, no en "Safe & Cheap" — es exactamente la discriminación que el plan pedía evitar perder
+(§2.3: "el riesgo de que el motor diga 'todo está barato'"), y este caso confirma que el motor sí
+distingue.
+
+**W3a queda completo: 5 de 5 holdings del MVP cargados, auditados y verificados** (`jobs/
+test_valor_engine.py`, 25 aserciones, todas pasan). Próximo paso del plan (no iniciado sin
+confirmación explícita de Alex): **W3b**, la validación externa contra el SOTP publicado de
+Davivienda Corredores y los 3 eventos de control históricos (§8 del plan).
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

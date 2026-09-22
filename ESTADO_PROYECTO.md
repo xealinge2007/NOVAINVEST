@@ -1466,3 +1466,33 @@ suavizar, coherente con la disciplina de "no inventar, declarar". Balance separa
 
 `jobs/test_valor_engine.py` extendido a 4 holdings (20 aserciones, todas pasan). Falta solo GEB para
 cerrar el MVP de W3a. Detalle completo en `db/DOCTRINA_VALOR.md` §9E.
+
+## 21-sep-2026 (cont. 10) — W3a: GEB, 5 de 5 holdings -- MVP completo, y una corrección real en Corfi
+
+Alex pidió seguir con GEB. Al leer su Nota 13 (asociadas), GEB tiene una participación del 15,24% en
+Promigas -- y verificar si Promigas cotizaba obligó a revisar el supuesto de la sesión anterior, que
+resultó **falso**: Promigas SÍ está en el universo de 24 emisores de NOVAINVEST (ticker
+`PROMIGAS.CL`, capitalización propia en `fundamentales_analisis`), no "privada, no cotiza en la BVC"
+como se declaró por error al cargar CORFICOLOMBIANA (que también tiene una participación en
+Promigas, 34,87%). Se corrigió de inmediato: Promigas reclasificada a cotizada en ambos catálogos,
+a precio de mercado en vez de valor en libros.
+
+**CORFICOLOMBIANA (corregido)**: NAV-mercado -3.067,1 MMM (antes -5.564,1), NAV-lookthrough 13.352,7
+MMM (antes 13.198,9 -- ya no coincide exacto con el patrimonio, coincide con patrimonio + la
+revaluación de Promigas a mercado, +153,7), descuento 40,85% vs. lookthrough (antes 40,16%).
+
+**GEB**: única cotizada real es Promigas 15,24% (aquí el valor de mercado resulta MENOR al libro,
+dirección opuesta a como se ve desde Corfi -- mismo dato, mismo método, verificación cruzada limpia
+entre los dos holdings). Su propia Nota de subordinadas no desagrega valor por entidad (a diferencia
+de los 4 holdings anteriores) -- se cargó como una sola fila agregada, sin pérdida de información
+relevante porque ninguna subordinada cotiza igual. NAV-mercado -855,1 MMM, NAV-lookthrough 19.486,4
+MMM, precio de mercado 27.543,531 MMM. **Primer caso del proyecto con el precio POR ENCIMA del
+NAV-lookthrough**: GEB cotiza con una prima de ~41,3%, no un descuento -- coherente con su perfil de
+utility regulada de flujo de caja estable (franquicia en términos de Greenwald), y es justo el tipo
+de discriminación que el plan pedía del motor (que no diga "todo está barato").
+
+`jobs/test_valor_engine.py` extendido a los 5 holdings (25 aserciones, todas pasan). **W3a queda
+completo: 5 de 5 holdings del MVP** (Sura, Argos, Aval, Corficolombiana, GEB). Detalle completo en
+`db/DOCTRINA_VALOR.md` §9E (corregido) y §9F. Próximo paso del plan, W3b (validación externa contra
+SOTP de Davivienda Corredores y eventos de control históricos), no iniciado -- pendiente de
+confirmación explícita de Alex.

@@ -565,20 +565,34 @@ PARTICIPACIONES_CORFICOLOMBIANA = [
         confianza="media",
     ),
     dict(
-        participada_slug=None,
+        # CORREGIDO 21-sep-2026 (al procesar GEB, que tambien tiene una
+        # participacion en Promigas, se detecto que Promigas SI esta en el
+        # universo de 24 emisores de NOVAINVEST -- ticker PROMIGAS.CL,
+        # capitalizacion propia en fundamentales_analisis. El error original
+        # (marcarla no cotizada) confundio "no aparece en la Nota 12 con
+        # formato de subsidiaria cotizada explicita" con "no cotiza en la
+        # BVC" -- son cosas distintas. Se corrige a valor de mercado.
+        participada_slug="PROMIGAS",
         participada_nombre="Promigas S.A. E.S.P.",
-        cotizada=False,  # no cotiza en la BVC pese a su tamano -- verificado, no esta en el universo de 24 emisores
+        cotizada=True,
         pct_tenencia=34.87,
-        metodo_valoracion="libro_ajustado",
-        valor_participacion_mmm=2343.275,
-        valor_100pct_mmm=2343.275 / 0.3487,
+        metodo_valoracion="precio_mercado",
+        valor_100pct_mmm=7160.891,  # fundamentales_analisis.capitalizacion_mmm de Promigas
+        valor_participacion_mmm=7160.891 * 0.3487,
         detalle_metodo=(
-            "Valor en libros metodo de participacion patrimonial al 31-dic-2025 (Nota "
-            "12). Corfi registro control formal sobre Promigas el 9-jul-2025 (acuerdo "
-            "de accionistas con CfC Gas Holding y Promigas CFC SAS, nota 1 de la "
-            "tabla) -- Promigas NO cotiza en la BVC, es privada."
+            "34.87% de participacion (Nota 12). Corfi registro control formal sobre "
+            "Promigas el 9-jul-2025 (acuerdo de accionistas con CfC Gas Holding y "
+            "Promigas CFC SAS, nota 1 de la tabla), pero Promigas SI cotiza en la BVC "
+            "(PROMIGAS.CL) y esta en el universo de 24 emisores -- valor 100% = "
+            "capitalizacion bursatil de fundamentales_analisis, no el valor en libros "
+            "metodo de participacion (2,343.275 MMM) que se uso por error la primera "
+            "vez. Su balance sigue embebido, a valor en libros, dentro del 'Total "
+            "Inversiones en Subsidiarias' que se resta en el ajuste de balance propio "
+            "-- reclasificarla aqui a precio de mercado no cambia esa resta, solo "
+            "cambia como se reporta su valor para el NAV (igual que Cementos "
+            "Argos/Celsia en el catalogo de Argos)."
         ),
-        confianza="media",
+        confianza="alta",
     ),
     dict(
         participada_slug=None,
@@ -703,11 +717,103 @@ PARTICIPACIONES_CORFICOLOMBIANA = [
     ),
 ]
 
+FUENTE_GEB = (
+    "GEB/2025-ANUAL_EEFF-Separados.pdf, Estados Financieros Separados, Nota 12 "
+    "(Inversiones en subordinadas, pag. 28-32) y Nota 13 (Inversiones en asociadas "
+    "y negocios conjuntos, pag. 36-38) y Estado Separado de Situacion Financiera "
+    "(pag. 1)"
+)
+
+# Participaciones de GEB al 31-dic-2025 (Nota 12/13, pag. 28-38). Igual que
+# Corficolombiana, la Nota 12 (subordinadas: TGI, TRECSA, EEB Peru Holdings,
+# Grupo Dunas, Cantalloc, Contugas, GEBBRAS, EEB Energy RE, Enlaza, Conecta
+# Energia) no da un "valor de la inversion" por entidad para 2025 -- solo
+# el movimiento agregado (saldo final 9,172.774) y el detalle de
+# activos/pasivos/patrimonio por entidad (sin valor de inversion). Ninguna
+# subordinada cotiza en el universo de 24 emisores de todas formas, asi que
+# se carga como una sola fila agregada, sin desagregar (mismo patron que
+# los residuales de Argos/Corfi cuando la nota no desagrega valor).
+#
+# La Nota 13 (asociadas) SI da valor por entidad. De sus 8 asociadas, la
+# UNICA en el universo de 24 emisores es Promigas (15.24%) -- Enel
+# Colombia, Vanti, Electrificadora del Meta, Red de Energia del Peru,
+# Consorcio Transmantaro y Argo Energia no cotizan en la BVC o no estan en
+# el universo. Promigas se separa a valor de mercado, igual que en el
+# catalogo de CORFICOLOMBIANA (corregido 21-sep-2026, ver arriba) -- aqui
+# el valor de mercado (1,091.320) es MENOR al valor en libros (1,148.657),
+# a diferencia de Corfi donde era mayor; direccion distinta, mismo metodo.
+PARTICIPACIONES_GEB = [
+    dict(
+        participada_slug="PROMIGAS",
+        participada_nombre="Promigas S.A. E.S.P.",
+        cotizada=True,
+        pct_tenencia=15.24,
+        metodo_valoracion="precio_mercado",
+        valor_100pct_mmm=7160.891,  # fundamentales_analisis.capitalizacion_mmm de Promigas
+        valor_participacion_mmm=7160.891 * 0.1524,
+        detalle_metodo=(
+            "15.24% de participacion (Nota 13, pag. 36). Valor 100% = capitalizacion "
+            "bursatil de fundamentales_analisis (PROMIGAS.CL), no el valor en libros "
+            "metodo de participacion (1,148.657 MMM) que declara la propia Nota 13 -- "
+            "aqui el valor de mercado (1,091.320) resulta MENOR al valor en libros, a "
+            "diferencia de la misma participacion vista desde Corficolombiana (donde "
+            "era mayor). Su balance sigue embebido, a valor en libros, dentro del "
+            "Total de asociadas que se resta en el ajuste de balance propio."
+        ),
+        confianza="alta",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Subordinadas (agregado, Nota 12 -- sin desagregacion de valor por entidad)",
+        cotizada=False,
+        pct_tenencia=100.0,  # no aplica realmente -- agregado de 10 subordinadas con % variables, ver detalle
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=9172.774,
+        valor_100pct_mmm=9172.774,
+        detalle_metodo=(
+            "Saldo final metodo de participacion al 31-dic-2025 (Nota 12) = "
+            "9,172.774 MMM. A diferencia de Sura/Argos/Aval/Corfi, la Nota 12 de GEB "
+            "NO da un 'valor de la inversion' por subordinada para 2025 (solo da el "
+            "movimiento agregado y el detalle de activos/pasivos/patrimonio por "
+            "entidad, sin valor de inversion individual) -- se carga como una sola "
+            "fila. Ninguna de las 10 subordinadas (TGI, TRECSA, EEB Peru Holdings, "
+            "Grupo Dunas, Cantalloc, Contugas, GEBBRAS, EEB Energy RE, Enlaza, "
+            "Conecta Energia) cotiza en el universo de 24 emisores -- son "
+            "infraestructura de gas/energia en Colombia, Peru, Guatemala y Brasil, "
+            "sin listado en la BVC."
+        ),
+        confianza="media",
+    ),
+    dict(
+        participada_slug=None,
+        participada_nombre="Otras asociadas y negocios conjuntos (residual, Nota 13)",
+        cotizada=False,
+        pct_tenencia=100.0,  # no aplica realmente -- residual de conciliacion, ver detalle
+        metodo_valoracion="libro_ajustado",
+        valor_participacion_mmm=12317.296 - 1148.657,
+        valor_100pct_mmm=12317.296 - 1148.657,
+        detalle_metodo=(
+            "Residual para cuadrar el Total de asociadas y negocios conjuntos (Nota "
+            "13, 12,317.296) contra Promigas sola (1,148.657 valor en libros): "
+            "12,317.296 - 1,148.657 = 11,168.639. Incluye Enel Colombia S.A. E.S.P. "
+            "(42.52%, 7,896.117 -- delistada de la BVC tras la OPA/fusion de Enel, no "
+            "esta en el universo de 24 emisores), Vanti (24.99%, 389.464), "
+            "Electrificadora del Meta (16.23%, 64.159), Agencia Analitica de Datos "
+            "(40.00%, 0.997), Red de Energia del Peru (40.00%, 234.985), Consorcio "
+            "Transmantaro (40.00%, 787.519) y Argo Energia Empreendimentos e "
+            "Participacoes (50.00%, 1,795.398, Brasil) -- ninguna cotiza en el "
+            "universo de 24 emisores."
+        ),
+        confianza="baja",
+    ),
+]
+
 CATALOGOS = {
     "GRUPO_SURA": (PARTICIPACIONES_GRUPO_SURA, "2025-12-31", FUENTE_SURA),
     "GRUPO_ARGOS": (PARTICIPACIONES_GRUPO_ARGOS, "2025-12-31", FUENTE_ARGOS),
     "GRUPO_AVAL": (PARTICIPACIONES_GRUPO_AVAL, "2025-12-31", FUENTE_AVAL),
     "CORFICOLOMBIANA": (PARTICIPACIONES_CORFICOLOMBIANA, "2025-12-31", FUENTE_CORFI),
+    "GEB": (PARTICIPACIONES_GEB, "2025-12-31", FUENTE_GEB),
 }
 
 # Neto de activos/pasivos propios del holding a nivel SEPARADO (caja,
@@ -799,6 +905,30 @@ AJUSTES_HOLDING = {
         ),
         monto_mmm=28910.352 - (18708.359 + 54.709 + 620.863) - 15711.419,  # -6,184.998
         fuente=FUENTE_CORFI,
+        pagina_fuente=1,
+        confianza="alta",
+    ),
+    "GEB": dict(
+        anio=2025, periodo="ANUAL",
+        tipo_ajuste="otro",
+        concepto=(
+            "Neto de activos y pasivos propios de GEB a nivel separado (caja, otras "
+            "inversiones, cuentas por cobrar, PP&E, obligaciones financieras, bonos, "
+            "etc.), fuera de las participaciones ya contabilizadas en "
+            "participaciones_holding. = Total activos separado (31,739.548) - "
+            "inversiones en subordinadas+asociadas (9,172.774+12,317.296=21,490.070) "
+            "- Total pasivos separado (12,195.855). A diferencia de Promigas (que se "
+            "separa aparte como cotizada dentro de las asociadas), aqui no hace falta "
+            "restar nada adicional: Promigas SI esta dentro de la Nota 13 (a "
+            "diferencia del caso GEB-dentro-de-Corfi, que estaba en una nota "
+            "distinta), asi que su valor en libros ya queda embebido y totalmente "
+            "restado dentro del total de asociadas (12,317.296) sin importar como se "
+            "reporte despues en participaciones_holding. Verificado: Total activos = "
+            "Total pasivos + Total patrimonio (12,195.855+19,543.694=31,739.549 vs. "
+            "31,739.548 declarado -- diferencia de 1 MM por redondeo, inmaterial)."
+        ),
+        monto_mmm=31739.548 - (9172.774 + 12317.296) - 12195.855,  # -1,946.377
+        fuente=FUENTE_GEB,
         pagina_fuente=1,
         confianza="alta",
     ),

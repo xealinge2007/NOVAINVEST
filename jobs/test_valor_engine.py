@@ -49,13 +49,26 @@ CASOS = {
     # cotizadas + 9 no cotizadas a libro, incluido Grupo Aval Limited con
     # valor en libros NEGATIVO real (patrimonio negativo por perdidas).
     "GRUPO_AVAL": (2025, "ANUAL", 8648.5, 17731.4),
-    # Unica cotizada: 2.28% en GEB a valor razonable (FVOCI, ya a mercado) +
-    # 12 no cotizadas a libro + residual. NAV-mercado NEGATIVO real: Corfi es
-    # estructuralmente un banco (capta depositos) sin holdings cotizados
-    # propios significativos -- el pasivo de captacion excede los activos
-    # propios no invertidos. NAV-lookthrough coincide exacto con el Total
-    # Patrimonio del balance separado (13,198.933), verificacion cruzada.
-    "CORFICOLOMBIANA": (2025, "ANUAL", -5564.1, 13198.9),
+    # 2 cotizadas: 2.28% en GEB a valor razonable (FVOCI, ya a mercado) +
+    # 34.87% en Promigas a precio de mercado (corregido 21-sep-2026: Promigas
+    # SI cotiza en la BVC, se cargo por error como no-cotizada la primera vez)
+    # + 12 no cotizadas a libro + residual. NAV-mercado NEGATIVO real: Corfi
+    # es estructuralmente un banco (capta depositos) sin holdings cotizados
+    # propios suficientes -- el pasivo de captacion excede los activos
+    # propios no invertidos.
+    "CORFICOLOMBIANA": (2025, "ANUAL", -3067.1, 13352.7),
+    # Unica cotizada: 15.24% en Promigas a precio de mercado (mismo ticker
+    # que en Corficolombiana, aqui el valor de mercado resulta MENOR al
+    # valor en libros -- direccion opuesta a Corfi) + subordinadas (Nota 12,
+    # agregado, sin desagregacion de valor por entidad -- ninguna cotiza) +
+    # residual de asociadas (Enel Colombia, Vanti, etc., ninguna cotiza).
+    # NAV-mercado NEGATIVO real: GEB tiene pasivo (deuda + operacion) que
+    # excede sus activos propios no invertidos, igual patron que Corfi.
+    # PRIMER caso del proyecto con PRECIO POR ENCIMA del NAV-lookthrough
+    # (premio, no descuento) -- GEB cotiza con una prima de ~41% sobre su
+    # NAV de suma de partes, consistente con su perfil de utility regulada
+    # con flujo de caja estable (franquicia, en terminos de Greenwald).
+    "GEB": (2025, "ANUAL", -855.1, 19486.4),
 }
 
 emisores = {e["slug"]: e["id"] for e in cliente.table("emisores").select("id,slug").execute().data}
