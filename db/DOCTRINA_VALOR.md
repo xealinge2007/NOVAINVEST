@@ -950,6 +950,52 @@ test_valor_engine.py`, 25 aserciones, todas pasan). Próximo paso del plan (no i
 confirmación explícita de Alex): **W3b**, la validación externa contra el SOTP publicado de
 Davivienda Corredores y los 3 eventos de control históricos (§8 del plan).
 
+## 9G. Auditoría independiente del W3a completo (21-sep-2026, agente `critico`)
+
+Alex pidió una auditoría de los 5 holdings ya cargados, más una revisión de si el universo de
+holdings (Sura, Argos, Aval, Corficolombiana, GEB) está completo. Auditoría con contexto limpio,
+releyendo los PDF fuente directamente (no la documentación del proyecto).
+
+**Parte 1 — verificación aritmética**: **sin discrepancias**. Se releyeron balances separados
+completos y Notas de subsidiarias/asociadas de los 5 holdings contra `jobs/ingesta_participaciones.py`
+— coinciden exactos, incluida la reconstrucción a mano de los residuales de Corficolombiana. Se
+verificó específicamente que la lógica de "neto propio" no duplica GEB (Corfi) ni Promigas
+(Corfi/GEB) — correcto en ambos sentidos: GEB se resta aparte porque está fuera de la Nota de
+subsidiarias/asociadas; Promigas no se resta aparte porque ya está dentro del total que sí se resta.
+No se encontraron participaciones cotizadas adicionales pasadas por alto (se revisó explícitamente
+cada nombre de cada nota contra el universo de 24 emisores). `jobs/test_valor_engine.py`: 25/25.
+
+**Parte 2 — ¿son estos 5 los holdings correctos? Hallazgo real, pendiente de decisión**:
+
+- **GRUPO_CIBEST_BANCOLOMBIA** está clasificado como arquetipo "Banco" en la doctrina (§6, tabla de
+  Pilar 1), pero su Estado de Situación Financiera Separado (2025, pág. 343) muestra Total Activo
+  42.187,088 MMM de los cuales **"Inversiones en subsidiarias" = 35.406,058 MMM (84% del activo)**
+  — Bancolombia S.A. 94,50%, más Banagrícola (El Salvador), Grupo Agromercantil (Guatemala), Nequi,
+  Wompi, Renting Colombia (Nota 5, pág. 353). Es estructuralmente un holding, no un banco operativo.
+  Inconsistencia real: el propio catálogo `PARTICIPACIONES_GRUPO_SURA` ya trata a Cibest como
+  participada cotizada usando capitalización TOTAL (ambas clases) — el proyecto ya reconoce a Cibest
+  como holding cuando lo mira desde afuera (Sura), pero no cuando lo mira desde adentro.
+- **DAVIVIENDA_GROUP** — evidencia aún más contundente: Estado Separado Condensado a jun-2026 (pág.
+  103) muestra Total de activos 23.317,941 MMM de los cuales **"Inversiones en subsidiarias y
+  asociadas" = 22.508,004 MMM (96,5% del activo)** — 93,92% en Banco Davivienda S.A. (Nota 8, pág.
+  121). Un holding casi puro creado por la reorganización de 2025 (ver §5E de esta doctrina) — no
+  encaja en el molde "Banco". Nota relevante: Banco Davivienda sigue cotizando por separado
+  (`PFDAVVNDA.CL`, ver §5E) en paralelo con Davivienda Group (`PFDAVIGRP.CL`), lo que abre la
+  posibilidad de valorar ese 93,92% a precio de mercado, igual que Sura valora su 24,65% en Cibest.
+- **ISA** — candidato plausible por estructura pública (ISA CTEEP, ISA REP, INTERCOLOMBIA, XM,
+  subsidiarias grandes y semiautónomas en varios países), pero **sin EEFF Separados en el corpus
+  local** (`SIMEV_BVC/ISA` solo tiene reportes de gestión/ESG y un informe trimestral sin estados
+  financieros) — queda como pendiente de datos, no de estructura. Nota adicional: ISA es controlada
+  por Ecopetrol ("Grupo Empresarial Ecopetrol"), dato no contemplado hasta ahora en el arquetipo de
+  ECOPETROL.
+- Ningún otro de los 24 emisores mostró evidencia comparable — el resto de "activos pesados/real"
+  (Ecopetrol, Cementos Argos, Mineros, Promigas, Terpel, Celsia, Nutresa, ETB, Conconcreto) son
+  operadores con integración vertical genuina, no estructuras de suma de partes.
+
+**Pendiente, sin decidir todavía**: si se agregan Cibest y Davivienda Group a Ruta H (serían 7
+holdings en vez de 5), y si se consigue el PDF de EEFF Separados de ISA para evaluarlo. No se
+implementa nada de esto sin confirmación explícita de Alex — cambia el alcance de W3a.
+
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
 - ✅ **Hecho (18-sep-2026)**: `PLAN-ASESOR-FINANCIERO.md` copiado a `C:\Proyectos\novainvest\` (por
