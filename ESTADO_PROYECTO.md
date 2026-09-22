@@ -1601,3 +1601,28 @@ ajuste NIIF 13 a PP&E porque no hay revelación de valor razonable) -- **destruc
 Nuevo archivo `jobs/epv_engine.py` (ejecutable, sin Supabase, 6/6 verificaciones pasan). Detalle
 completo en `db/DOCTRINA_VALOR.md` §10. Pendiente de decisión de Alex: escalar a los 16 emisores
 restantes de Ruta A/O.
+
+## 22-sep-2026 (cont. 14) — auditoría del piloto W3c: 2 correcciones reales
+
+Alex pidió auditar el piloto de Cementos Argos, mismo patrón que W3a. El agente `critico` confirmó
+la aritmética (releyó los PDF fuente, re-calculó todo a mano) y encontró 2 cosas reales:
+
+1. **Etiquetado erróneo**: el script y la doctrina decían "balance separado" cuando en realidad se
+   usó el balance **consolidado** en todo el cálculo. La elección de fondo era correcta (el EBIT
+   normalizado también es consolidado), pero la etiqueta mal puesta era un riesgo real de que se
+   replicara como una confusión de fuente de verdad al escalar a los 16 emisores restantes.
+2. **Inconsistencia de criterio**: se restaba el crédito mercantil del valor de activos ajustado por
+   "no ser reproducible", pero no la Marca Argos (115,389 MMM, intangible de vida útil indefinida
+   que cumple el mismo criterio, Nota 18.1/18.4.3). Efecto pequeño aquí (~1,1%, no cambia el
+   diagnóstico) pero el criterio debía quedar explícito antes de escalar.
+
+El auditor también confirmó independientemente (Nota 14.8, informe 2025-ANUAL) que el cambio de
+perímetro es real -- venta de Argos North America Corp. a Summit Materials por USD 3.104 millones,
+12-ene-2024 -- y encontró un detalle extra sobre el bug de datos de 2023: el valor correcto sí había
+quedado guardado en la base, pero en la columna `ebitda` en vez de `utilidad_operacional` -- sugiere
+un error de mapeo de columnas, no solo el documento equivocado.
+
+Ambas correcciones ya se aplicaron: activos ajustados bajan de 10.375,3 a **10.259,9 MMM**, EPV sin
+cambio (4.622,4 MMM), diagnóstico sin cambio (**destrucción de valor, -54,9%**). Detalle completo en
+`db/DOCTRINA_VALOR.md` §10 (sección "Auditoría independiente del piloto"). Piloto queda validado y
+corregido -- pendiente de decisión de Alex: escalar a los 16 emisores restantes.

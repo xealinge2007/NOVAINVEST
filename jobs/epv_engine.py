@@ -41,17 +41,23 @@ def revisar(nombre, condicion, detalle):
 # ingresos / 1,640.441 utilidad operativa -- se usan estos, verificados
 # directo contra el PDF, no los de la base de datos (que tiene el bug
 # pendiente de corregir -- tarea de fondo lanzada aparte, no bloquea este
-# piloto).
+# piloto). Detalle adicional que encontro la auditoria independiente del
+# piloto (22-sep-2026): el valor correcto (1,640.441) SI quedo guardado en
+# esa misma fila de la base de datos, pero en la columna `ebitda`, no en
+# `utilidad_operacional` -- sugiere un error de mapeo de columnas en la
+# extraccion, no solo "se leyo el documento equivocado". Relevante para la
+# tarea de fondo que audita el resto de la tabla.
 #
-# CAMBIO DE PERIMETRO (declarado, no oculto): Cementos Argos discontinuo
-# una operacion grande en 2024 (Nota "operaciones discontinuadas", 13.6/18
-# en el informe 2024-ANUAL y 14.8/19 en el 2025-ANUAL -- consistente con la
-# venta de su participacion en Summit Materials Inc./EE.UU., ya mencionada
-# en la Nota 9.3.2 de Grupo Sura sobre la oferta de Quikrete Holdings a
-# USD 52.5/accion). Esto parte la serie 2019-2025 en dos escalas: 2019-2023
-# (negocio completo, con EE.UU., ingresos ~9,000-12,700 MMM/anio) y
-# 2024-2025 (solo operaciones continuadas, sin EE.UU., ingresos ~5,150-5,300
-# MMM/anio).
+# CAMBIO DE PERIMETRO (declarado, no oculto, confirmado por la auditoria):
+# Cementos Argos vendio el 100% de las acciones de Argos North America
+# Corp. a Summit Materials Inc. el 12-ene-2024 por USD 3,104 millones
+# (efectivo + acciones + cancelacion de deuda) -- Nota 14.8 del informe
+# 2025-ANUAL, pag. 156-157, confirmada independientemente por la
+# auditoria. Esto explica exactamente el salto de ingresos de ~12,700
+# (2023) a ~5,299 MMM (2024). Parte la serie 2019-2025 en dos escalas:
+# 2019-2023 (negocio completo, con EE.UU., ingresos ~9,000-12,700
+# MMM/anio) y 2024-2025 (solo operaciones continuadas, sin EE.UU.,
+# ingresos ~5,150-5,300 MMM/anio).
 #
 # DECISION EXPLICITA DE ALEX (22-sep-2026): usar los 7 anios completos
 # SIN ajustar por el cambio de perimetro, pese a que esto mezcla dos
@@ -60,14 +66,23 @@ def revisar(nombre, condicion, detalle):
 # ya en la escala actual, 2024-2025, es ~655 MMM -- muy por debajo del
 # promedio de los 7 anios sin ajustar). Se documenta la eleccion y su
 # direccion de sesgo conocida; no se corrige por iniciativa propia.
+#
+# LIMITACION DECLARADA (22-sep-2026, auditoria independiente): 2019 y 2020
+# NO se verificaron contra PDF primario -- la carpeta local
+# `C:\Proyectos\BVC\SIMEV_BVC\CEMENTOS_ARGOS\` solo tiene informes desde
+# 2022-ANUAL en adelante. Esos dos anios (28.6% de la serie de 7) descansan
+# enteramente en `fundamentales_reportados`, la misma fuente que ya
+# demostro tener al menos un error material (2023) por el mismo tipo de
+# fallo de extraccion -- no se puede descartar un error similar sin
+# conseguir los informes 2019-ANUAL/2020-ANUAL.
 CEMARGOS_EBIT_ANUAL_MMM = {
-    2019: 838.732,   # fundamentales_reportados, verificado consistente con margen_operacional 8.95% ya almacenado
-    2020: 695.041,   # idem, margen 7.72%
-    2021: 1216.890,  # idem, margen 12.39%
-    2022: 1175.622,  # idem, margen 10.06% -- coincide ademas con el comparativo del informe 2023-ANUAL
+    2019: 838.732,   # fundamentales_reportados -- SIN VERIFICAR contra PDF primario (no esta en el corpus local), ver limitacion arriba
+    2020: 695.041,   # idem -- SIN VERIFICAR
+    2021: 1216.890,  # fundamentales_reportados, verificado exacto contra informe 2022-ANUAL pag. 52
+    2022: 1175.622,  # fundamentales_reportados, verificado exacto contra informe 2023-ANUAL pag. 92 (comparativo)
     2023: 1640.441,  # CORREGIDO -- informe 2023-ANUAL pag. 92 (KPMG, auditado), no el valor con bug de fundamentales_reportados
-    2024: 648.716,   # fundamentales_reportados, verificado contra informe 2025-ANUAL pag. 100 (comparativo 12 meses)
-    2025: 661.730,   # fundamentales_reportados, verificado contra informe 2025-ANUAL pag. 100
+    2024: 648.716,   # fundamentales_reportados, verificado exacto contra informe 2025-ANUAL pag. 100 (comparativo 12 meses)
+    2025: 661.730,   # fundamentales_reportados, verificado exacto contra informe 2025-ANUAL pag. 100
 }
 CEMARGOS_EBIT_NORMALIZADO_MMM = sum(CEMARGOS_EBIT_ANUAL_MMM.values()) / len(CEMARGOS_EBIT_ANUAL_MMM)
 
@@ -84,11 +99,22 @@ TASA_EFECTIVA = 0.35
 # para este emisor -- esa cifra coincide exacto con costo_patrimonio
 # (14.7%), lo que implica que el calculo existente le esta dando peso CERO
 # a la deuda (consistente con que esa tabla tiene deuda_financiera=0.0 para
-# Cementos Argos, que es incorrecto: el balance separado a dic-2025 muestra
-# obligaciones financieras + bonos por 2,801.211 MMM). Se recalcula aqui
-# con los pesos de deuda/patrimonio verificados contra el balance:
+# Cementos Argos, que es incorrecto: el balance CONSOLIDADO a dic-2025
+# muestra obligaciones financieras + bonos por 2,801.211 MMM). Se recalcula
+# aqui con los pesos de deuda/patrimonio verificados contra el balance:
+#
+# CORRECCION (22-sep-2026, auditoria independiente del piloto): el balance
+# usado en todo este archivo es el CONSOLIDADO (pag. 99 del informe
+# 2025-ANUAL, "ESTADO DE SITUACION FINANCIERA CONSOLIDADO"), no el
+# separado como decian los comentarios originales -- el separado real
+# (pag. 218, matriz sola) da Total Activo 16,938.359 / Patrimonio
+# 11,041.228 y NO tiene credito mercantil (el goodwill solo existe a nivel
+# consolidado; la matriz usa metodo de participacion). Usar el consolidado
+# es la eleccion correcta aqui porque el EBIT normalizado tambien es
+# consolidado (mezclar EBIT consolidado con activos separados si seria un
+# error real) -- el problema era solo la etiqueta, no el numero.
 CEMARGOS_CAPITALIZACION_MERCADO_MMM = 14926.056  # fundamentales_analisis, valor de mercado (no libros) para las ponderaciones
-CEMARGOS_DEUDA_FINANCIERA_MMM = 634.576 + 220.303 + 95.988 + 1850.344  # obligaciones financieras + bonos, corriente y no corriente, balance separado dic-2025 pag. 99 -- 2,801.211
+CEMARGOS_DEUDA_FINANCIERA_MMM = 634.576 + 220.303 + 95.988 + 1850.344  # obligaciones financieras + bonos, corriente y no corriente, balance consolidado dic-2025 pag. 99 -- 2,801.211
 CEMARGOS_COSTO_PATRIMONIO = 0.147  # fundamentales_analisis (CAPM, beta 0.59)
 CEMARGOS_COSTO_DEUDA_DT = 0.091    # fundamentales_analisis (despues de impuesto)
 
@@ -100,22 +126,37 @@ CEMARGOS_WACC = _E_V * CEMARGOS_COSTO_PATRIMONIO + _D_V * CEMARGOS_COSTO_DEUDA_D
 CEMARGOS_EPV_MMM = CEMARGOS_EBIT_NORMALIZADO_MMM * (1 - TASA_EFECTIVA) / CEMARGOS_WACC
 
 # Valor de activos ajustado (metodo Greenwald, simplificado para el
-# piloto): Total Patrimonio (dic-2025, balance verificado exacto:
-# 5,960.121 pasivo + 11,248.007 patrimonio = 17,208.128 activo) MENOS
-# credito mercantil (872.719 MMM, Nota 18 -- no es un activo reproducible,
-# se resta siempre en EPV de activos). Se verifico si Propiedad, planta y
-# equipo (4,764.367 MMM) tiene revelacion NIIF 13 de valor razonable --
-# NO la tiene (Nota 16, movimiento a costo historico, modelo de costo, sin
-# columna de revaluacion) -- no se estima un ajuste a ojo, se declara "sin
-# ajuste" en vez de inventarlo. Propiedades de inversion (195.204 MMM,
-# Nota 17) YA esta a valor razonable en el balance (NIC 40), no requiere
-# ajuste adicional.
+# piloto): Total Patrimonio CONSOLIDADO (dic-2025, balance verificado
+# exacto: 5,960.121 pasivo + 11,248.007 patrimonio = 17,208.128 activo,
+# pag. 99 del informe 2025-ANUAL) MENOS credito mercantil (872.719 MMM,
+# Nota 18 -- no es un activo reproducible, se resta siempre en EPV de
+# activos). Se verifico si Propiedad, planta y equipo (4,764.367 MMM)
+# tiene revelacion NIIF 13 de valor razonable -- NO la tiene (Nota 16,
+# movimiento a costo historico, modelo de costo, sin columna de
+# revaluacion) -- no se estima un ajuste a ojo, se declara "sin ajuste" en
+# vez de inventarlo. Propiedades de inversion (195.204 MMM, Nota 17) YA
+# esta a valor razonable en el balance (NIC 40), no requiere ajuste
+# adicional.
+#
+# CORRECCION (22-sep-2026, auditoria independiente): tambien se resta la
+# Marca Argos (115.389 MMM, Nota 18.1/18.4.3 del informe 2025-ANUAL, pag.
+# 161-164) -- intangible de vida util INDEFINIDA, no amortizado, sujeto a
+# prueba de deterioro igual que el credito mercantil, comprado en efectivo
+# a Grupo Argos en 2005. Cumple exactamente el mismo criterio que ya se
+# usaba para restar el goodwill ("no es un activo reproducible") -- no
+# restarla tambien era una inconsistencia de criterio real, encontrada por
+# la auditoria. Efecto pequeno en este piloto (~1.1% del total) pero el
+# criterio debe quedar explicito antes de escalar a los 16 emisores
+# restantes, donde este rubro podria ser mas grande.
 CEMARGOS_PATRIMONIO_DIC2025_MMM = 11248.007
 CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM = 872.719
-CEMARGOS_ACTIVOS_AJUSTADOS_MMM = CEMARGOS_PATRIMONIO_DIC2025_MMM - CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM
+CEMARGOS_MARCA_ARGOS_DIC2025_MMM = 115.389  # intangible indefinido, no reproducible -- mismo criterio que el credito mercantil
+CEMARGOS_ACTIVOS_AJUSTADOS_MMM = (
+    CEMARGOS_PATRIMONIO_DIC2025_MMM - CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM - CEMARGOS_MARCA_ARGOS_DIC2025_MMM
+)
 
 revisar(
-    "CEMENTOS_ARGOS: balance separado dic-2025 cuadra",
+    "CEMENTOS_ARGOS: balance consolidado dic-2025 cuadra",
     True,
     "Total activo 17,208.128 = pasivo 5,960.121 + patrimonio 11,248.007 MMM",
 )
@@ -139,6 +180,7 @@ revisar(
     "CEMENTOS_ARGOS: valor de activos ajustado",
     True,
     f"{CEMARGOS_ACTIVOS_AJUSTADOS_MMM:.1f} MMM = patrimonio {CEMARGOS_PATRIMONIO_DIC2025_MMM:.1f} - credito mercantil {CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM:.1f} "
+    f"- Marca Argos (intangible indefinido) {CEMARGOS_MARCA_ARGOS_DIC2025_MMM:.1f} "
     "(PP&E a costo, sin revelacion NIIF 13 -- sin ajuste, no estimado a ojo; propiedades de inversion ya a valor razonable)",
 )
 

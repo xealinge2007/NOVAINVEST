@@ -1249,42 +1249,85 @@ normalizado del negocio tal como existe hoy — el promedio de solo 2024-2025 (y
 es 655,2 MMM, muy por debajo del promedio de los 7 años sin ajustar (982,5 MMM). Se documenta la
 elección y su sesgo conocido; no se corrigió por iniciativa propia.
 
-### Cálculo del piloto
+### Cálculo del piloto (corregido tras auditoría — ver sección siguiente)
 
 - **EBIT normalizado** (promedio simple 2019-2025, sin ajustar): **982,5 MMM** (rango anual
-  648,7-1.640,4 MMM).
+  648,7-1.640,4 MMM). **Limitación declarada**: 2019 y 2020 (28,6% de la serie) no se verificaron
+  contra PDF primario — el corpus local solo tiene informes desde 2022-ANUAL — descansan
+  íntegramente en `fundamentales_reportados`, la misma fuente que ya demostró tener al menos un
+  error material (2023) por el mismo tipo de fallo de extracción.
 - **Tasa efectiva**: 35% (tasa estatutaria colombiana vigente desde la reforma de 2022), no el
   promedio de tasas efectivas reportadas (17,4%-49,65% en el período) — tan ruidosa como la utilidad
   neta misma, por el mismo motivo que Greenwald pide normalizar el EBIT.
 - **WACC recalculado**: **13,82%**, no el 14,7% ya almacenado en `fundamentales_analisis` — esa
   cifra coincide exacto con el costo de patrimonio, lo que implica peso CERO a la deuda (consistente
   con que esa tabla tiene `deuda_financiera=0.0` para este emisor, que es incorrecto: el balance
-  separado a dic-2025 muestra obligaciones financieras + bonos por 2.801,211 MMM, verificado). Se
-  recalculó con los pesos reales: E/V 84,2%, D/V 15,8% (capitalización de mercado 14.926,056 MMM,
+  **consolidado** a dic-2025 muestra obligaciones financieras + bonos por 2.801,211 MMM, verificado).
+  Se recalculó con los pesos reales: E/V 84,2%, D/V 15,8% (capitalización de mercado 14.926,056 MMM,
   deuda financiera verificada 2.801,211 MMM).
 - **EPV**: 982,5 × (1−35%) / 0,1382 = **4.622,4 MMM**.
-- **Valor de activos ajustado**: Total Patrimonio dic-2025 (11.248,007, balance verificado exacto)
-  **menos** crédito mercantil (872,719 MMM, Nota 18 — no es un activo reproducible) = **10.375,3
-  MMM**. Se verificó si PP&E (4.764,367 MMM) tenía revelación NIIF 13 de valor razonable — **no la
-  tiene** (Nota 16, movimiento a costo histórico, modelo de costo, sin columna de revaluación) — no
-  se estimó un ajuste a ojo, se declaró "sin ajuste". Propiedades de inversión (195,204 MMM, Nota 17)
-  ya está a valor razonable en el balance (NIC 40), no requiere ajuste adicional.
+- **Valor de activos ajustado**: Total Patrimonio **consolidado** dic-2025 (11.248,007, balance
+  verificado exacto) **menos** crédito mercantil (872,719 MMM, Nota 18 — no es un activo
+  reproducible) **menos** Marca Argos (115,389 MMM, Nota 18.1/18.4.3 — intangible de vida útil
+  indefinida, comprado en efectivo a Grupo Argos en 2005, sujeto a prueba de deterioro igual que el
+  goodwill, mismo criterio) = **10.259,9 MMM**. Se verificó si PP&E (4.764,367 MMM) tenía revelación
+  NIIF 13 de valor razonable — **no la tiene** (Nota 16, movimiento a costo histórico, modelo de
+  costo, sin columna de revaluación) — no se estimó un ajuste a ojo, se declaró "sin ajuste".
+  Propiedades de inversión (195,204 MMM, Nota 17) ya está a valor razonable en el balance (NIC 40),
+  no requiere ajuste adicional.
 
 ### Diagnóstico
 
-**EPV (4.622,4 MMM) < Activos ajustados (10.375,3 MMM), brecha −55,4% → DESTRUCCIÓN DE VALOR.**
+**EPV (4.622,4 MMM) < Activos ajustados (10.259,9 MMM), brecha −54,9% → DESTRUCCIÓN DE VALOR.**
 Consistente en dirección con el diagnóstico ROIC-WACC que ya existía en el pipeline
 (`fundamentales_analisis`: roic=5,1% vs. wacc=14,7%, spread −9,7%, eva_mmm=−878,4) — buena
 verificación cruzada entre dos metodologías independientes. Nota: dado que el EBIT normalizado está
 inflado por el cambio de perímetro no ajustado, la destrucción de valor real (a escala actual, solo
 operaciones continuadas) es probablemente **peor**, no mejor, que lo que muestra esta cifra.
 
+### Auditoría independiente del piloto (22-sep-2026, agente `critico`)
+
+Mismo patrón que las auditorías de W3a: contexto limpio, releyendo los PDF fuente directamente.
+**Veredicto**: aritmética correcta, la mayoría de las cifras coinciden exacto con las fuentes
+primarias (verificado: EBIT 2021/2022/2023, balance dic-2025, WACC, EPV, activos ajustados — todos
+re-calculados a mano por el auditor y confirmados). Encontró y corrigió 2 cosas reales:
+
+1. **Etiquetado erróneo "balance separado" → en realidad "balance consolidado"**. El balance
+  separado real de Cementos Argos S.A. (matriz sola, pág. 218 del informe 2025-ANUAL) da cifras
+  distintas (Total Activo 16.938,359, Patrimonio 11.041,228, **sin línea de crédito mercantil** —
+  el goodwill solo existe a nivel consolidado, la matriz usa método de participación) y no coincide
+  con nada de lo usado en el cálculo. Lo que realmente se usó (y coincide exacto) es el balance
+  **consolidado** (pág. 99) — la elección de fondo era correcta (el EBIT normalizado también es
+  consolidado; mezclar EBIT consolidado con activos separados sí habría sido un error real), pero la
+  etiqueta estaba mal en todo el archivo y en esta sección — corregido en `jobs/epv_engine.py` y
+  aquí, para no replicar la confusión al escalar a los 16 emisores restantes.
+2. **Inconsistencia de criterio real, no solo sospecha**: el script restaba el crédito mercantil por
+  "no ser un activo reproducible" pero no restaba la Marca Argos (115,389 MMM), un intangible de
+  vida útil indefinida que cumple exactamente el mismo criterio (Nota 18.1/18.4.3, sujeto a prueba
+  de deterioro igual que el goodwill). Efecto pequeño en este piloto (~1,1% del total, no cambia el
+  diagnóstico) pero el criterio debía quedar explícito antes de escalar — en otros emisores ese
+  rubro podría pesar más. Corregido: ahora se resta también.
+
+El auditor también confirmó independientemente, releyendo la Nota 14.8 del informe 2025-ANUAL, que
+el cambio de perímetro (Hallazgo 2) es real: venta del 100% de Argos North America Corp. a Summit
+Materials Inc. el 12-ene-2024 por USD 3.104 millones — explica exactamente el salto de ingresos de
+~12.700 a ~5.299 MMM. Y notó un detalle adicional sobre el Hallazgo 1: el valor correcto de 2023
+(1.640,441) sí había quedado guardado en `fundamentales_reportados`, pero en la columna `ebitda` en
+vez de `utilidad_operacional` — sugiere un error de **mapeo de columnas** en la extracción, no solo
+"se leyó el documento equivocado". Dato relevante para la tarea de fondo `task_1ab8c310`.
+
+**Recomendación del auditor**: priorizar que termine `task_1ab8c310` (auditoría de
+`fundamentales_reportados`) antes de escalar, dado que ya se probó que el bug existe al menos una
+vez. Ambas correcciones de esta sección (etiquetado, Marca Argos) ya se aplicaron.
+
 ### Próximo paso
 
-Piloto validado (aritmética consistente, diagnóstico coherente con el método ya existente). Pendiente
-de decisión de Alex: escalar la misma metodología a los 16 emisores restantes de Ruta A/O, empezando
-por revisar caso a caso si cada uno tiene su propio cambio de perímetro/discontinuación antes de
-promediar ciegamente 7 años de EBIT.
+Piloto validado y corregido (aritmética consistente, diagnóstico coherente con el método ya
+existente, 2 hallazgos reales de la auditoría ya corregidos). Pendiente de decisión de Alex: escalar
+la misma metodología a los 16 emisores restantes de Ruta A/O, empezando por revisar caso a caso si
+cada uno tiene su propio cambio de perímetro/discontinuación antes de promediar ciegamente 7 años de
+EBIT, y decidiendo explícitamente para cada uno qué intangibles de vida indefinida (además del
+crédito mercantil) se restan del valor de activos ajustado.
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 
