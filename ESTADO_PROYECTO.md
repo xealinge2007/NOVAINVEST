@@ -1396,3 +1396,22 @@ gastos admin, impuesto latente, anti look-ahead -- ninguna implementada todavía
 
 Pendiente: repetir para GRUPO_ARGOS, GRUPO_AVAL, CORFICOLOMBIANA, GEB (los otros 4 holdings del
 MVP), luego W3b (validar contra el SOTP de Davivienda Corredores y los eventos de control).
+
+## 21-sep-2026 (cont. 7) — revertida la fusión Banco Davivienda / Davivienda Group: eran dos emisores distintos
+
+Alex revisó y notó algo que se había pasado por alto: "Davivienda y daviviendagrup son diferentes y
+cotizan como emisores diferentes". Verificado con búsqueda web -- confirmado. Un ~1,1% del capital
+de Banco Davivienda nunca se canjeó por acciones de la holding en la reorganización de nov-2025, y
+esa acción remanente sigue cotizando en paralelo en la BVC (`PFDAVVNDA.CL` vs `PFDAVIGRP.CL`, ambas
+con precio vigente hoy). No es el mismo caso que Bancolombia→Grupo Cibest (ahí el canje fue
+completo y el ticker viejo desapareció) -- acá son dos compañías que hoy coexisten.
+
+La fusión que se hizo antes (cargar los datos de Banco Davivienda como si fueran de Davivienda
+Group para el hueco de 2025-T3) estaba mal: eran datos reales, pero de OTRA empresa. Se borró la
+fila (`fundamentales_reportados` id 5031 y su `reportes_xbrl`). DAVIVIENDA_GROUP 2025-T3 vuelve a
+ser un hueco -- y esta vez definitivo: la razón original (la holding no existía como emisor
+reportante en esa fecha, debutó el 21-nov-2025) era correcta desde el principio.
+
+**Estado real del universo de 24 emisores: 8 huecos** (los 7 de FABRICATO + este de
+DAVIVIENDA_GROUP), verificado con `jobs/matriz_huecos_fundamentales.py`. Detalle completo y la
+fuente de la verificación en `db/DOCTRINA_VALOR.md` §5E (actualizada).

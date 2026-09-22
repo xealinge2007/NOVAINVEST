@@ -455,6 +455,40 @@ FABRICATO (2019-T1 nuevo + los 5 ya confirmados no radicados de 2021-2022). DAVI
 aparece en la lista de pedidos (sigue no elegible para el ranking por historial corto — total=6,
 faltan 6 para el mínimo de 12 — pero eso es tiempo, no un hueco de datos).
 
+**REVERTIDO (21-sep-2026, más tarde). La fusión de arriba estaba mal — Banco Davivienda y
+Davivienda Group NO son la misma entidad en distintos momentos, son dos emisores que hoy COEXISTEN
+y cotizan por separado en la BVC.** Alex lo notó al revisar ("vi que Davivienda y daviviendagrup
+son diferentes y cotizan como emisores diferentes") y se verificó con una búsqueda web: un ~1,1%
+del capital de Banco Davivienda nunca se canjeó por acciones de la holding, y esa acción
+remanente sigue listada y transando en paralelo — `PFDAVVNDA.CL` (Banco Davivienda) y
+`PFDAVIGRP.CL` (Davivienda Group), ambas con precio vigente hoy. No es el mismo patrón que
+Bancolombia→Grupo Cibest (ahí sí hubo canje completo, `BANCOLOMBIA.CL` ya no existe como ticker
+propio) — ahí el "predecesor" realmente dejó de cotizar aparte, aquí no.
+
+Se borró la fila `fundamentales_reportados` id 5031 (y su `reportes_xbrl` asociado) — los datos que
+traía eran genuinamente de Banco Davivienda S.A. (activos ~190.468 MMM), una empresa real pero
+DISTINTA de Davivienda Group (activos ~263.684 MMM en los trimestres vecinos), no una versión
+anterior de la misma serie. Insertarlos como si fueran de Davivienda Group habría contaminado su
+serie de tiempo con datos de otra compañía — exactamente el tipo de error de alcance que este
+proyecto ya aprendió a evitar con las participaciones de holdings (ver §9, doble conteo de Enka).
+
+**DAVIVIENDA_GROUP 2025-T3 vuelve a ser un hueco — y esta vez sí es definitivo, no de descarga.**
+La razón original que se había identificado antes de la fusión era correcta desde el principio: al
+30-sep-2025 (corte del T3) Davivienda Group no existía como emisor reportante (debutó el
+21-nov-2025) — no es que el archivo no se haya encontrado, es que estructuralmente no podía existir
+ningún Estado Financiero de Davivienda Group para esa fecha. Se cierra igual que los 5 de FABRICATO
+2021-2022 (§5F) pero por una razón distinta: no es "no radicado", es "la entidad no existía
+todavía". **8 huecos en el universo** tras el revertido (7 de antes + este) — verificado con
+`python jobs/matriz_huecos_fundamentales.py`.
+
+**Pendiente de decidir, fuera de alcance de esta corrección**: ¿vale la pena agregar
+`BANCO_DAVIVIENDA` como un emisor de pleno derecho en el universo de 24 (25), ya que demostrablemente
+sigue cotizando con su propio flotante? No se decide aquí — es una ampliación de universo, no una
+corrección de un hueco existente.
+
+Fuente de la verificación: [Acciones de Davivienda y Davivienda Group se cotizarán de forma
+paralela en la BVC](https://www.valoraanalitik.com/acciones-davivienda-group-se-cotizaran-forma-paralela-bvc/).
+
 ## 5F. FABRICATO 2021-T2/T3/T4, 2022-T1/T4 — cerrado permanentemente, no se busca más (21-sep-2026)
 
 **Tercera verificación independiente, mismo resultado.** Alex buscó por su cuenta y encontró dos
