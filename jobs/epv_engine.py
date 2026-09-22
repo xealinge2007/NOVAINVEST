@@ -148,11 +148,27 @@ CEMARGOS_EPV_MMM = CEMARGOS_EBIT_NORMALIZADO_MMM * (1 - TASA_EFECTIVA) / CEMARGO
 # la auditoria. Efecto pequeno en este piloto (~1.1% del total) pero el
 # criterio debe quedar explicito antes de escalar a los 16 emisores
 # restantes, donde este rubro podria ser mas grande.
+#
+# SEGUNDA CORRECCION (22-sep-2026, al escalar a los 13 emisores restantes):
+# se SUMA la deuda financiera (2,801.211 MMM) al valor de activos ajustado.
+# El EPV es un valor de EMPRESA, no apalancado -- el WACC mezcla el costo
+# de la deuda y el del patrimonio, y el EBIT es antes de gastos
+# financieros. Compararlo solo contra el patrimonio (capital propio,
+# excluyendo la porcion financiada con deuda) subestima el verdadero valor
+# de activos e infla artificialmente el diagnostico hacia "franquicia" en
+# cualquier emisor con deuda material. Se detecto al cruzar el calculo de
+# los 13 emisores restantes contra el diagnostico ROIC-WACC ya existente:
+# Ecopetrol, ISA y Celsia salian "franquicia" en EPV pero "destruccion de
+# valor" en ROIC-WACC -- las tres son las de mayor apalancamiento del lote,
+# y el error desaparece exactamente al sumar la deuda. Se corrige aqui
+# tambien para Cementos Argos por consistencia metodologica (no cambia su
+# diagnostico -- ya era destruccion de valor, solo se hace mas profunda).
 CEMARGOS_PATRIMONIO_DIC2025_MMM = 11248.007
 CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM = 872.719
 CEMARGOS_MARCA_ARGOS_DIC2025_MMM = 115.389  # intangible indefinido, no reproducible -- mismo criterio que el credito mercantil
 CEMARGOS_ACTIVOS_AJUSTADOS_MMM = (
     CEMARGOS_PATRIMONIO_DIC2025_MMM - CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM - CEMARGOS_MARCA_ARGOS_DIC2025_MMM
+    + CEMARGOS_DEUDA_FINANCIERA_MMM
 )
 
 revisar(
@@ -180,7 +196,7 @@ revisar(
     "CEMENTOS_ARGOS: valor de activos ajustado",
     True,
     f"{CEMARGOS_ACTIVOS_AJUSTADOS_MMM:.1f} MMM = patrimonio {CEMARGOS_PATRIMONIO_DIC2025_MMM:.1f} - credito mercantil {CEMARGOS_CREDITO_MERCANTIL_DIC2025_MMM:.1f} "
-    f"- Marca Argos (intangible indefinido) {CEMARGOS_MARCA_ARGOS_DIC2025_MMM:.1f} "
+    f"- Marca Argos (intangible indefinido) {CEMARGOS_MARCA_ARGOS_DIC2025_MMM:.1f} + deuda financiera {CEMARGOS_DEUDA_FINANCIERA_MMM:.1f} (EPV es valor de empresa, no apalancado) "
     "(PP&E a costo, sin revelacion NIIF 13 -- sin ajuste, no estimado a ojo; propiedades de inversion ya a valor razonable)",
 )
 
@@ -249,6 +265,45 @@ revisar(
 # fondo `task_1ab8c310`, no se corrige aqui porque no afecta este script.
 TASA_EFECTIVA_ESTANDAR = 0.35  # misma tasa estatutaria que el piloto, ver justificacion arriba
 
+
+def normalizar_ebit(ebit_por_anio):
+    """Distingue estadisticamente ciclo de tendencia real, en vez de
+    decidirlo caso por caso a ojo (correccion 22-sep-2026, ver hallazgo
+    Nutresa/Mineros mas abajo): ajusta una regresion lineal OLS de EBIT
+    contra el anio, sin dependencias externas (formulas cerradas, sin
+    numpy). Si el ajuste explica al menos la mitad de la varianza
+    (R^2 >= 0.5), se interpreta como tendencia estructural real (no ruido
+    ciclico) y se usa el promedio de los ULTIMOS 3 anios -- mas
+    representativo del poder de generacion de utilidades actual que un
+    promedio plano que mezcla el negocio de hace 7 anios con el de hoy.
+    Si R^2 < 0.5 (patron ciclico/plano, sin tendencia clara), se usa el
+    promedio de TODO el periodo disponible, tal como en el piloto de
+    Cementos Argos (R^2=0.00 ahi, la eleccion original ya era la correcta
+    para ese caso).
+    """
+    anios = sorted(ebit_por_anio.keys())
+    valores = [ebit_por_anio[a] for a in anios]
+    n = len(anios)
+    x = [a - anios[0] for a in anios]
+    x_media = sum(x) / n
+    y_media = sum(valores) / n
+    ss_xy = sum((xi - x_media) * (yi - y_media) for xi, yi in zip(x, valores))
+    ss_xx = sum((xi - x_media) ** 2 for xi in x)
+    pendiente = ss_xy / ss_xx if ss_xx else 0.0
+    intercepto = y_media - pendiente * x_media
+    ajustados = [pendiente * xi + intercepto for xi in x]
+    ss_res = sum((yi - fi) ** 2 for yi, fi in zip(valores, ajustados))
+    ss_tot = sum((yi - y_media) ** 2 for yi in valores)
+    r2 = 1 - ss_res / ss_tot if ss_tot else 0.0
+
+    promedio_plano = y_media
+    promedio_ult3 = sum(valores[-3:]) / min(3, n)
+
+    if r2 >= 0.5 and n >= 3:
+        return promedio_ult3, "tendencia real (ultimos 3 anios)", r2
+    return promedio_plano, "ciclico/plano (promedio del periodo)", r2
+
+
 EMISORES_RESTANTES = {
     # slug: (EBIT anual MMM por anio -- fundamentales_reportados, sin verificar linea por linea salvo donde se anota,
     #        capitalizacion_mercado_mmm o None si no esta curada (usa patrimonio como aproximacion de E),
@@ -311,14 +366,20 @@ EMISORES_RESTANTES = {
 }
 
 for slug, (ebit_por_anio, cap_mercado, deuda, ke, kd, patrimonio) in EMISORES_RESTANTES.items():
-    ebit_norm = sum(ebit_por_anio.values()) / len(ebit_por_anio)
+    ebit_norm, metodo_norm, r2 = normalizar_ebit(ebit_por_anio)
     e_valor = cap_mercado if cap_mercado is not None else patrimonio  # aproximacion declarada si no hay capitalizacion curada
     v_total = e_valor + deuda
     e_v = e_valor / v_total if v_total else 1.0
     d_v = deuda / v_total if v_total else 0.0
     wacc = e_v * ke + d_v * kd
     epv = ebit_norm * (1 - TASA_EFECTIVA_ESTANDAR) / wacc if wacc else None
-    activos_ajustados = patrimonio  # simplificado -- sin restar goodwill/intangibles indefinidos, ver limitacion declarada arriba
+    # activos ajustados = patrimonio + deuda financiera (capital total invertido, no solo
+    # patrimonio) -- el EPV es un valor de empresa/no apalancado (EBIT antes de intereses,
+    # WACC mezcla costo de deuda y patrimonio), compararlo solo contra el patrimonio infla
+    # el diagnostico hacia "franquicia" en emisores con deuda material (ver correccion en el
+    # piloto de Cementos Argos, misma causa). Simplificado igual que el piloto en que NO se
+    # resta goodwill/intangibles indefinidos por emisor (limitacion declarada arriba).
+    activos_ajustados = patrimonio + deuda
 
     if epv is None:
         revisar(f"{slug}: EPV", False, "WACC no calculable (sin capitalizacion ni deuda)")
@@ -329,7 +390,7 @@ for slug, (ebit_por_anio, cap_mercado, deuda, ke, kd, patrimonio) in EMISORES_RE
         "FRANQUICIA" if epv > activos_ajustados * 1.1 else "COMMODITY"
     )
     revisar(
-        f"{slug}: EBIT normalizado ({len(ebit_por_anio)} anios) / WACC / EPV vs. activos (patrimonio, sin ajuste de intangibles)",
+        f"{slug}: EBIT normalizado ({len(ebit_por_anio)} anios, {metodo_norm}, R2={r2:.2f}) / WACC / EPV vs. activos (patrimonio+deuda, sin ajuste de intangibles)",
         True,
         f"EBIT {ebit_norm:.1f} MMM, WACC {wacc*100:.2f}%{'  (E aproximado con patrimonio, sin capitalizacion curada)' if cap_mercado is None else ''}, "
         f"EPV {epv:.1f} vs. activos {activos_ajustados:.1f} MMM ({brecha:+.1%}) -> {diag}",

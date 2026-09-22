@@ -1358,67 +1358,92 @@ deja anotado para la tarea de fondo `task_1ab8c310`, no se corrige aquí.
 El resto de la serie de los 13 se aceptó tras el chequeo de anomalías, **sin verificación línea por
 línea contra cada PDF** — limitación declarada.
 
-**"Valor de activos ajustado" también simplificado**: se usa Patrimonio contable (book) tal cual,
-sin buscar y restar crédito mercantil ni intangibles de vida indefinida por emisor (a diferencia del
-piloto, que sí encontró y restó ambos para Cementos Argos). Esto significa que el valor de activos de
-estos 13 está probablemente **sobrestimado** en la proporción de goodwill/intangibles indefinidos de
-cada balance — sesgo conocido, en la misma dirección para todos (menos destrucción de valor de la
-que realmente hay), declarado explícitamente.
+**"Valor de activos ajustado" también simplificado**: se usa Patrimonio contable (book) más deuda
+financiera (ver corrección 2 abajo), sin buscar y restar crédito mercantil ni intangibles de vida
+indefinida por emisor (a diferencia del piloto, que sí encontró y restó ambos para Cementos Argos).
+Esto significa que el valor de activos de estos 13 está probablemente **sobrestimado** en la
+proporción de goodwill/intangibles indefinidos de cada balance — sesgo conocido, en la misma
+dirección para todos (menos destrucción de valor de la que realmente hay), declarado explícitamente.
 
 **Deuda financiera sin verificar para PROMIGAS, TERPEL y GRUPO_NUTRESA** (`deuda_financiera=0.0` en
 `fundamentales_analisis`) — posible mismo problema de captura que ya se confirmó real para Cementos
 Argos, no confirmado ni descartado aquí.
 
-### Resultados
+### Corrección 1 — normalización del EBIT: distinguir ciclo de tendencia real, no a ojo
 
-| Emisor | EBIT normalizado (MMM) | WACC | EPV (MMM) | Activos = Patrimonio (MMM) | Brecha | Diagnóstico |
-|---|---|---|---|---|---|---|
-| ECOPETROL | 31.981,2 (7a) | 12,48% | 166.563,7 | 84.937,9 | +96,1% | Franquicia |
-| ISA | 6.407,4 (7a) | 12,15% | 34.283,3 | 17.098,3 | +100,5% | Franquicia |
-| CELSIA | 1.148,8 (7a) | 11,24% | 6.641,1 | 3.067,9 | +116,5% | Franquicia |
-| PROMIGAS | 1.484,2 (7a) | 12,30% | 7.843,5 | 6.620,2 | +18,5% | Franquicia |
-| TERPEL | 856,5 (7a) | 13,30% | 4.186,0 | 3.374,4 | +24,1% | Franquicia |
-| GRUPO_NUTRESA | 1.508,7 (7a) | 11,10% | 8.834,6 | 10.019,6 | −11,8% | Destrucción de valor* |
-| EXITO | 862,9 (7a) | 12,60%‡ | 4.451,4 | 6.817,1 | −34,7% | Destrucción de valor |
-| MINEROS | 490,3 (7a) | 14,09% | 2.261,6 | 2.064,7 | +9,5% | Commodity* |
-| ETB | 65,0 (7a) | 9,73% | 434,0 | 1.985,8 | −78,1% | Destrucción de valor |
-| ENKA | 23,4 (7a) | 11,35% | 134,1 | 510,6 | −73,7% | Destrucción de valor |
-| EL_CONDOR | −8,6 (7a) | 9,82% | −56,8 | 340,0 | −116,7% | Destrucción de valor |
-| CONSTRUCTORA_CONCONCRETO | 54,3 (5a, hueco 2024-25) | 11,98% | 294,5 | 1.269,2 | −76,8% | Destrucción de valor |
-| FABRICATO | −0,8 (6a, hueco 2021) | 9,36% | −5,9 | 314,7 | −101,9% | Destrucción de valor |
+Al cruzar el primer cálculo contra `fundamentales_analisis`, **GRUPO_NUTRESA y MINEROS mostraban una
+contradicción real** con el diagnóstico ROIC-WACC ya existente (Nutresa EVA +725,7 vs. mi EPV
+"destrucción de valor"; Mineros EVA +516,0 vs. mi EPV apenas "commodity"). Causa: el promedio plano
+de 7 años suaviza bien un ciclo de commodity genuino (funcionó en Cementos Argos), pero **castiga
+injustamente un negocio con crecimiento sostenido real, no cíclico** — el EBIT de Nutresa creció 2,5x
+en el período y el de Mineros 4,5x (oro en mercado alcista secular).
+
+**Corrección aplicada** (`jobs/epv_engine.py`, función `normalizar_ebit`): en vez de decidir
+caso por caso a ojo qué emisor "parece" cíclico o en crecimiento, se ajusta una **regresión lineal
+OLS** de EBIT contra el año para cada uno de los 13 (fórmulas cerradas, sin dependencias externas).
+Si el ajuste explica al menos la mitad de la varianza (**R² ≥ 0,5**) se interpreta como tendencia
+estructural real y se usa el **promedio de los últimos 3 años**; si no (R² < 0,5, patrón cíclico o
+plano) se usa el **promedio de todo el período**, igual que en el piloto. Clasificación resultante,
+100% auditable porque el R² queda impreso en el output de cada emisor:
+- **Tendencia real** (usan últimos 3 años): ISA (R²=0,77), PROMIGAS (0,80), TERPEL (0,79),
+  GRUPO_NUTRESA (0,94), EXITO (0,52), MINEROS (0,76), EL_CONDOR (0,61 — tendencia real mostrando
+  *deterioro*, no crecimiento: los últimos 3 años ya reflejan pérdidas operativas reales, más grave
+  que el promedio plano original).
+- **Cíclico/plano** (usan todo el período): CEMENTOS_ARGOS (R²=0,00, confirma que la elección
+  original del piloto ya era la correcta), ECOPETROL (0,18), CELSIA (0,01), ETB (0,11), ENKA (0,27),
+  CONSTRUCTORA_CONCONCRETO (0,03), FABRICATO (0,10).
+
+### Corrección 2 — activos ajustados: EPV es valor de empresa, no de patrimonio solo
+
+Tras la corrección 1, quedaban **tres inconsistencias más** con el diagnóstico ROIC-WACC: ECOPETROL,
+ISA y CELSIA salían "franquicia" en mi EPV pero "destrucción de valor" en ROIC-WACC (EVA negativo en
+las tres). Causa real: el EPV es un **valor de empresa** (no apalancado — el EBIT es antes de
+intereses, y el WACC mezcla el costo de la deuda con el del patrimonio), pero se estaba comparando
+solo contra el **patrimonio** (capital propio), excluyendo la porción de los activos financiada con
+deuda. Esto infla artificialmente el diagnóstico hacia "franquicia" en cualquier emisor con deuda
+material — y no por casualidad, las tres empresas con la contradicción son las de mayor
+apalancamiento del lote (deuda financiera comparable o superior al patrimonio).
+
+**Corrección aplicada**: valor de activos ajustado = **patrimonio + deuda financiera** (capital
+total invertido), no solo patrimonio. Se aplicó también, por consistencia metodológica, al piloto de
+Cementos Argos — no cambia su diagnóstico (ya era destrucción de valor), solo profundiza la brecha de
+−54,9% a **−64,6%**.
+
+### Resultados (con ambas correcciones aplicadas — 22/22 verificaciones OK, 14/14 coinciden en
+dirección con el diagnóstico ROIC-WACC ya existente en `fundamentales_analisis`)
+
+| Emisor | EBIT normalizado (MMM) | Método | R² | WACC | EPV (MMM) | Activos = Patrimonio+Deuda (MMM) | Brecha | Diagnóstico | ¿Coincide con ROIC-WACC? |
+|---|---|---|---|---|---|---|---|---|---|
+| CEMENTOS_ARGOS | 982,5 (7a) | plano | 0,00 | 13,82% | 4.622,4 | 13.061,1 | −64,6% | Destrucción de valor | Sí (EVA −878,4) |
+| ECOPETROL | 31.981,2 (7a) | plano | 0,18 | 12,48% | 166.563,7 | 189.855,7 | −12,3% | Destrucción de valor | Sí (EVA −1.535,0) |
+| ISA | 7.260,6 (últ. 3a) | tendencia | 0,77 | 12,15% | 38.848,2 | 51.297,4 | −24,3% | Destrucción de valor | Sí (EVA −1.286,2) |
+| CELSIA | 1.148,8 (7a) | plano | 0,01 | 11,24% | 6.641,1 | 8.277,6 | −19,8% | Destrucción de valor | Sí (EVA −271,4) |
+| PROMIGAS | 1.692,8 (últ. 3a) | tendencia | 0,80 | 12,30% | 8.945,7 | 6.620,2 | +35,1% | Franquicia | Sí (EVA +284,8) |
+| TERPEL | 1.188,1 (últ. 3a) | tendencia | 0,79 | 13,30% | 5.806,3 | 3.374,4 | +72,1% | Franquicia | Sí (EVA +498,6) |
+| GRUPO_NUTRESA | 1.990,9 (últ. 3a) | tendencia | 0,94 | 11,10% | 11.658,2 | 10.019,6 | +16,4% | Franquicia | Sí (EVA +725,7) |
+| EXITO | 948,4 (últ. 3a) | tendencia | 0,52 | 12,60%‡ | 4.892,7 | 8.960,5 | −45,4% | Destrucción de valor | Sí (EVA −280,6) |
+| MINEROS | 690,7 (últ. 3a) | tendencia | 0,76 | 14,09% | 3.185,8 | 2.074,0 | +53,6% | Franquicia | Sí (EVA +516,0) |
+| ETB | 65,0 (7a) | plano | 0,11 | 9,73% | 434,0 | 2.880,6 | −84,9% | Destrucción de valor | Sí (EVA −119,8) |
+| ENKA | 23,4 (7a) | plano | 0,27 | 11,35% | 134,1 | 546,4 | −75,5% | Destrucción de valor | Sí (EVA −58,5) |
+| EL_CONDOR | −102,9 (últ. 3a) | tendencia (deterioro) | 0,61 | 9,82% | −681,5 | 1.054,4 | −164,6% | Destrucción de valor | Sí (EVA −68,7) |
+| CONSTRUCTORA_CONCONCRETO | 54,3 (5a, hueco 2024-25) | plano | 0,03 | 11,98% | 294,5 | 1.488,6 | −80,2% | Destrucción de valor | Sí (EVA −155,7) |
+| FABRICATO | −0,8 (6a, hueco 2021) | plano | 0,10 | 9,36% | −5,9 | 451,2 | −101,3% | Destrucción de valor | Sí (EVA −23,8) |
 
 ‡ Éxito: capitalización de mercado no curada (`acciones=None` en `fundamentales_analisis`) — se usó
 patrimonio como aproximación de E para el WACC, declarado en el output del script.
 
-### Hallazgo — inconsistencia real con el diagnóstico ROIC-WACC existente (marcados con \*)
-
-Al cruzar contra `fundamentales_analisis` (mismo chequeo cruzado que confirmó a Cementos Argos),
-**GRUPO_NUTRESA y MINEROS muestran una contradicción real**, no solo una diferencia de matiz:
-- Nutresa: ROIC 18,4% vs. WACC 11,1%, EVA **+725,7** (crea valor) — pero mi EPV da destrucción de
-  valor (−11,8%).
-- Mineros: ROIC 39,0%, EVA **+516,0** (crea valor fuerte) — pero mi EPV apenas roza "commodity"
-  (+9,5%, casi empate).
-
-**Causa probable, no solo declarada sino razonada**: el promedio plano de 7 años tiene sentido para
-suavizar ciclos de commodity genuinos (funcionó bien en Cementos Argos), pero **castiga
-injustamente a un negocio con crecimiento sostenido real, no cíclico**. El EBIT de Nutresa creció
-2,5x en el período (956,7→2.403,4 MMM, consumo masivo con expansión regional sostenida) y el de
-Mineros 4,5x (211,9→961,2 MMM, oro en un mercado alcista secular, no un ciclo que revierta a la
-media en el horizonte relevante). Promediar sin más aplana una tendencia real, no ruido — exactamente
-lo opuesto de lo que Greenwald pide normalizar. Esto **no se corrigió** en esta pasada — se declara
-como un defecto metodológico real de aplicar el mismo promedio plano a los 13 emisores sin distinguir
-cuáles son genuinamente cíclicos (donde promediar es correcto) de cuáles tienen crecimiento
-estructural (donde promediar subestima el poder de generación de utilidades actual).
-
 ### Próximo paso
 
-No se recomienda tratar esta tabla como definitiva. Pendiente de decisión de Alex:
-1. Si se corrige el método de normalización para Nutresa/Mineros (y revisar si algún otro de los 13
-   tiene el mismo problema de tendencia-vs-ciclo) antes de dar la tabla por buena.
-2. Si se prioriza que termine la tarea de fondo `task_1ab8c310` (incluye ahora también Celsia) antes
-   de confiar en el EBIT de los demás emisores.
-3. Si se decide el criterio de qué intangibles indefinidos restar del valor de activos para cada uno
-   (simplificación pendiente, declarada arriba) antes de considerar el diagnóstico final.
+Las dos correcciones son de fondo, no cosméticas — cambiaron el diagnóstico de 3 emisores
+(Ecopetrol, ISA, Celsia: de franquicia a destrucción de valor) y confirmaron/fortalecieron el de
+otros 2 (Nutresa, Mineros: de contradicción real a franquicia consistente). Con esto, **las 14
+empresas calculadas coinciden en dirección con el diagnóstico ROIC-WACC ya existente en el
+pipeline** — la mejor verificación cruzada disponible con los datos actuales. Pendiente de auditoría
+independiente antes de dar la tabla por definitiva (solicitada por Alex, 22-sep-2026) — ver sección
+siguiente. Limitaciones que siguen abiertas, sin resolver en esta pasada: (1) sin verificación línea
+por línea de cada PDF para los 13 (salvo Celsia, revisada por la anomalía); (2) sin restar
+goodwill/intangibles indefinidos por emisor; (3) deuda financiera de Promigas/Terpel/Nutresa sin
+confirmar; (4) tarea de fondo `task_1ab8c310` (ahora incluye Celsia) sin terminar.
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

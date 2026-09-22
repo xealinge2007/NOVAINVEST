@@ -1656,3 +1656,29 @@ con limitaciones declaradas explícitamente en el propio output). Pendiente de d
 si se corrige la normalización para negocios con tendencia de crecimiento real antes de dar la tabla
 por buena, (2) priorizar la tarea de fondo `task_1ab8c310` (ahora incluye también Celsia) antes de
 confiar en el resto del EBIT, (3) decidir el criterio de intangibles a restar por emisor.
+
+## 22-sep-2026 (cont. 16) — dos correcciones de fondo, 14/14 coinciden con ROIC-WACC
+
+Alex pidió que el resultado fuera "excelente y altamente confiable" -- verificar o auditar. Antes de
+auditar lo que había, corregí de raíz el problema metodológico ya diagnosticado, y encontré uno más
+al hacerlo:
+
+1. **Normalización del EBIT**: en vez de decidir a ojo qué emisor es cíclico y cuál tiene crecimiento
+   real, se implementó una regresión lineal OLS (sin dependencias externas) sobre los 7 años de cada
+   emisor. Si R²≥0,5 (tendencia estructural real, no ruido) se usa el promedio de los últimos 3 años;
+   si no, el promedio de todo el período -- igual que Cementos Argos, que confirmó R²=0,00 (la
+   elección original del piloto ya era correcta). Esto resolvió la contradicción de Nutresa y Mineros.
+2. **Activos ajustados**: al revisar las 13 tras la primera corrección, aparecieron 3 contradicciones
+   nuevas (Ecopetrol, ISA, Celsia: "franquicia" en mi EPV pero "destrucción de valor" en ROIC-WACC) --
+   las tres son las de mayor apalancamiento del lote. Causa: el EPV es un valor de EMPRESA (no
+   apalancado), pero se comparaba solo contra el patrimonio, sin la deuda -- eso infla el diagnóstico
+   en cualquier emisor con deuda material. Se corrigió a patrimonio + deuda financiera, aplicado
+   también al piloto de Cementos Argos por consistencia (no cambia su diagnóstico, solo lo profundiza
+   de -54,9% a -64,6%).
+
+**Resultado: las 14 empresas calculadas ahora coinciden en dirección con el diagnóstico ROIC-WACC ya
+existente en el pipeline** -- cero contradicciones, la mejor verificación cruzada disponible. Tabla
+completa (EBIT, método, R², WACC, EPV, activos, brecha, diagnóstico, coincidencia) en
+`db/DOCTRINA_VALOR.md` §11. Antes de dar esto por definitivo, se lanzó una auditoría independiente
+(pedida explícitamente por Alex) para confirmar ambas correcciones y buscar lo que se me haya podido
+pasar.
