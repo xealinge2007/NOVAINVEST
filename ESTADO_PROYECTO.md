@@ -1682,3 +1682,40 @@ completa (EBIT, método, R², WACC, EPV, activos, brecha, diagnóstico, coincide
 `db/DOCTRINA_VALOR.md` §11. Antes de dar esto por definitivo, se lanzó una auditoría independiente
 (pedida explícitamente por Alex) para confirmar ambas correcciones y buscar lo que se me haya podido
 pasar.
+
+## 22-sep-2026 (cont. 17) — auditoría del escalado: 3 hallazgos reales más, tabla final más honesta
+
+La auditoría (agente `critico`, especialmente escéptica por ser verificación de correcciones ya
+aplicadas) confirmó las 2 correcciones anteriores con cálculo independiente, pero encontró 3 cosas
+reales más:
+
+1. **PROMIGAS -- deuda en cero, confirmada bug real** (Nota 19, informe 2025-ANUAL: 5.558,4 MMM, no
+   cero). Voltea el diagnóstico de "franquicia" a "destrucción de valor".
+2. **ISA -- discrepancia sistemática de ~6-7% en el EBIT** frente a la propia métrica que ISA reporta
+   -- pero resultó ser una comparación entre dos métricas potencialmente distintas (utilidad
+   operacional contable vs. "EBIT" no-GAAP de ISA), no necesariamente un bug. Se declaró no
+   verificable en vez de adivinar cuál base es correcta -- el corpus local no tiene los EEFF
+   auditados de ISA.
+3. **MINEROS -- punto ciego real en la regla estadística**: al ser un productor de oro puro con 2025
+   coincidiendo con el precio del oro subiendo 46% a máximos históricos, su R²=0,76 reflejaba un
+   supraciclo de precios, no una tendencia estructural. Se agregó una regla de override: para
+   productores de commodity puro (Ecopetrol, Mineros) se fuerza el promedio de todo el período
+   siempre, sin importar el R².
+
+Con esto también se corrigió la deuda de TERPEL (2.847,2 MMM) y GRUPO_NUTRESA (4.371,1 MMM,
+desactualizada a dic-2022 -- el corpus local no tiene EEFF auditados más recientes de Nutresa,
+confirmado, no hay con qué actualizarla).
+
+**Consecuencia honesta, no maquillada**: al corregir la deuda de Promigas, Terpel y Nutresa, sus
+diagnósticos EPV ya NO coinciden con el ROIC-WACC/EVA que ya existía en el pipeline (que los mostraba
+creando valor con fuerza) -- pero es porque ese EVA se calculó con la MISMA deuda en cero que se
+acaba de confirmar como bug. No es una contradicción sin explicar: ambos lados de la comparación
+compartían el dato corrupto, y mi cifra corregida es probablemente más confiable, no menos. De las
+14 empresas, 10 siguen coincidiendo limpio con ROIC-WACC (verificación genuinamente independiente),
+Mineros coincide en dirección con divergencia de magnitud esperada por diseño, y Promigas/Terpel/
+Nutresa divergen por la razón explicada arriba, no por error.
+
+Tabla final y explicación completa en `db/DOCTRINA_VALOR.md` §11. Pendiente de decisión de Alex: si
+vale la pena corregir también `fundamentales_analisis` (el ROIC/EVA existente, fuera de alcance de
+esta sesión) para esos 3 emisores, y si se busca un EEFF más reciente de Nutresa fuera del corpus
+local.

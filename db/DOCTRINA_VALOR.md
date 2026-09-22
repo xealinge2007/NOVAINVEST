@@ -1409,41 +1409,97 @@ total invertido), no solo patrimonio. Se aplicó también, por consistencia meto
 Cementos Argos — no cambia su diagnóstico (ya era destrucción de valor), solo profundiza la brecha de
 −54,9% a **−64,6%**.
 
-### Resultados (con ambas correcciones aplicadas — 22/22 verificaciones OK, 14/14 coinciden en
-dirección con el diagnóstico ROIC-WACC ya existente en `fundamentales_analisis`)
+### Auditoría independiente del escalado (22-sep-2026, agente `critico`)
 
-| Emisor | EBIT normalizado (MMM) | Método | R² | WACC | EPV (MMM) | Activos = Patrimonio+Deuda (MMM) | Brecha | Diagnóstico | ¿Coincide con ROIC-WACC? |
-|---|---|---|---|---|---|---|---|---|---|
-| CEMENTOS_ARGOS | 982,5 (7a) | plano | 0,00 | 13,82% | 4.622,4 | 13.061,1 | −64,6% | Destrucción de valor | Sí (EVA −878,4) |
-| ECOPETROL | 31.981,2 (7a) | plano | 0,18 | 12,48% | 166.563,7 | 189.855,7 | −12,3% | Destrucción de valor | Sí (EVA −1.535,0) |
-| ISA | 7.260,6 (últ. 3a) | tendencia | 0,77 | 12,15% | 38.848,2 | 51.297,4 | −24,3% | Destrucción de valor | Sí (EVA −1.286,2) |
-| CELSIA | 1.148,8 (7a) | plano | 0,01 | 11,24% | 6.641,1 | 8.277,6 | −19,8% | Destrucción de valor | Sí (EVA −271,4) |
-| PROMIGAS | 1.692,8 (últ. 3a) | tendencia | 0,80 | 12,30% | 8.945,7 | 6.620,2 | +35,1% | Franquicia | Sí (EVA +284,8) |
-| TERPEL | 1.188,1 (últ. 3a) | tendencia | 0,79 | 13,30% | 5.806,3 | 3.374,4 | +72,1% | Franquicia | Sí (EVA +498,6) |
-| GRUPO_NUTRESA | 1.990,9 (últ. 3a) | tendencia | 0,94 | 11,10% | 11.658,2 | 10.019,6 | +16,4% | Franquicia | Sí (EVA +725,7) |
-| EXITO | 948,4 (últ. 3a) | tendencia | 0,52 | 12,60%‡ | 4.892,7 | 8.960,5 | −45,4% | Destrucción de valor | Sí (EVA −280,6) |
-| MINEROS | 690,7 (últ. 3a) | tendencia | 0,76 | 14,09% | 3.185,8 | 2.074,0 | +53,6% | Franquicia | Sí (EVA +516,0) |
-| ETB | 65,0 (7a) | plano | 0,11 | 9,73% | 434,0 | 2.880,6 | −84,9% | Destrucción de valor | Sí (EVA −119,8) |
-| ENKA | 23,4 (7a) | plano | 0,27 | 11,35% | 134,1 | 546,4 | −75,5% | Destrucción de valor | Sí (EVA −58,5) |
-| EL_CONDOR | −102,9 (últ. 3a) | tendencia (deterioro) | 0,61 | 9,82% | −681,5 | 1.054,4 | −164,6% | Destrucción de valor | Sí (EVA −68,7) |
-| CONSTRUCTORA_CONCONCRETO | 54,3 (5a, hueco 2024-25) | plano | 0,03 | 11,98% | 294,5 | 1.488,6 | −80,2% | Destrucción de valor | Sí (EVA −155,7) |
-| FABRICATO | −0,8 (6a, hueco 2021) | plano | 0,10 | 9,36% | −5,9 | 451,2 | −101,3% | Destrucción de valor | Sí (EVA −23,8) |
+Alex pidió explícitamente que el resultado fuera "excelente y altamente confiable" — auditoría
+tomada en serio, especialmente escéptica por ser una verificación de correcciones ya aplicadas
+("¿de verdad se arregló el problema, o solo se ocultó?"). Recalculó a mano la regresión OLS para 7
+emisores (todos coinciden), confirmó ECOPETROL sin bug (comparó contra la línea correcta del estado
+de resultados auditado, no el comunicado preliminar), y encontró **tres problemas reales más**:
+
+1. **PROMIGAS — deuda financiera en cero, BLOQUEANTE, confirmada real**: la anotación
+   `deuda_financiera=0.0 sin verificar` del código resultó ser el mismo bug ya confirmado en
+   Cementos Argos. Verificado contra Nota 19 del informe 2025-ANUAL (pág. 114): Total Obligaciones
+   financieras consolidadas dic-2025 = **5.558,357 MMM**, no cero. Esto por sí solo movía a Promigas
+   de "franquicia" (+35,1%) a "destrucción de valor".
+2. **ISA — discrepancia sistemática de ~6-7% en el EBIT** frente a la propia métrica "EBIT" que ISA
+   reporta en su Reporte Integrado de Gestión (2023: 7.598 vs. 7.069,6 usado; 2024: 8.410 vs.
+   7.870,1; 2025: 7.336 vs. 6.842,0) — consistente en la misma dirección los 3 años. **Verificado
+   tras la auditoría**: el corpus local no tiene los EEFF auditados de ISA (solo el Reporte
+   Integrado), y la métrica que ISA reporta ahí es explícitamente no-GAAP (Ebitda − D&A − impuestos
+   de operación), no necesariamente la misma línea contable "utilidad operacional" que usa este
+   motor para todos los demás emisores. **No se corrigió** — declarado no verificable, no se adivinó
+   cuál base es la correcta comparando dos métricas potencialmente distintas.
+3. **MINEROS — punto ciego real en la dicotomía tendencia/ciclo**: R²=0,76 lo clasificaba como
+   "tendencia real", pero es un productor de oro puro y el año más reciente (2025) coincide con el
+   precio del oro subiendo 46% interanual a máximos históricos (informe 2025-ANUAL, pág. 39-40) — un
+   supraciclo de precios puede producir un R² alto sin ser una tendencia estructural genuina,
+   exactamente lo opuesto de lo que Greenwald pide normalizar.
+
+**Correcciones aplicadas tras la auditoría**:
+- **Deuda financiera corregida y verificada contra PDF** para PROMIGAS (5.558,4 MMM, Nota 19), TERPEL
+  (2.847,2 MMM = préstamos bancarios consolidados 894,3 + bonos ordinarios 1.952,9, informe
+  2025-ANUAL pág. 335) y GRUPO_NUTRESA (4.371,1 MMM — **desactualizada, dic-2022**, la última cifra
+  verificable: el corpus local no tiene EEFF auditados de Nutresa para 2023-2025, solo el formulario
+  Circular 012 sin estados financieros — confirmado, no hay con qué actualizarla).
+- **Override de commodity puro** en `normalizar_ebit`: para ECOPETROL y MINEROS se fuerza el
+  promedio de todo el período SIEMPRE, sin importar el R² — evita que un supraciclo de precios se
+  confunda con crecimiento estructural. No le cambia el resultado a Ecopetrol (ya caía ahí por su
+  propio R²=0,18) pero sí corrige a Mineros.
+- **ISA se deja sin corregir**, declarado explícitamente no verificable (ver punto 2 arriba).
+
+### Resultados finales (con las 2 correcciones originales + las 3 de la auditoría — 19/19
+verificaciones OK)
+
+| Emisor | EBIT normalizado (MMM) | Método | R² | WACC | EPV (MMM) | Activos = Patrimonio+Deuda (MMM) | Brecha | Diagnóstico |
+|---|---|---|---|---|---|---|---|---|
+| CEMENTOS_ARGOS | 982,5 (7a) | plano | 0,00 | 13,82% | 4.622,4 | 13.061,1 | −64,6% | Destrucción de valor |
+| ECOPETROL | 31.981,2 (7a) | plano (override commodity) | 0,18 | 12,48% | 166.563,7 | 189.855,7 | −12,3% | Destrucción de valor |
+| ISA | 7.260,6 (últ. 3a) | tendencia | 0,77 | 12,15% | 38.848,2 | 51.297,4 | −24,3% | Destrucción de valor |
+| CELSIA | 1.148,8 (7a) | plano | 0,01 | 11,24% | 6.641,1 | 8.277,6 | −19,8% | Destrucción de valor |
+| PROMIGAS | 1.692,8 (últ. 3a) | tendencia | 0,80 | 10,90% | 10.093,2 | 12.178,6 | −17,1% | Destrucción de valor |
+| TERPEL | 1.188,1 (últ. 3a) | tendencia | 0,79 | 11,40% | 6.775,3 | 6.221,6 | +8,9% | Commodity |
+| GRUPO_NUTRESA | 1.990,9 (últ. 3a) | tendencia | 0,94 | 11,04% | 11.721,9 | 14.390,7 | −18,5% | Destrucción de valor |
+| EXITO | 948,4 (últ. 3a) | tendencia | 0,52 | 12,60%‡ | 4.892,7 | 8.960,5 | −45,4% | Destrucción de valor |
+| MINEROS | 490,3 (7a) | plano (override commodity) | 0,76 | 14,09% | 2.261,6 | 2.074,0 | +9,0% | Commodity |
+| ETB | 65,0 (7a) | plano | 0,11 | 9,73% | 434,0 | 2.880,6 | −84,9% | Destrucción de valor |
+| ENKA | 23,4 (7a) | plano | 0,27 | 11,35% | 134,1 | 546,4 | −75,5% | Destrucción de valor |
+| EL_CONDOR | −102,9 (últ. 3a) | tendencia (deterioro) | 0,61 | 9,82% | −681,5 | 1.054,4 | −164,6% | Destrucción de valor |
+| CONSTRUCTORA_CONCONCRETO | 54,3 (5a, hueco 2024-25) | plano | 0,03 | 11,98% | 294,5 | 1.488,6 | −80,2% | Destrucción de valor |
+| FABRICATO | −0,8 (6a, hueco 2021) | plano | 0,10 | 9,36% | −5,9 | 451,2 | −101,3% | Destrucción de valor |
 
 ‡ Éxito: capitalización de mercado no curada (`acciones=None` en `fundamentales_analisis`) — se usó
-patrimonio como aproximación de E para el WACC, declarado en el output del script.
+patrimonio como aproximación de E para el WACC.
+
+### Sobre la verificación cruzada contra ROIC-WACC — lectura honesta, no forzada
+
+De las 14, **10 siguen coincidiendo limpio en dirección** con el diagnóstico ROIC-WACC/EVA ya
+existente en `fundamentales_analisis` (Cementos Argos, Ecopetrol, ISA, Celsia, Éxito, ETB, Enka, El
+Cóndor, Conconcreto, Fabricato — todos con `deuda_financiera` correctamente capturada en ese pipeline,
+cross-check genuinamente independiente). **Mineros** coincide en dirección (ambos apuntan a creación
+de valor) pero diverge en magnitud a propósito — el override de commodity usa el promedio de todo el
+ciclo (más conservador) mientras el ROIC-WACC almacenado refleja el año más reciente, en plena subida
+del oro; es la consecuencia esperada de la corrección, no un error.
+
+**Promigas, Terpel y Nutresa ya NO coinciden** con el ROIC-WACC/EVA almacenado (que los mostraba
+creando valor con fuerza) — pero esto **no es una contradicción nueva sin explicar**: el ROIC-WACC de
+esos tres se calculó con la misma `deuda_financiera=0.0` que se acaba de confirmar como bug real. Es
+decir, ambos lados de la comparación compartían el mismo dato corrupto; al corregir solo este motor
+(no `fundamentales_analisis`, fuera de alcance de este script), la comparación deja de ser
+independiente para esos tres — mi cifra corregida es probablemente **más confiable**, no menos, que
+el EVA almacenado que todavía no incorpora la deuda real. No se maquilla esto como "14/14 coinciden"
+— es una lectura más honesta y más útil que la del primer intento.
 
 ### Próximo paso
 
-Las dos correcciones son de fondo, no cosméticas — cambiaron el diagnóstico de 3 emisores
-(Ecopetrol, ISA, Celsia: de franquicia a destrucción de valor) y confirmaron/fortalecieron el de
-otros 2 (Nutresa, Mineros: de contradicción real a franquicia consistente). Con esto, **las 14
-empresas calculadas coinciden en dirección con el diagnóstico ROIC-WACC ya existente en el
-pipeline** — la mejor verificación cruzada disponible con los datos actuales. Pendiente de auditoría
-independiente antes de dar la tabla por definitiva (solicitada por Alex, 22-sep-2026) — ver sección
-siguiente. Limitaciones que siguen abiertas, sin resolver en esta pasada: (1) sin verificación línea
-por línea de cada PDF para los 13 (salvo Celsia, revisada por la anomalía); (2) sin restar
-goodwill/intangibles indefinidos por emisor; (3) deuda financiera de Promigas/Terpel/Nutresa sin
-confirmar; (4) tarea de fondo `task_1ab8c310` (ahora incluye Celsia) sin terminar.
+Pendiente de decisión de Alex: (1) si vale la pena corregir `fundamentales_analisis` (el pipeline de
+ROIC/EVA existente, no solo este script) para Promigas/Terpel/Nutresa y cualquier otro emisor con el
+mismo patrón de `deuda_financiera=0.0` — daría una verificación cruzada genuinamente independiente
+otra vez; (2) priorizar `task_1ab8c310` (auditoría de `fundamentales_reportados`, ahora también
+relevante para el EBIT de ISA); (3) si se busca un EEFF actualizado de Nutresa fuera del corpus local
+para reemplazar la cifra de deuda desactualizada (dic-2022). Limitaciones que siguen abiertas: sin
+verificación línea por línea de cada PDF para los 13 (salvo Celsia e ISA, revisadas); sin restar
+goodwill/intangibles indefinidos por emisor (solo se hizo para el piloto).
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

@@ -266,7 +266,10 @@ revisar(
 TASA_EFECTIVA_ESTANDAR = 0.35  # misma tasa estatutaria que el piloto, ver justificacion arriba
 
 
-def normalizar_ebit(ebit_por_anio):
+SECTORES_COMMODITY_PURO = {"ECOPETROL", "MINEROS"}  # petroleo y oro -- ver override abajo
+
+
+def normalizar_ebit(ebit_por_anio, slug=None):
     """Distingue estadisticamente ciclo de tendencia real, en vez de
     decidirlo caso por caso a ojo (correccion 22-sep-2026, ver hallazgo
     Nutresa/Mineros mas abajo): ajusta una regresion lineal OLS de EBIT
@@ -280,6 +283,20 @@ def normalizar_ebit(ebit_por_anio):
     promedio de TODO el periodo disponible, tal como en el piloto de
     Cementos Argos (R^2=0.00 ahi, la eleccion original ya era la correcta
     para ese caso).
+
+    OVERRIDE (22-sep-2026, auditoria independiente del escalado): para
+    productores de COMMODITY PURO (SECTORES_COMMODITY_PURO), se fuerza el
+    promedio de todo el periodo SIEMPRE, sin importar el R^2. Motivo: un
+    superciclo de precios (ej. oro subiendo 46% interanual en 2025, informe
+    2025-ANUAL de Mineros pag. 39-40) puede producir un R^2 alto que
+    parece "tendencia estructural" cuando en realidad es la fase alcista
+    de un ciclo de precios que, por definicion, tambien puede revertir --
+    exactamente lo opuesto de lo que Greenwald pide normalizar. La
+    auditoria encontro este punto ciego real en MINEROS (R^2=0.76, se
+    hubiera clasificado como "tendencia real" sin el override). Ecopetrol
+    ya caia en "ciclico" por su propio R^2 (0.18) -- el override no le
+    cambia el resultado, se aplica igual por principio, no por
+    conveniencia.
     """
     anios = sorted(ebit_por_anio.keys())
     valores = [ebit_por_anio[a] for a in anios]
@@ -299,6 +316,8 @@ def normalizar_ebit(ebit_por_anio):
     promedio_plano = y_media
     promedio_ult3 = sum(valores[-3:]) / min(3, n)
 
+    if slug in SECTORES_COMMODITY_PURO:
+        return promedio_plano, "ciclico/plano (override commodity puro, ignora R2)", r2
     if r2 >= 0.5 and n >= 3:
         return promedio_ult3, "tendencia real (ultimos 3 anios)", r2
     return promedio_plano, "ciclico/plano (promedio del periodo)", r2
@@ -313,6 +332,13 @@ EMISORES_RESTANTES = {
         113687.661, 104917.752321, 0.156, 0.091, 84937.931726,
     ),
     "ISA": (
+        # EBIT SIN VERIFICAR contra EEFF auditados (22-sep-2026, auditoria): el corpus local solo tiene
+        # el "Reporte Integrado de Gestion" (no los EEFF), y ese reporte declara su propio "EBIT" (metrica
+        # no-GAAP = Ebitda - D&A - impuestos de operacion) unos 6-7% MAYOR que estas cifras para 2023-2025
+        # (ej. 2023: ISA reporta 7,598 vs. 7069.6 aqui). No se corrige sin poder confirmar contra la
+        # utilidad operacional CONTABLE (linea distinta a la metrica no-GAAP de ISA) -- declarado no
+        # verificable, no se adivina cual de las dos bases es la correcta. No cambia la direccion del
+        # diagnostico (ya es destruccion de valor con ambas), solo su magnitud.
         {2019: 4530.1, 2020: 5692.0, 2021: 6087.4, 2022: 6760.6, 2023: 7069.6, 2024: 7870.1, 2025: 6842.0},
         33075.262, 34199.047816, 0.153, 0.091, 17098.344048,
     ),
@@ -322,16 +348,29 @@ EMISORES_RESTANTES = {
         5181.543, 5209.703193, 0.134, 0.091, 3067.926209,
     ),
     "PROMIGAS": (
+        # deuda CORREGIDA (22-sep-2026, auditoria): 0.0 en fundamentales_analisis era el mismo bug de
+        # captura ya confirmado en Cementos Argos -- verificado contra Nota 19 "Obligaciones financieras",
+        # informe 2025-ANUAL, pag. 114: Total Obligaciones financieras consolidadas dic-2025 = 5,558.357 MMM
         {2019: 971.7, 2020: 1430.8, 2021: 1383.3, 2022: 1525.4, 2023: 1662.6, 2024: 1714.3, 2025: 1701.5},
-        7160.891, 0.0, 0.123, 0.091, 6620.246263,  # deuda_financiera=0.0 sin verificar -- posible mismo problema de captura que Cementos Argos, no confirmado
+        7160.891, 5558.357, 0.123, 0.091, 6620.246263,
     ),
     "TERPEL": (
+        # deuda CORREGIDA (22-sep-2026, auditoria): 0.0 era el mismo bug. Verificado contra informe
+        # 2025-ANUAL: prestamos bancarios consolidados dic-2025 = 894.268 MMM (pag. 335) + bonos ordinarios
+        # en circulacion dic-2025 = 1,952.926 MMM nominal (pag. 335) = 2,847.194 MMM
         {2019: 583.9, 2020: 164.6, 2021: 774.4, 2022: 908.5, 2023: 995.4, 2024: 1276.0, 2025: 1292.8},
-        3439.809, 0.0, 0.133, 0.091, 3374.357202,  # deuda_financiera=0.0 sin verificar
+        3439.809, 2847.194, 0.133, 0.091, 3374.357202,
     ),
     "GRUPO_NUTRESA": (
+        # deuda CORREGIDA (22-sep-2026, auditoria): 0.0 era el mismo bug. Sin EEFF auditados de 2024/2025
+        # en el corpus local (el informe 2025-ANUAL es solo el formulario Circular 012, sin estados
+        # financieros -- confirmado, no hay con que verificar el dato actual). Se usa la ultima cifra
+        # verificable, dic-2022 (informe 2022-ANUAL_Estados-Financieros.pdf, pag. 9): obligaciones
+        # financieras corriente 588.630 + no corriente 3,782.499 = 4,371.129 MMM -- DESACTUALIZADA
+        # (3 anios de antiguedad frente al patrimonio, que si es actual), mejor aproximacion disponible
+        # que un cero ya confirmado incorrecto
         {2019: 956.7, 2020: 1019.6, 2021: 1105.3, 2022: 1506.5, 2023: 1728.2, 2024: 1841.0, 2025: 2403.4},
-        140668.379, 0.0, 0.111, 0.091, 10019.568953,  # deuda_financiera=0.0 sin verificar
+        140668.379, 4371.129, 0.111, 0.091, 10019.568953,
     ),
     "EXITO": (
         {2019: 674.2, 2020: 611.2, 2021: 919.4, 2022: 990.1, 2023: 882.8, 2024: 776.1, 2025: 1186.3},
@@ -366,7 +405,7 @@ EMISORES_RESTANTES = {
 }
 
 for slug, (ebit_por_anio, cap_mercado, deuda, ke, kd, patrimonio) in EMISORES_RESTANTES.items():
-    ebit_norm, metodo_norm, r2 = normalizar_ebit(ebit_por_anio)
+    ebit_norm, metodo_norm, r2 = normalizar_ebit(ebit_por_anio, slug=slug)
     e_valor = cap_mercado if cap_mercado is not None else patrimonio  # aproximacion declarada si no hay capitalizacion curada
     v_total = e_valor + deuda
     e_v = e_valor / v_total if v_total else 1.0
