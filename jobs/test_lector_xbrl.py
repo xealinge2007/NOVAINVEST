@@ -123,6 +123,40 @@ for emisor, (esperado, tol, origen) in DEUDA_2025.items():
     else:
         revisar(f"deuda {emisor} ({origen})", obtenido, esperado)
 
+print("\n--- la deuda de un banco no es `Borrowings`: hay que sumarle títulos y mercado monetario ---")
+# Contra el balance consolidado 2025 de cada banco. `Borrowings` sola es solo
+# la línea de créditos con otros bancos: para GRUPO_AVAL eso era 20.491,7 de
+# 68.671,6. Los depósitos de clientes quedan fuera a propósito (financiación
+# operativa del negocio bancario, no deuda).
+DEUDA_BANCA_2025 = {
+    "BANCO_DE_BOGOTA": (20930.216197,
+                        "Nota 21 (20.230.822) + pasivo por arrendamiento (699.395), que "
+                        "`LongtermBorrowings` trae dentro"),
+    "CORFICOLOMBIANA": (23016.910344,
+                        "balance: oblig. financieras 11.901.607 + títulos emitidos 6.028.607 "
+                        "+ mercado monetario 5.086.696"),
+    "GRUPO_AVAL":      (68671.586261,
+                        "balance: créditos de bancos y otros 24.559.175 + bonos 21.456.986 + "
+                        "interbancarios y overnight 22.655.425"),
+}
+for emisor, (esperado, origen) in DEUDA_BANCA_2025.items():
+    arch = CORPUS / emisor / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+    if not arch.is_file():
+        print(f"SALTADA {emisor}: falta {arch}")
+        continue
+    obtenido = lx.leer(arch, 2025, "ANUAL", emisor=emisor)["campos"]["deuda_financiera"]["valor"]
+    revisar(f"deuda {emisor} ({origen})", obtenido, esperado)
+
+# El punto del cambio: `Borrowings` sola se queda corta en los tres.
+for emisor, minimo in (("BANCO_DE_BOGOTA", 6538.082), ("CORFICOLOMBIANA", 11901.608),
+                       ("GRUPO_AVAL", 20491.700)):
+    arch = CORPUS / emisor / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+    if not arch.is_file():
+        continue
+    obtenido = lx.leer(arch, 2025, "ANUAL", emisor=emisor)["campos"]["deuda_financiera"]["valor"]
+    revisar(f"{emisor}: la deuda supera lo que daba `Borrowings` sola ({minimo})",
+            obtenido > minimo, True)
+
 print("\n--- la deuda que no se pudo verificar se declara, no se inventa ---")
 sin_verificar = lx.leer(CORPUS / "TERPEL" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl",
                         2025, "ANUAL", emisor="EMISOR_QUE_NO_EXISTE")

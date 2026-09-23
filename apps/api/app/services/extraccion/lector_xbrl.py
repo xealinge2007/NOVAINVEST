@@ -134,6 +134,10 @@ MIEMBRO_PATRIMONIO_TOTAL = "EquityMember"
 #     `ObligacionesFinancieras{Corrientes,NoCorrientes}`.
 #   - TERPEL: no etiqueta ninguna de las anteriores; su deuda va en
 #     `Other{Current,Noncurrent}FinancialLiabilities`.
+#   - Los BANCOS son un caso aparte: para ellos `Borrowings` es solo la línea
+#     de créditos con otros bancos, y deja fuera los títulos/bonos emitidos y
+#     la financiación de mercado monetario. Para GRUPO_AVAL eso era 20.491,7
+#     de 68.671,6 -- 3,3 veces menos.
 #
 # No hay regla genérica que acierte en los seis a la vez. Por eso: una fórmula
 # por emisor, cada una comprobada, y `None` declarado donde no se pudo
@@ -155,8 +159,6 @@ MIEMBRO_PATRIMONIO_TOTAL = "EquityMember"
 #   `nota_parcial`  reproduce una línea concreta del balance del informe, pero
 #                   se sabe que deja fuera otra que también es deuda, porque el
 #                   XBRL no trae con qué reproducirla. Queda dicho cuál.
-#   `heredado`      sector financiero, sin verificar contra nota: se conserva
-#                   exactamente lo que el canal ya venía entregando.
 #   `sin_verificar` lista de fórmulas vacía -> `None`, hueco declarado.
 
 _OBL_C = "ObligacionesFinancierasCorrientes"
@@ -167,6 +169,22 @@ _TOTAL = "Borrowings"
 _BONOS = "BondsIssued"
 _OTROS_C = "OtherCurrentFinancialLiabilities"
 _OTROS_NC = "OtherNoncurrentFinancialLiabilities"
+# Las tres bolsas con que la taxonomía de la SFC arma la financiación NO de
+# depósitos de un banco -- ver la entrada de BANCO_DE_BOGOTA.
+_FOMENTO = "OtherCurrentBorrowingsAndCurrentPortionOfOtherNoncurrentBorrowings"
+_TITULOS = "TitulosEmitidos"
+_MERCADO_MONETARIO = "PasivosDiversosOperacionesMercadoMonetarioOperacionesMercadoMonetario"
+
+# La deuda de un banco no es `Borrowings` a secas: eso es solo la línea de
+# créditos con otros bancos. Hay que sumarle los títulos/bonos emitidos y la
+# financiación de mercado monetario (interbancarios, overnight, repos). Los
+# depósitos de clientes quedan FUERA a propósito: son financiación operativa
+# del negocio bancario, no deuda. Comprobado contra el balance consolidado
+# 2025 de tres de los cuatro bancos (ver cada entrada).
+_FORMULAS_BANCA = [
+    [_TOTAL, _FOMENTO, _TITULOS, _MERCADO_MONETARIO],
+    [_TOTAL, _TITULOS, _MERCADO_MONETARIO],
+]
 
 DEUDA_FINANCIERA_POR_EMISOR = {
     # --- verificado contra la nota del informe ANUAL consolidado -----------
@@ -232,15 +250,38 @@ DEUDA_FINANCIERA_POR_EMISOR = {
               "solo una parte en los cierres anuales (803,7 en 2022-12-31 contra 2.194,9 el "
               "trimestre anterior y 2.141,6 el siguiente). Con el par la serie es continua"),
 
-    # --- sector financiero: se conserva lo que ya entregaba el canal --------
-    "BANCO_DE_BOGOTA": ([[_TOTAL], [_CORTO, _LARGO]], "heredado",
-                        "banco: su 'deuda financiera' no es comparable con la de un emisor "
-                        "real (los depósitos son financiación operativa). Se deja "
-                        "`Borrowings`, que es lo que este canal ya venía escribiendo"),
-    "CORFICOLOMBIANA": ([[_TOTAL], [_CORTO, _LARGO]], "heredado", "igual que BANCO_DE_BOGOTA"),
-    "GRUPO_AVAL": ([[_TOTAL], [_CORTO, _LARGO]], "heredado", "igual que BANCO_DE_BOGOTA"),
-    "GRUPO_CIBEST_BANCOLOMBIA": ([[_TOTAL], [_CORTO, _LARGO]], "heredado",
-                                 "igual que BANCO_DE_BOGOTA"),
+    # --- banca: créditos + títulos emitidos + mercado monetario, sin depósitos
+    "BANCO_DE_BOGOTA": (_FORMULAS_BANCA, "nota",
+                        "Nota 21 'Obligaciones financieras' consolidada 2025-ANUAL: bonos en "
+                        "circulación 7.607.848 + créditos de bancos y otros 5.838.687 + fondos "
+                        "interbancarios y overnight 4.432.846 + entidades de fomento 2.351.441 "
+                        "= 20.230.822 millones. La fórmula da 20.930.217 = ese total MÁS el "
+                        "'Pasivo por arrendamiento' de 699.395 que el balance lista aparte y "
+                        "que `LongtermBorrowings` trae dentro (5.838.687 + 699.395 = "
+                        "6.538.082, al peso). Se acepta: el arrendamiento financiero también "
+                        "es deuda que devenga interés. `Borrowings` sola daba 6.538,1 -- una "
+                        "tercera parte"),
+    "CORFICOLOMBIANA": (_FORMULAS_BANCA, "nota",
+                        "balance consolidado 2025: obligaciones financieras (Nota 26) "
+                        "11.901.607 + títulos emitidos en circulación (Nota 31) 6.028.607 + "
+                        "posiciones pasivas en operaciones de mercado monetario (Nota 25) "
+                        "5.086.696 = 23.016.910 millones; la fórmula da 23.016.911, al peso. "
+                        "`Borrowings` sola (11.901,6) reproduce solo la primera línea"),
+    "GRUPO_AVAL": (_FORMULAS_BANCA, "nota",
+                   "desglose de pasivos financieros por vencimiento, consolidado 2025: "
+                   "créditos de bancos y otros 24.559.175 (= `Borrowings` 20.491.699 + "
+                   "entidades de fomento 4.067.476, al peso) + bonos en circulación "
+                   "21.456.986 + créditos interbancarios y fondos overnight 22.655.425 = "
+                   "68.671.586 millones. `Borrowings` sola daba 20.491,7 -- 3,3 veces menos"),
+    "GRUPO_CIBEST_BANCOLOMBIA": (_FORMULAS_BANCA, "estructura",
+                                 "misma taxonomía y mismas etiquetas que los otros tres "
+                                 "bancos, donde la fórmula está verificada al peso; aquí NO "
+                                 "se pudo contrastar contra el informe porque el XBRL "
+                                 "2025-ANUAL es del perímetro Bancolombia S.A. (pasivos "
+                                 "258.775.571) mientras el PDF local es el de Grupo Cibest "
+                                 "(338.756.746) -- son entidades distintas, no cuadran ni "
+                                 "deben cuadrar. Ver EMISORES_SERIE_PARALELA_REEMPLAZA en "
+                                 "jobs/extraer_xbrl.py"),
     "DAVIVIENDA_GROUP": ([[_CORTO, _LARGO]], "nota_parcial",
                          "el balance consolidado 2025 separa 'Créditos de bancos y otras "
                          "obligaciones' (16.143.780 millones) de 'Instrumentos de deuda "

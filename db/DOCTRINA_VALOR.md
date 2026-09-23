@@ -1593,10 +1593,7 @@ se lo pasan. Sin emisor, `deuda_financiera` sale `None` y se dice por qué en `m
 - **`estructura` (7 emisores)** — ECOPETROL, ISA, EL_CONDOR, ENKA, EXITO, FABRICATO,
   GRUPO_NUTRESA. No hay informe con notas en el corpus local, pero todas las fórmulas candidatas
   coinciden entre sí en el archivo y la serie es continua período a período.
-- **`heredado` (4 emisores)** — BANCO_DE_BOGOTA, CORFICOLOMBIANA, GRUPO_AVAL,
-  GRUPO_CIBEST_BANCOLOMBIA. Bancos: su "deuda financiera" no es comparable con la de un emisor
-  real (los depósitos son financiación operativa). Se conserva exactamente lo que el canal ya
-  entregaba, ni mejor ni peor, y queda dicho que no está verificado.
+- **Banca (4 emisores, 3 verificados contra balance)** — ver el apartado siguiente.
 - **`nota_parcial` (1 emisor)** — DAVIVIENDA_GROUP. Su balance consolidado separa "Créditos de
   bancos y otras obligaciones" (16.143.780 millones) de "Instrumentos de deuda emitidos"
   (12.763.556). Corto+largo reproduce la primera al peso; el `Borrowings` que el canal venía
@@ -1615,6 +1612,41 @@ siguiente). Aplicando la fórmula de cada emisor a todo el corpus: **80 de 92 fe
 una radicación dan el mismo valor**. Las 12 que no, son reexpresiones del emisor (el ANUAL del
 año N difiere del comparativo del año N+1, pero todas las radicaciones de N+1 concuerdan entre
 sí) — firma de reexpresión, no de fórmula inestable.
+
+#### Los bancos tenían el mismo bug, y más grande (23-sep-2026)
+
+Los cuatro bancos quedaron primero como `heredado` (se conservó lo que el canal ya entregaba, sin
+verificar). Al contrastarlos contra su balance consolidado 2025 resultó que **`Borrowings` en un
+banco es solo la línea de créditos con otros bancos**: deja fuera los títulos/bonos emitidos y la
+financiación de mercado monetario (interbancarios, overnight, repos).
+
+| emisor | `Borrowings` sola | deuda real | qué faltaba |
+|---|---|---|---|
+| GRUPO_AVAL | 20.491,7 | **68.671,6** | bonos 21.457,0 + interbancarios 22.655,4 + fomento 4.067,5 |
+| CORFICOLOMBIANA | 11.901,6 | **23.016,9** | títulos emitidos 6.028,6 + mercado monetario 5.086,7 |
+| BANCO_DE_BOGOTA | 6.538,1 | **20.930,2** | bonos 7.607,8 + interbancarios 4.432,8 + fomento 2.351,4 |
+| GRUPO_CIBEST_BANCOLOMBIA | 12.918,0 | 20.452,4 | títulos emitidos 7.250,6 + mercado monetario 283,8 |
+| DAVIVIENDA_GROUP | 7.962,5 | 15.437,3 | `Borrowings` no era ni una línea ni la otra |
+
+La fórmula quedó igual para los cuatro (`_FORMULAS_BANCA` en `lector_xbrl.py`): **créditos +
+entidades de fomento + títulos emitidos + mercado monetario, sin los depósitos de clientes**, que
+son financiación operativa del negocio bancario y no deuda. Cuadra **al peso** contra el balance
+consolidado 2025 de BANCO_DE_BOGOTA, CORFICOLOMBIANA y GRUPO_AVAL.
+
+Dos salvedades, dichas y no escondidas:
+
+- En BANCO_DE_BOGOTA la fórmula da 20.930,2 y su Nota 21 da 20.230,8. La diferencia son los
+  699,4 de "Pasivo por arrendamiento", que el balance lista como línea aparte y que
+  `LongtermBorrowings` trae dentro (créditos 5.838,7 + arrendamiento 699,4 = 6.538,1, al peso).
+  Se acepta: el arrendamiento financiero también devenga interés.
+- GRUPO_CIBEST_BANCOLOMBIA queda en nivel `estructura`, no `nota`: usa las mismas etiquetas que
+  los otros tres, pero **no se pudo contrastar** porque su XBRL 2025-ANUAL es del perímetro
+  Bancolombia S.A. (pasivos 258.775.571) mientras el informe del corpus local es el de Grupo
+  Cibest (338.756.746). Son entidades distintas; no cuadran ni deben cuadrar.
+
+Efecto en `fundamentales_analisis`: el EV se movió fuerte (GRUPO_AVAL 33.590 -> 83.839, 2,5x;
+BANCO_DE_BOGOTA 19.298 -> 31.775; CORFICOLOMBIANA 20.102 -> 34.408). El EVA casi no, porque para
+los bancos el ROIC/WACC ya estaba marcado como no comparable por otras razones.
 
 #### Resultado sobre los datos (corrida del 22-sep-2026)
 
@@ -1648,13 +1680,16 @@ No lo son con su deuda real. Eso es un cambio de conclusión de inversión, no u
 
 #### Lo que sigue pendiente
 
-- Verificar contra nota los 7 de nivel `estructura` y los 4 bancos: hace falta el informe con
-  notas, que para esos emisores no está en `C:\Proyectos\BVC\SIMEV_BVC`.
+- Verificar contra nota los 7 de nivel `estructura` (ECOPETROL, ISA, EXITO, GRUPO_NUTRESA,
+  EL_CONDOR, ENKA, FABRICATO): hace falta el informe con notas, que para esos emisores no está en
+  `C:\Proyectos\BVC\SIMEV_BVC`.
 - BVC y GRUPO_SURA siguen sin deuda. Para GRUPO_SURA el corpus local solo trae la nota del
   estado SEPARADO, que no corresponde al perímetro del XBRL consolidado.
-- A DAVIVIENDA_GROUP le faltan los 12.763,6 de instrumentos de deuda emitidos, que el XBRL no
-  etiqueta. Conviene revisar si a los otros cuatro bancos les pasa lo mismo -- se les dejó
-  `Borrowings` sin contrastar contra su balance.
+- A DAVIVIENDA_GROUP le siguen faltando los 12.763,6 de instrumentos de deuda emitidos: a
+  diferencia de los otros cuatro bancos, su XBRL no trae `TitulosEmitidos` ni ninguna etiqueta que
+  reproduzca esa línea del balance.
+- GRUPO_CIBEST_BANCOLOMBIA no se pudo contrastar por el desfase de perímetro entre su XBRL y el
+  informe del corpus local. Con el informe de Bancolombia S.A. consolidado se cerraría.
 - PEI no tiene XBRL (canal manual); su `deuda_financiera` se sigue cargando a mano.
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)

@@ -1777,3 +1777,37 @@ cero; con su deuda real no lo son. Es un cambio de conclusión de inversión, no
 
 Tabla completa, evidencia por emisor y pendientes en `db/DOCTRINA_VALOR.md`, sección
 "`deuda_financiera` — corregido de raíz, emisor por emisor".
+
+## 23-sep-2026 — los bancos tenían el mismo bug, y más grande
+
+Alex pidió revisar contra su balance los 4 bancos que habían quedado como `heredado`. Resultó que
+**`Borrowings` en un banco es solo la línea de créditos con otros bancos**, y deja fuera los
+títulos/bonos emitidos y la financiación de mercado monetario:
+
+| emisor | `Borrowings` sola | deuda real | factor |
+|---|---|---|---|
+| GRUPO_AVAL | 20.491,7 | **68.671,6** | 3,4x |
+| CORFICOLOMBIANA | 11.901,6 | **23.016,9** | 1,9x |
+| BANCO_DE_BOGOTA | 6.538,1 | **20.930,2** | 3,2x |
+| GRUPO_CIBEST_BANCOLOMBIA | 12.918,0 | 20.452,4 | 1,6x |
+
+Fórmula única para los cuatro: créditos + entidades de fomento + títulos emitidos + mercado
+monetario, **sin** los depósitos de clientes (financiación operativa del negocio bancario, no
+deuda). Cuadra al peso contra el balance consolidado 2025 de los tres primeros. Cibest queda en
+nivel `estructura` porque su XBRL 2025-ANUAL es del perímetro Bancolombia S.A. y el informe del
+corpus local es el de Grupo Cibest -- entidades distintas, no cuadran ni deben cuadrar.
+
+Salvedad dicha: en BANCO_DE_BOGOTA la fórmula da 20.930,2 contra los 20.230,8 de su Nota 21; los
+699,4 de diferencia son el pasivo por arrendamiento, que el balance lista aparte y que
+`LongtermBorrowings` trae dentro. Se acepta -- también devenga interés.
+
+DAVIVIENDA_GROUP pasó de 7.962,5 a 15.437,3 (la línea "Créditos de bancos y otras obligaciones"
+del balance, 16.143.780 millones, reproducida al peso). Le siguen faltando los 12.763,6 de
+instrumentos de deuda emitidos: su XBRL no trae `TitulosEmitidos`.
+
+Efecto en `fundamentales_analisis`: el EV se movió fuerte (GRUPO_AVAL 33.590 -> 83.839, 2,5x;
+BANCO_DE_BOGOTA 19.298 -> 31.775; CORFICOLOMBIANA 20.102 -> 34.408). El EVA casi no, porque el
+ROIC/WACC de los bancos ya estaba marcado como no comparable por otras razones.
+
+Pruebas nuevas en `test_lector_xbrl.py` con las tres cifras del balance. Detalle en
+`db/DOCTRINA_VALOR.md`, "Los bancos tenían el mismo bug, y más grande".
