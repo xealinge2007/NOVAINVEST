@@ -1,0 +1,179 @@
+# Instrucción para la sesión de descarga — cerrar `deuda_financiera`
+
+> Pégale esto completo a una sesión nueva de Claude Code abierta en
+> `C:\Proyectos\novainvest`. Está escrito para alguien que llega en frío.
+
+## Qué hay que lograr
+
+En `fundamentales_reportados` quedan **168 de 630 filas sin `deuda_financiera`**. La fórmula de
+extracción ya está corregida y verificada emisor por emisor (commits `f335367` y `897ca7b`, ver
+`db/DOCTRINA_VALOR.md`). **No hay que tocar código de extracción.** Lo único que falta son
+archivos fuente.
+
+El pedido completo, fila por fila, está en `PEDIDOS_DESCARGA_DEUDA.csv`.
+
+## Lo que ya se probó y NO funciona — no lo repitas
+
+La API de descarga de SIMEV **exige sesión**. Comprobado el 23-sep-2026:
+
+```
+GET https://www.superfinanciera.gov.co/sfcservices/SIMEV2/descarga-archivos-niif/descarga?ruta=...&nombreArchivo=...
+  -> 401
+```
+
+Devuelve 401 **todo** lo que cuelgue de `sfcservices/SIMEV2`, incluida la raíz y cualquier
+variante de listado (`/listar`, `/archivos`). Así que:
+
+- ❌ `curl`, `WebFetch` o `requests` contra esa URL: no sirve, 401.
+- ❌ Construir la URL a mano: además del 401, el `nombreArchivo` lleva un **consecutivo de
+  radicación** (los 10 dígitos del principio) que no es deducible; hay que leerlo de un listado.
+- ✅ **Un navegador con sesión en el portal.** Preferible **Claude in Chrome** (usa el Chrome del
+  usuario, con sus cookies). Si no está disponible, el navegador interno navegando el portal
+  público de la Superfinanciera (`https://www.superfinanciera.gov.co/`, responde 200) hasta la
+  consulta de información relevante / estados financieros NIIF.
+
+## Prioridad — hazlo en este orden y para cuando deje de rendir
+
+### 1. El lote 2020-T1 / T2 / T3 (58 archivos) — ESTO es lo que rinde
+
+Es un solo lote: 20 emisores × 3 trimestres. El corpus tiene 24 archivos de 2020 contra 85–93 de
+cada año siguiente: es un bache de descarga, no un problema del emisor.
+
+**Por qué no hay atajo:** esas 66 filas existen en la base con solo 2–5 campos, tomadas del
+comparativo de FLUJO de los archivos de 2021. El comparativo de BALANCE de un trimestral es el
+cierre anual anterior, no el mismo trimestre — así lo exige la NIIF — así que la deuda de
+marzo/junio/septiembre de 2020 **no está dentro de ningún archivo que ya tengamos**. Tampoco hay
+PDF: `SIMEV_BVC` tiene cero archivos `2020-T*`.
+
+Al bajarlos, esas 58 filas se llenan solas: la fórmula de cada uno de esos emisores ya está
+verificada. No hay análisis posterior.
+
+### 2. Los 2019-ANUAL (5 archivos)
+
+BANCO_DE_BOGOTA, CEMENTOS_ARGOS, CONSTRUCTORA_CONCONCRETO, CORFICOLOMBIANA, GRUPO_AVAL.
+Comprobado: su archivo 2020-ANUAL sí está, pero **no etiqueta la deuda en el contexto del
+comparativo 2019** — solo en el del período del informe. Hace falta el 2019-ANUAL propio.
+
+### 3. FABRICATO (8 archivos sueltos)
+
+2018-T1, 2018-T4, 2019-T2, 2019-T3, 2020-T1, 2022-T2, 2022-T3, 2023-T1. Baratos si ya estás
+dentro del portal; de bajo impacto (es el emisor más pequeño del universo).
+
+### 4. Los informes con notas (8 PDF) — **no bajes nada, léelos en pantalla**
+
+Esto **no cambia ninguna cifra**: solo sube el nivel de evidencia de `estructura` a `nota`. Las 7
+fórmulas de nivel `estructura` ya coinciden entre sí y dan series continuas 2019–2026.
+
+Así que lo barato es: abrir el EEFF **consolidado** en el navegador (sirve la página de Relación
+con Inversionistas del emisor, no hace falta SIMEV), buscar la nota de obligaciones financieras /
+préstamos / bonos del cierre 2025, y **anotar solo el total** en el reporte final. No guardes PDF
+de 400 páginas.
+
+Lo que hay que buscar y contra qué debe cuadrar (cifras en miles de millones de pesos):
+
+| emisor | debe cuadrar contra | por qué no sirve el PDF que ya hay |
+|---|---|---|
+| ECOPETROL | 109.200,642 | el local es el Informe Integrado de Gestión, sin balance ni notas |
+| ISA | 33.790,917 | el local es el Reporte Integrado de Gestión (149 pág) |
+| GRUPO_NUTRESA | 16.311,566 | el local (72 pág) no trae balance ni nota |
+| EXITO | 2.143,408 | no hay **ningún** informe suyo en `SIMEV_BVC` |
+| EL_CONDOR | 739,132 | íd. |
+| ENKA | 38,839 | íd. |
+| FABRICATO | 136,956 | íd. |
+| GRUPO_CIBEST_BANCOLOMBIA | 20.452,413 | hace falta el consolidado de **BANCOLOMBIA S.A.** (pasivos 258.775.571 millones), no el de Grupo Cibest (338.756.746): son perímetros distintos |
+
+Si alguno **no** cuadra, no toques nada: anótalo y repórtalo. Es un hallazgo, no un error a
+corregir sobre la marcha.
+
+### 5. Lo que NO vale la pena — no lo intentes
+
+- **Los 17 XBRL trimestrales de GRUPO_CIBEST** y los 5 de CORFICOLOMBIANA, 1 de GRUPO_AVAL, 1 de
+  DAVIVIENDA marcados "XBRL que no sirve": el archivo está y cierra bien, pero **el emisor no
+  etiquetó la deuda en ese trimestre**. Volver a bajarlo da el mismo archivo.
+- **BVC, GRUPO_SURA y la línea que le falta a DAVIVIENDA**: su XBRL no etiqueta ninguna bolsa de
+  deuda. Ningún archivo arregla eso; es una decisión de carga manual que Alex tiene pendiente.
+- **GRUPO_ARGOS 2026-T1**: el .xbrl que hay cierra en 2025-09-30, está mal nombrado en el corpus.
+  Ese sí es re-descarga, pero es una sola fila.
+
+## Dónde poner los archivos y cómo se llaman
+
+Carpeta: `C:\Proyectos\BVC\SIMEV_XBRL\<EMISOR>\`
+Nombre: `<AAAA>-<PERIODO>_EEFF-Consolidados-XBRL.xbrl` — p. ej. `2020-T1_EEFF-Consolidados-XBRL.xbrl`
+
+**Solo CONSOLIDADO.** En el nombre original de SIMEV el sufijo `C-C` es consolidado y `C-I` es
+individual; el lector rechaza el individual por el punto de entrada del archivo, pero es mejor no
+bajarlo.
+
+Registra cada descarga en `C:\Proyectos\BVC\SIMEV_XBRL\MANIFESTO.csv` (columnas
+`emisor,archivo,fuente_origen,url_descarga,fecha_descarga`). La procedencia es obligatoria por
+§5.1.4 de la doctrina; sin URL la fila queda sin trazabilidad.
+
+## Identificadores SIMEV de cada emisor
+
+Sacados del MANIFESTO existente. La ruta es
+`//NIIF/<AAAA>/<MM>/<TIPO>/CONS/XBRL/` con `MM` = 03/06/09/12 para T1/T2/T3/ANUAL.
+El campo `entidad` es el que distingue al emisor dentro del tipo (aparece en el `nombreArchivo`,
+segundo y tercer campo: `<consecutivo>_<TIPO>_<ENTIDAD>_...`).
+
+| emisor | tipo | entidad | períodos que faltan |
+|---|---|---|---|
+| BANCO_DE_BOGOTA | 0001 | 000001 | 2019-ANUAL, 2020-T1, 2020-T2, 2020-T3 |
+| CELSIA | 0066 | 000061 | 2020-T1, 2020-T2, 2020-T3 |
+| CEMENTOS_ARGOS | 0043 | 000005 | 2019-ANUAL, 2020-T1, 2020-T2, 2020-T3 |
+| CONSTRUCTORA_CONCONCRETO | 0055 | 000003 | 2019-ANUAL, 2020-T1, 2020-T2, 2020-T3 |
+| CORFICOLOMBIANA | 0002 | 000011 | 2019-ANUAL, 2020-T1, 2020-T2, 2020-T3 |
+| DAVIVIENDA_GROUP | 0066 | 000068 | 2025-T2 |
+| ECOPETROL | 0260 | 000036 | 2020-T1, 2020-T2, 2020-T3 |
+| EL_CONDOR | 0056 | 000008 | 2020-T1, 2020-T2, 2020-T3 |
+| ENKA | 0039 | 000021 | 2020-T1, 2020-T2, 2020-T3 |
+| ETB | 0260 | 000047 | 2020-T1, 2020-T2, 2020-T3 |
+| EXITO | 0058 | 000006 | 2020-T1, 2020-T2, 2020-T3 |
+| FABRICATO | 0034 | 000004 | 2018-T1, 2018-T4, 2019-T2, 2019-T3, 2020-T1, 2022-T2, 2022-T3, 2023-T1 |
+| GEB | 0260 | 000043 | 2020-T1, 2020-T2, 2020-T3 |
+| GRUPO_ARGOS | 0066 | 000058 | 2020-T1, 2020-T2, 2020-T3 |
+| GRUPO_AVAL | 0142 | 000001 | 2019-ANUAL, 2020-T1, 2020-T2, 2020-T3 |
+| GRUPO_CIBEST_BANCOLOMBIA | 0001 | 000007 | 2020-T1, 2020-T2, 2020-T3 |
+| GRUPO_NUTRESA | 0066 | 000032 | 2020-T1, 2020-T2, 2020-T3 |
+| ISA | 0260 | 000034 | 2020-T1, 2020-T2, 2020-T3 |
+| MINEROS | 0030 | 000003 | 2020-T1, 2020-T2, 2020-T3 |
+| PROMIGAS | 0261 | 000004 | 2020-T1, 2020-T2, 2020-T3 |
+| TERPEL | 0053 | 000022 | 2020-T1, 2020-T2, 2020-T3 |
+
+Ojo: el `tipo` NO identifica al emisor — 0066 lo comparten Celsia, Davivienda, Grupo Argos y
+Nutresa; 0260 lo comparten Ecopetrol, ETB, GEB e ISA. Dentro de una carpeta de SIMEV vas a ver
+archivos de varios emisores: el que sirve es el que trae `_<TIPO>_<ENTIDAD>_` según la tabla.
+
+## Cuando termines de bajar
+
+```bash
+cd C:/Proyectos/novainvest && python jobs/extraer_xbrl.py --dry-run
+```
+
+Si no reporta errores nuevos, córrelo de verdad (sin `--dry-run`) y después:
+
+```bash
+cd C:/Proyectos/novainvest && python jobs/analizador_fundamental.py
+```
+
+Verificación final — cuántas filas quedaron sin deuda (eran 168):
+
+```bash
+cd C:/Proyectos/novainvest/apps/api && python -c "import sys; sys.path.insert(0,'.'); from app.database import cliente_servicio; f=cliente_servicio().table('fundamentales_reportados').select('deuda_financiera').execute().data; print(sum(1 for x in f if x['deuda_financiera'] in (None,0,0.0)), 'de', len(f))"
+```
+
+Y corre las pruebas, que llevan las cifras de las notas ya verificadas:
+
+```bash
+cd C:/Proyectos/novainvest && python jobs/test_lector_xbrl.py
+```
+
+**Si alguna prueba falla, para y repórtalo.** Significa que algo del reprocesado movió una cifra
+que ya estaba cuadrada contra el informe del emisor.
+
+## Qué reportar al final
+
+1. Cuántos archivos bajaste y cuántas filas ganaron deuda (el número de la verificación de arriba).
+2. Los totales que leíste de las notas de los 8 informes, y si cuadraron o no con la tabla.
+3. Cualquier emisor/período que no encontraste en SIMEV, con el mensaje exacto del portal.
+
+No hagas merge ni push. Deja la rama lista para que Alex la revise.
