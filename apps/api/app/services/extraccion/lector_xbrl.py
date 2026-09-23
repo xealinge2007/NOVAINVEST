@@ -78,23 +78,9 @@ CONCEPTOS = {
     "utilidad_operacional": ["ProfitLossFromOperatingActivities"],
     "utilidad_neta": ["ProfitLossAttributableToOwnersOfParent", "ProfitLoss"],
     "flujo_caja_operativo": ["CashFlowsFromUsedInOperatingActivities"],
-    # deuda_financiera: INTENTO DE CORRECCION REVERTIDO (22-sep-2026, ver
-    # db/DOCTRINA_VALOR.md seccion W3c, "deuda_financiera=0.0 -- causa raiz
-    # encontrada, fix intentado y revertido"). "Borrowings"/"BorrowingsNoncurrent"
-    # confirmado que NO son las etiquetas correctas (BorrowingsNoncurrent no
-    # existe en el XBRL de ningun emisor probado). Se probo sumar 4 etiquetas
-    # (CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings +
-    # LongtermBorrowings + las 2 de bonos) pero para CEMENTOS_ARGOS dio
-    # 4,096.899 MMM cuando el total real verificado contra la Nota 20.4 del
-    # propio informe (conciliacion de pasivos financieros) es 2,801.211 MMM
-    # -- LongtermBorrowings ya parece incluir parte de los bonos en la forma
-    # en que este preparador etiqueto su XBRL, asi que sumarla aparte con las
-    # etiquetas de bonos duplica el conteo. No se sabe si esto es consistente
-    # entre emisores o cada uno etiqueta distinto. Se deja la lista original
-    # (sabidamente incompleta, da 0.0/None con frecuencia) en vez de una
-    # correccion sin validar que demostradamente sobreestima -- preferible
-    # declarar el hueco a inventar un numero que parece mejor pero esta mal.
-    "deuda_financiera": ["Borrowings", "BorrowingsNoncurrent"],
+    # `deuda_financiera` NO está aquí: no se resuelve con una lista de
+    # conceptos compartida, sino con una fórmula POR EMISOR -- ver
+    # `DEUDA_FINANCIERA_POR_EMISOR` más abajo y `_deuda_financiera`.
 }
 
 # Campos de FLUJO (cubren un período) vs. de SALDO (foto a una fecha) -- ver
@@ -115,6 +101,168 @@ MIEMBRO_PATRIMONIO_TOTAL = "EquityMember"
 # Campos que son cifras en pesos y hay que llevar a miles de millones, la
 # unidad en que ya está escrita `fundamentales_reportados`. Los que no están
 # aquí (acciones) son conteos y se dejan como vienen.
+# ---------------------------------------------------------------------------
+# DEUDA FINANCIERA: una fórmula POR EMISOR, cada una verificada
+# ---------------------------------------------------------------------------
+#
+# **Por qué no hay una lista de conceptos común.** Se intentó dos veces y las
+# dos fallaron, de dos maneras distintas:
+#
+# 1. `["Borrowings", "BorrowingsNoncurrent"]` -- `BorrowingsNoncurrent` no
+#    existe en NINGÚN XBRL del corpus, y `Borrowings` sale en cero o sin
+#    etiquetar en buena parte del universo. Resultado medido el 22-sep-2026:
+#    280 de 629 filas de `fundamentales_reportados` sin deuda (44,5 %).
+# 2. Sumar las 4 etiquetas del balance (obligaciones corrientes + largo plazo
+#    + las dos de bonos). Para CEMENTOS_ARGOS daba 4.096,9 MMM cuando el total
+#    real de sus Notas 20 y 26 es 2.801,2 MMM: `LongtermBorrowings` YA incluye
+#    los bonos no corrientes en ese preparador, así que sumarlos aparte los
+#    cuenta dos veces.
+#
+# La razón de fondo: **cada preparador de XBRL decide qué mete en cada bolsa**,
+# y el corpus lo demuestra sobre el cierre 2025, contrastado contra la nota de
+# obligaciones financieras del propio informe consolidado de cada emisor:
+#
+#   - CELSIA y GRUPO_ARGOS: `Borrowings` = corriente + no corriente e INCLUYE
+#     los bonos -> `Borrowings` sola es el total correcto.
+#   - CEMENTOS_ARGOS: `Borrowings` = 0 y `ObligacionesFinancieras*` EXCLUYE los
+#     bonos -> hay que sumar `BondsIssued` aparte.
+#   - GEB: `Borrowings` = 929,8 MMM, que es SOLO la porción corriente; el total
+#     real es 20.692,8 MMM. Usar `Borrowings` subestimaba la deuda 22 veces, en
+#     silencio, y esa fila NO se veía como hueco porque traía un número.
+#   - MINEROS: `Borrowings` = solo la porción NO corriente (17,2 de 57,9 MMM).
+#   - PROMIGAS: no etiqueta `Borrowings` en absoluto, solo el par
+#     `ObligacionesFinancieras{Corrientes,NoCorrientes}`.
+#   - TERPEL: no etiqueta ninguna de las anteriores; su deuda va en
+#     `Other{Current,Noncurrent}FinancialLiabilities`.
+#
+# No hay regla genérica que acierte en los seis a la vez. Por eso: una fórmula
+# por emisor, cada una comprobada, y `None` declarado donde no se pudo
+# comprobar ninguna -- un hueco visible es mejor que una cifra que parece dato.
+#
+# **Cómo se lee cada entrada.** `(formulas, evidencia, detalle)`. `formulas` es
+# una lista EN ORDEN DE PREFERENCIA; cada fórmula es un conjunto de etiquetas
+# que se SUMAN. Gana la primera cuyas etiquetas estén TODAS en el archivo, dé
+# un total positivo y pase el control contra el propio balance (ver
+# `_deuda_financiera`). Hay respaldos porque no todos los años del mismo emisor
+# traen las mismas etiquetas.
+#
+# **Qué significa cada `evidencia`.**
+#   `nota`          reproducido contra la nota de obligaciones financieras del
+#                   informe ANUAL consolidado, al peso o dentro del 0,01 %.
+#   `estructura`    sin informe con notas en el corpus local, pero todas las
+#                   fórmulas candidatas del archivo coinciden entre sí y la
+#                   serie es continua período a período.
+#   `nota_parcial`  reproduce una línea concreta del balance del informe, pero
+#                   se sabe que deja fuera otra que también es deuda, porque el
+#                   XBRL no trae con qué reproducirla. Queda dicho cuál.
+#   `heredado`      sector financiero, sin verificar contra nota: se conserva
+#                   exactamente lo que el canal ya venía entregando.
+#   `sin_verificar` lista de fórmulas vacía -> `None`, hueco declarado.
+
+_OBL_C = "ObligacionesFinancierasCorrientes"
+_OBL_NC = "ObligacionesFinancierasNoCorrientes"
+_CORTO = "ShorttermBorrowings"
+_LARGO = "LongtermBorrowings"
+_TOTAL = "Borrowings"
+_BONOS = "BondsIssued"
+_OTROS_C = "OtherCurrentFinancialLiabilities"
+_OTROS_NC = "OtherNoncurrentFinancialLiabilities"
+
+DEUDA_FINANCIERA_POR_EMISOR = {
+    # --- verificado contra la nota del informe ANUAL consolidado -----------
+    "CELSIA": ([[_TOTAL], [_CORTO, _LARGO]], "nota",
+               "Nota 18 'Obligaciones financieras y bonos' 2025-ANUAL: 5.010,913 "
+               "(corriente 1.084,895 + no corriente 3.926,018) = Borrowings al peso"),
+    "CEMENTOS_ARGOS": ([[_OBL_C, _OBL_NC, _BONOS]], "nota",
+                       "Nota 20 'Obligaciones financieras' (854,879) + Nota 26 'Bonos en "
+                       "circulación y acciones preferenciales' (1.946,332) = 2.801,211 en "
+                       "2025-ANUAL; la fórmula da 2.801,121 -- los 0,091 de diferencia son "
+                       "las acciones preferenciales, que el XBRL no mete en `BondsIssued`. "
+                       "Comprobado también contra el comparativo 2024 (nota 3.765,758 vs "
+                       "fórmula 3.765,670, la misma diferencia)"),
+    "CONSTRUCTORA_CONCONCRETO": ([[_TOTAL], [_CORTO, _LARGO]], "nota",
+                                 "Nota 7.13 'Obligaciones financieras' consolidada "
+                                 "2025-ANUAL: 264.230.452 = Borrowings al peso (y el "
+                                 "comparativo 2024: 264.729.963)"),
+    "ETB": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+            "Nota 17 'Obligaciones financieras' consolidada 2025-ANUAL: 852.889.908 "
+            "(corto 176.309.536 + largo 676.580.372) = Borrowings al peso"),
+    "GEB": ([[_OBL_C, _OBL_NC]], "nota",
+            "Nota 19 'Obligaciones financieras' consolidada 2025-ANUAL: 20.692.784 millones "
+            "(corriente 929.806 + no corriente 19.762.978), bonos incluidos. `Borrowings` "
+            "trae SOLO la corriente -- por eso este emisor no puede usarla. Comprobado "
+            "también contra el comparativo 2024 (20.795,570, exacto)"),
+    "GRUPO_ARGOS": ([[_TOTAL], [_CORTO, _LARGO]], "nota",
+                    "Nota 21 'Obligaciones financieras' (4.722,405) + Nota 26 'Bonos e "
+                    "instrumentos financieros compuestos' (4.963,903) = 9.686,308 "
+                    "consolidado 2025-ANUAL = Borrowings al peso. Comprobado también en "
+                    "2024 (5.527,579 + 5.875,756 = 11.403,335, exacto)"),
+    "MINEROS": ([[_OBL_C, _OBL_NC]], "nota",
+                "Nota 27 'Créditos y préstamos' consolidada 2025-ANUAL: 57.853.052 "
+                "(corriente 40.615.363 + no corriente 17.237.689). `Borrowings` trae SOLO "
+                "la no corriente. Comprobado también en 2024 (114.316.717)"),
+    "PROMIGAS": ([[_OBL_C, _OBL_NC]], "nota",
+                 "Nota 19 'Obligaciones financieras' consolidada 2025-ANUAL: 5.558.356.583 "
+                 "(corriente 767.981.612 + no corriente 4.790.374.971), al peso. Comprobado "
+                 "también en 2024 (5.509.786.077)"),
+    "TERPEL": ([[_OTROS_C, _OTROS_NC]], "nota",
+               "Nota 24 'Otros pasivos financieros corrientes y no corrientes' consolidada "
+               "2025-ANUAL: 3.651.381.242 (corriente 623.333.334 + no corriente "
+               "3.028.047.908), al peso. Comprobado también en 2024 (3.930.659.272)"),
+
+    # --- sin informe con notas en el corpus local; fórmulas concordantes ----
+    "ECOPETROL": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
+                  "las tres fórmulas dan lo mismo en 2025 (109.200,642); serie continua "
+                  "2019-2026"),
+    "ISA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
+            "las tres dan 33.790,917 en 2025. Sumar `BondsIssued` aparte daría 62.210, más "
+            "que los pasivos totales (47.823) -- o sea los bonos YA están dentro"),
+    "EL_CONDOR": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
+                  "las tres coinciden en 2025 (739,132)"),
+    "ENKA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
+             "las tres coinciden en 2025 (38,839)"),
+    "FABRICATO": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
+                  "las tres coinciden en 2025 (136,956)"),
+    "GRUPO_NUTRESA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
+                      "las tres coinciden en 2025 (16.311,566). El salto de 4.404 "
+                      "(2024-ANUAL) a 13.047 (2025-T1) es real -- es el endeudamiento de la "
+                      "reorganización societaria, no un cambio de etiqueta"),
+    "EXITO": ([[_OBL_C, _OBL_NC], [_TOTAL]], "estructura",
+              "el par de obligaciones va PRIMERO a propósito: el `Borrowings` de Éxito trae "
+              "solo una parte en los cierres anuales (803,7 en 2022-12-31 contra 2.194,9 el "
+              "trimestre anterior y 2.141,6 el siguiente). Con el par la serie es continua"),
+
+    # --- sector financiero: se conserva lo que ya entregaba el canal --------
+    "BANCO_DE_BOGOTA": ([[_TOTAL], [_CORTO, _LARGO]], "heredado",
+                        "banco: su 'deuda financiera' no es comparable con la de un emisor "
+                        "real (los depósitos son financiación operativa). Se deja "
+                        "`Borrowings`, que es lo que este canal ya venía escribiendo"),
+    "CORFICOLOMBIANA": ([[_TOTAL], [_CORTO, _LARGO]], "heredado", "igual que BANCO_DE_BOGOTA"),
+    "GRUPO_AVAL": ([[_TOTAL], [_CORTO, _LARGO]], "heredado", "igual que BANCO_DE_BOGOTA"),
+    "GRUPO_CIBEST_BANCOLOMBIA": ([[_TOTAL], [_CORTO, _LARGO]], "heredado",
+                                 "igual que BANCO_DE_BOGOTA"),
+    "DAVIVIENDA_GROUP": ([[_CORTO, _LARGO]], "nota_parcial",
+                         "el balance consolidado 2025 separa 'Créditos de bancos y otras "
+                         "obligaciones' (16.143.780 millones) de 'Instrumentos de deuda "
+                         "emitidos' (12.763.556). Shortterm+Longterm reproduce la PRIMERA al "
+                         "peso (16.143.782); el `Borrowings` que este canal venía escribiendo "
+                         "(7.962,5) no es ninguna de las dos -- es solo una parte de los "
+                         "instrumentos de deuda. Se toma la línea de créditos bancarios, que "
+                         "es el mismo concepto que se está usando en los otros cuatro bancos. "
+                         "**Excluye los 12.763,6 de instrumentos de deuda emitidos**: el XBRL "
+                         "no trae ninguna etiqueta que reproduzca esa línea"),
+
+    # --- no etiquetan nada reconocible: hueco declarado ---------------------
+    "BVC": ([], "sin_verificar",
+            "solo etiqueta `ShorttermBorrowings` (607.698) y un pasivo por arrendamiento; no "
+            "hay con qué armar un total de deuda financiera"),
+    "GRUPO_SURA": ([], "sin_verificar",
+                   "no etiqueta ninguna de las bolsas de deuda en el XBRL consolidado. Su "
+                   "Nota 6.2.1 en el corpus local es la del estado SEPARADO, que no "
+                   "corresponde al perímetro del XBRL"),
+}
+
+
 CAMPOS_EN_PESOS = set(CONCEPTOS) | {"ebitda", "dividendos_decretados"}
 
 
@@ -399,6 +547,59 @@ def _escala_del_archivo(utilidad, acciones, por_accion, activos_brutos=None):
     return None, f"la razon utilidad-por-accion x acciones / utilidad da {razon:,.1f}, que no cae cerca de ninguna escala"
 
 
+def _deuda_financiera(hechos, contextos, fecha, emisor, pasivos_pesos=None):
+    """(valor_en_pesos, etiqueta, motivo). Aplica la fórmula del emisor -- ver
+    `DEUDA_FINANCIERA_POR_EMISOR`, que explica por qué esto no puede ser una
+    lista de conceptos compartida.
+
+    Dos controles antes de devolver una cifra, porque el error que se está
+    corrigiendo aquí fue justamente publicar una suma sin comprobarla:
+
+    1. **Todas las etiquetas de la fórmula tienen que estar.** Si falta una, la
+       fórmula no aplica y se pasa a la siguiente. Sumar las que haya daría un
+       total parcial indistinguible de uno completo.
+    2. **El total no puede pasar de los pasivos del propio balance.** La deuda
+       financiera es un subconjunto de los pasivos; si la suma los excede, hay
+       doble conteo -- que es exactamente como se detecta que un emisor ya
+       metió los bonos dentro de las obligaciones. El chequeo usa el balance
+       del MISMO archivo, así que no depende de nada externo.
+
+    Sin emisor (se llama así desde `escala_del_emisor`, que solo quiere la
+    escala) devuelve `None` sin ruido.
+    """
+    if not emisor:
+        return None, None, None
+    entrada = DEUDA_FINANCIERA_POR_EMISOR.get(emisor)
+    if entrada is None:
+        return None, None, f"{emisor} no está en DEUDA_FINANCIERA_POR_EMISOR -- deuda sin resolver"
+    formulas, evidencia, _detalle = entrada
+    if not formulas:
+        return None, None, f"deuda_financiera declarada como hueco para {emisor} ({evidencia})"
+
+    descartadas = []
+    for formula in formulas:
+        partes = []
+        for etiqueta in formula:
+            valor, _ = _buscar(hechos, contextos, [etiqueta], fecha)
+            if valor is None:
+                partes = None
+                break
+            partes.append(valor)
+        if partes is None:
+            continue
+        total = sum(partes)
+        if total <= 0:
+            continue
+        if pasivos_pesos and total > pasivos_pesos:
+            descartadas.append(f"{'+'.join(formula)} da {total:,.0f} > pasivos {pasivos_pesos:,.0f}")
+            continue
+        return total, "xbrl: " + " + ".join(formula) + f" (verificado: {evidencia})", None
+    motivo = f"ninguna fórmula de deuda aplicó para {emisor}"
+    if descartadas:
+        motivo += " -- descartada(s) por exceder los pasivos: " + " | ".join(descartadas)
+    return None, None, motivo
+
+
 def _vacio(motivos, evidencia_escala=None) -> dict:
     """Salida sin cifras, con el MISMO shape que la buena. Que los retornos
     tempranos omitieran la clave `xbrl` rompía a quien la leyera sin
@@ -409,11 +610,17 @@ def _vacio(motivos, evidencia_escala=None) -> dict:
                      "punto_entrada": None, "conceptos": {}}}
 
 
-def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_conocida=None) -> dict:
+def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1,
+         escala_conocida=None, emisor: str = None) -> dict:
     """Mismo shape que `extractor_generico.extraer`.
 
     `indice_periodo`: 1 es el período del informe; 2 es el comparativo, que
     viene en el mismo archivo y permite aprovecharlo para dos períodos.
+
+    `emisor`: el slug (= nombre de la carpeta, p. ej. `GEB`). Solo lo necesita
+    `deuda_financiera`, que se resuelve con una fórmula distinta por emisor --
+    ver `DEUDA_FINANCIERA_POR_EMISOR`. Sin él, ese campo sale `None` y se dice
+    por qué en `motivos`; todo lo demás se lee igual.
     """
     raiz = ET.parse(str(ruta_xbrl)).getroot()
     contextos = _leer_contextos(raiz)
@@ -511,6 +718,21 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1, escala_con
             "pagina": None,
             "tabla": f"xbrl: {concepto}" if concepto else None,
         }
+
+    # `deuda_financiera` va aparte del bucle: su fórmula depende del emisor.
+    # El control contra los pasivos usa la cifra en PESOS del mismo archivo, no
+    # la ya convertida, para no arrastrar el redondeo de la conversión.
+    pasivos_pesos, _ = _buscar(hechos, contextos, CONCEPTOS["pasivos_totales"], fecha)
+    deuda, etiqueta_deuda, motivo_deuda = _deuda_financiera(
+        hechos, contextos, fecha, emisor, pasivos_pesos)
+    if motivo_deuda:
+        motivos.append(motivo_deuda)
+    campos["deuda_financiera"] = {
+        "valor": round(deuda / divisor, 6) if deuda is not None else None,
+        "pagina": None,
+        "tabla": etiqueta_deuda,
+    }
+    origen_concepto["deuda_financiera"] = etiqueta_deuda
 
     # acciones: se pidieron arriba con la clase ORDINARIA explícita. El total
     # sin dimensión no existe en estos archivos (Ecopetrol trae los tres

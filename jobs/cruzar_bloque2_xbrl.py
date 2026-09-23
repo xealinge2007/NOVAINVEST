@@ -79,7 +79,8 @@ for carpeta in carpetas:
         por_emisor[slug]["total"] += 1
         resumen["total_bloque2"] += 1
         try:
-            r = lector_xbrl.leer(arch, anio, periodo, indice_periodo=1, escala_conocida=escala)
+            r = lector_xbrl.leer(arch, anio, periodo, indice_periodo=1,
+                                         escala_conocida=escala, emisor=carpeta.name)
         except Exception as e:
             resumen["error_excepcion"] += 1
             detalle_fallas.append(f"{slug} {anio}-{periodo}: EXCEPCION {type(e).__name__}: {e}")

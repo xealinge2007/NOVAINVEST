@@ -1532,9 +1532,130 @@ etiquetó distinto.
 incompleto) en vez de desplegar una corrección que demostradamente sobreestima. Se dejó documentada
 la causa raíz exacta en el propio código (comentario en `CONCEPTOS["deuda_financiera"]`,
 `lector_xbrl.py`) para que la próxima persona que lo intente no repita la misma ruta ya descartada.
-Corregir esto bien requeriría validar emisor por emisor contra su nota de conciliación de pasivos
-financieros — no es un cambio de una línea, es trabajo de verificación caso por caso, del mismo
-calibre que ya se hizo para cada holding de W3a. Queda fuera del alcance de esta sesión.
+Corregir esto bien requeriría validar emisor por emisor contra su nota de obligaciones
+financieras — no es un cambio de una línea, es trabajo de verificación caso por caso, del mismo
+calibre que ya se hizo para cada holding de W3a. **Eso es exactamente lo que se hizo después:
+ver la sección siguiente.**
+
+### `deuda_financiera` — corregido de raíz, emisor por emisor (22-sep-2026)
+
+Se corrigió el bug documentado en la sección anterior. **No con un mapeo genérico**: se probó
+que ninguno acierta, porque cada preparador de XBRL mete cosas distintas en las mismas
+etiquetas. La corrección es una **fórmula por emisor**, cada una reproducida contra la nota de
+obligaciones financieras del informe ANUAL consolidado del propio emisor.
+
+#### Lo que el corpus demuestra
+
+Seis emisores, seis comportamientos distintos de las mismas etiquetas, todos sobre el cierre
+2025 y todos contrastados contra su propia nota:
+
+| emisor | lo que da `Borrowings` | total real de la nota | qué pasa |
+|---|---|---|---|
+| CELSIA | 5.010,913 | 5.010,913 (Nota 18) | correcto: incluye los bonos |
+| GRUPO_ARGOS | 9.686,308 | 9.686,308 (Notas 21+26) | correcto: incluye los bonos |
+| CEMENTOS_ARGOS | **0** | 2.801,211 (Notas 20+26) | no la etiqueta; y sus `ObligacionesFinancieras*` EXCLUYEN los bonos |
+| GEB | **929,806** | 20.692,784 (Nota 19) | trae SOLO la porción corriente — **22 veces menos** |
+| MINEROS | **17,238** | 57,853 (Nota 27) | trae SOLO la porción no corriente |
+| PROMIGAS | **ausente** | 5.558,357 (Nota 19) | no etiqueta `Borrowings` en absoluto |
+| TERPEL | **0** | 3.651,381 (Nota 24) | su deuda va en `Other*FinancialLiabilities` |
+
+El hallazgo más grave no era un hueco sino un **número silenciosamente equivocado**: GEB venía
+con 929,806 MMM de deuda cuando la real es 20.692,784. Esa fila nunca apareció en ningún
+inventario de huecos porque traía un valor. Lo mismo, en menor escala, MINEROS (17,2 contra
+57,9) y EXITO en sus cierres anuales.
+
+#### Cómo quedó implementado
+
+`DEUDA_FINANCIERA_POR_EMISOR` en `apps/api/app/services/extraccion/lector_xbrl.py`: por slug de
+emisor, una lista de fórmulas en orden de preferencia (cada fórmula = etiquetas que se suman),
+más la evidencia que la respalda. `_deuda_financiera()` la aplica con dos controles:
+
+1. **Todas las etiquetas de la fórmula tienen que estar.** Si falta una, la fórmula no aplica —
+   sumar las que haya daría un total parcial indistinguible de uno completo (que es exactamente
+   el modo de fallo de GEB y MINEROS).
+2. **El total no puede exceder los pasivos del propio balance.** La deuda financiera es un
+   subconjunto de los pasivos; si la suma los excede hay doble conteo. Es el control que detecta
+   automáticamente el error del intento anterior: para ISA, sumar `BondsIssued` aparte de las
+   obligaciones da 62.210 MMM contra 47.823 de pasivos totales — imposible, y es justo la firma
+   de que los bonos ya estaban dentro. Está cubierto por una prueba en `test_lector_xbrl.py`.
+
+`lector_xbrl.leer()` recibe ahora `emisor=<slug>`; `extraer_xbrl.py` y `cruzar_bloque2_xbrl.py`
+se lo pasan. Sin emisor, `deuda_financiera` sale `None` y se dice por qué en `motivos`.
+
+#### Niveles de evidencia (están en la tabla, emisor por emisor)
+
+- **`nota` (9 emisores)** — CELSIA, CEMENTOS_ARGOS, CONSTRUCTORA_CONCONCRETO, ETB, GEB,
+  GRUPO_ARGOS, MINEROS, PROMIGAS, TERPEL. Reproducido contra la nota del informe ANUAL 2025
+  consolidado, al peso salvo CEMENTOS_ARGOS (0,003 % de diferencia: las acciones preferenciales
+  que el XBRL no mete en `BondsIssued`). **Siete de los nueve están además verificados contra el
+  comparativo 2024 de la misma nota**, que el XBRL trae en el mismo archivo — dos años
+  independientes, no uno.
+- **`estructura` (7 emisores)** — ECOPETROL, ISA, EL_CONDOR, ENKA, EXITO, FABRICATO,
+  GRUPO_NUTRESA. No hay informe con notas en el corpus local, pero todas las fórmulas candidatas
+  coinciden entre sí en el archivo y la serie es continua período a período.
+- **`heredado` (4 emisores)** — BANCO_DE_BOGOTA, CORFICOLOMBIANA, GRUPO_AVAL,
+  GRUPO_CIBEST_BANCOLOMBIA. Bancos: su "deuda financiera" no es comparable con la de un emisor
+  real (los depósitos son financiación operativa). Se conserva exactamente lo que el canal ya
+  entregaba, ni mejor ni peor, y queda dicho que no está verificado.
+- **`nota_parcial` (1 emisor)** — DAVIVIENDA_GROUP. Su balance consolidado separa "Créditos de
+  bancos y otras obligaciones" (16.143.780 millones) de "Instrumentos de deuda emitidos"
+  (12.763.556). Corto+largo reproduce la primera al peso; el `Borrowings` que el canal venía
+  escribiendo (7.962,5) no es ninguna de las dos. Se toma la línea de créditos bancarios, que es
+  el mismo concepto usado en los otros cuatro bancos, y **queda dicho que excluye los 12.763,6 de
+  instrumentos de deuda emitidos**, porque el XBRL no trae etiqueta que reproduzca esa línea.
+- **`sin_verificar` (2 emisores)** — BVC y GRUPO_SURA: no etiquetan ninguna bolsa de deuda
+  reconocible. Quedan en `None`: hueco declarado, no una cifra a cara o cruz. (Antes traían
+  `0.0`, que se lee como "no tiene deuda" en vez de "no se sabe"; se limpiaron a `NULL` a mano
+  porque el job FUSIONA lo leído con lo que ya había en la fila y no borra solo.)
+
+#### Control independiente que se corrió
+
+Cada fecha de cierre aparece en varios archivos (el informe del año y el comparativo del
+siguiente). Aplicando la fórmula de cada emisor a todo el corpus: **80 de 92 fechas con más de
+una radicación dan el mismo valor**. Las 12 que no, son reexpresiones del emisor (el ANUAL del
+año N difiere del comparativo del año N+1, pero todas las radicaciones de N+1 concuerdan entre
+sí) — firma de reexpresión, no de fórmula inestable.
+
+#### Resultado sobre los datos (corrida del 22-sep-2026)
+
+`fundamentales_reportados`, 630 filas:
+
+- **116 filas ganaron deuda donde no había** (CEMENTOS_ARGOS 22, PROMIGAS 24, TERPEL 24,
+  GRUPO_NUTRESA 18, EXITO 17, ETB 5, resto 6).
+- **66 filas tenían una cifra equivocada y quedaron corregidas** — GEB 23 (hasta x43: el
+  2020-ANUAL pasó de 299,7 a 12.951,7), MINEROS 24, EXITO 6, ETB 4, DAVIVIENDA 4, ENKA 3,
+  CEMENTOS_ARGOS 1, EL_CONDOR 1.
+- Filas sin deuda: **281 -> 168** (44,5 % -> 26,7 %). Las que quedan son los emisores declarados
+  como hueco (BVC 27, GRUPO_SURA 29), PEI (canal manual, sin XBRL), GRUPO_CIBEST (20) y los
+  períodos más viejos de cada emisor, donde el XBRL no trae ninguna etiqueta de deuda.
+
+`fundamentales_analisis`, que es lo que consume la app: cambió el **signo del EVA** en tres
+emisores, no solo la magnitud.
+
+| emisor | deuda antes | deuda ahora | EVA antes | EVA ahora |
+|---|---|---|---|---|
+| GRUPO_NUTRESA | 0 | 16.439,9 | **+725,7** | **-1.031,6** |
+| PROMIGAS | 0 | 5.558,4 | **+284,8** | **-231,8** |
+| GEB | 972,2 | 19.486,4 | -935,1 | -2.797,7 |
+| CEMENTOS_ARGOS | 0 | 2.756,5 | -878,4 | -1.172,1 |
+| TERPEL | 0 | 3.702,3 | +498,6 | +159,1 |
+| DAVIVIENDA_GROUP | 9.042,4 | 15.437,3 | -1.541,9 | -1.460,7 |
+| MINEROS | 9,2 | 191,6 | +516,0 | +492,2 |
+| EXITO | 2.143,4 | 1.748,3 | -280,6 | -242,4 |
+
+Nutresa y Promigas venían apareciendo como creadoras de valor **porque su deuda estaba en cero**.
+No lo son con su deuda real. Eso es un cambio de conclusión de inversión, no un ajuste cosmético.
+
+#### Lo que sigue pendiente
+
+- Verificar contra nota los 7 de nivel `estructura` y los 4 bancos: hace falta el informe con
+  notas, que para esos emisores no está en `C:\Proyectos\BVC\SIMEV_BVC`.
+- BVC y GRUPO_SURA siguen sin deuda. Para GRUPO_SURA el corpus local solo trae la nota del
+  estado SEPARADO, que no corresponde al perímetro del XBRL consolidado.
+- A DAVIVIENDA_GROUP le faltan los 12.763,6 de instrumentos de deuda emitidos, que el XBRL no
+  etiqueta. Conviene revisar si a los otros cuatro bancos les pasa lo mismo -- se les dejó
+  `Borrowings` sin contrastar contra su balance.
+- PEI no tiene XBRL (canal manual); su `deuda_financiera` se sigue cargando a mano.
 
 ## 6. Pendiente de este W0 (actualizado 18-sep-2026)
 

@@ -88,6 +88,76 @@ revisar("x1 si ya viene en pesos", lx._escala_del_archivo(33406291190000, 411166
 revisar("None sin con qué deducirla", lx._escala_del_archivo(33406291190, None, None)[0], None)
 revisar("None si la razón no es una escala", lx._escala_del_archivo(33406291190, 41116694690, 137)[0], None)
 
+print("\n--- deuda financiera: una fórmula por emisor, cada una contra su nota ---")
+# Cada cifra esperada sale de la nota de obligaciones financieras del informe
+# ANUAL CONSOLIDADO 2025 del propio emisor, no de lo que dé el código. Son los
+# seis casos que demuestran que NO existe una lista de conceptos común:
+#   CELSIA        `Borrowings` sola ya trae el total (bonos incluidos)
+#   CEMENTOS_ARGOS `Borrowings` = 0 y las obligaciones EXCLUYEN los bonos
+#   GEB           `Borrowings` = solo la porción corriente (22x de menos)
+#   MINEROS       `Borrowings` = solo la porción no corriente
+#   PROMIGAS      no etiqueta `Borrowings`; solo el par de obligaciones
+#   TERPEL        ni lo uno ni lo otro: va en `Other*FinancialLiabilities`
+DEUDA_2025 = {
+    # emisor: (esperado en MMM, tolerancia relativa, de dónde sale)
+    "CELSIA":         (5010.913365, 0.0,     "Nota 18, corriente 1.084,895 + no corriente 3.926,018"),
+    "CEMENTOS_ARGOS": (2801.211,    0.0001,  "Nota 20 (854,879) + Nota 26 (1.946,332); la diferencia "
+                                             "son 0,091 de acciones preferenciales fuera de BondsIssued"),
+    "CONSTRUCTORA_CONCONCRETO": (264.230452, 0.0, "Nota 7.13 consolidada"),
+    "ETB":            (852.889908,  0.0,     "Nota 17, corto 176,310 + largo 676,580"),
+    "GEB":            (20692.784,   0.0,     "Nota 19, corriente 929,806 + no corriente 19.762,978"),
+    "GRUPO_ARGOS":    (9686.308076, 0.0,     "Nota 21 (4.722,405) + Nota 26 (4.963,903)"),
+    "MINEROS":        (57.853052,   0.0,     "Nota 27, corriente 40,615 + no corriente 17,238"),
+    "PROMIGAS":       (5558.356583, 0.0,     "Nota 19, corriente 767,982 + no corriente 4.790,375"),
+    "TERPEL":         (3651.381242, 0.0,     "Nota 24, corriente 623,333 + no corriente 3.028,048"),
+}
+CORPUS = Path(r"C:\Proyectos\BVC\SIMEV_XBRL")
+for emisor, (esperado, tol, origen) in DEUDA_2025.items():
+    arch = CORPUS / emisor / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+    if not arch.is_file():
+        print(f"SALTADA {emisor}: falta {arch}")
+        continue
+    obtenido = lx.leer(arch, 2025, "ANUAL", emisor=emisor)["campos"]["deuda_financiera"]["valor"]
+    if obtenido is not None and tol and abs(obtenido - esperado) / esperado <= tol:
+        print(f"OK   deuda {emisor}: nota={esperado} obtenido={obtenido} (dentro de {tol:.2%}) -- {origen}")
+    else:
+        revisar(f"deuda {emisor} ({origen})", obtenido, esperado)
+
+print("\n--- la deuda que no se pudo verificar se declara, no se inventa ---")
+sin_verificar = lx.leer(CORPUS / "TERPEL" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl",
+                        2025, "ANUAL", emisor="EMISOR_QUE_NO_EXISTE")
+revisar("emisor desconocido -> deuda None",
+        sin_verificar["campos"]["deuda_financiera"]["valor"], None)
+revisar("y se dice por qué en motivos",
+        any("DEUDA_FINANCIERA_POR_EMISOR" in m for m in sin_verificar["motivos"]), True)
+
+hueco = lx.leer(CORPUS / "GRUPO_SURA" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl",
+                2025, "ANUAL", emisor="GRUPO_SURA")
+revisar("emisor con hueco declarado -> None",
+        hueco["campos"]["deuda_financiera"]["valor"], None)
+
+print("\n--- el control contra los pasivos descarta las sumas con doble conteo ---")
+# ISA: sumar `BondsIssued` aparte de las obligaciones da 62.210 MMM contra unos
+# pasivos totales de 47.823 -- es imposible, y es justo la firma de que los
+# bonos YA estaban dentro. La fórmula inventada tiene que quedar descartada.
+isa = CORPUS / "ISA" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+if isa.is_file():
+    guardado = lx.DEUDA_FINANCIERA_POR_EMISOR["ISA"]
+    lx.DEUDA_FINANCIERA_POR_EMISOR["ISA"] = (
+        [["ObligacionesFinancierasCorrientes", "ObligacionesFinancierasNoCorrientes", "BondsIssued"]],
+        "prueba", "fórmula con doble conteo, a propósito")
+    try:
+        r_isa = lx.leer(isa, 2025, "ANUAL", emisor="ISA")
+        revisar("una suma mayor que los pasivos no se escribe",
+                r_isa["campos"]["deuda_financiera"]["valor"], None)
+        revisar("y queda dicho en motivos",
+                any("exceder los pasivos" in m for m in r_isa["motivos"]), True)
+    finally:
+        lx.DEUDA_FINANCIERA_POR_EMISOR["ISA"] = guardado
+    revisar("con su fórmula real ISA sí trae deuda",
+            lx.leer(isa, 2025, "ANUAL", emisor="ISA")["campos"]["deuda_financiera"]["valor"],
+            33790.917489)
+
 print()
 if fallos:
     print(f"{len(fallos)} prueba(s) fallaron: {fallos}")

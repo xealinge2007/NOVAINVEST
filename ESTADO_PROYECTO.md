@@ -1739,3 +1739,41 @@ requeriría validar emisor por emisor contra su propia nota de conciliación -- 
 calibre que cada holding de W3a, no un cambio de una línea. Queda documentado en el propio código
 (`lector_xbrl.py`) y en `db/DOCTRINA_VALOR.md` §6 para que no se repita la misma ruta ya descartada.
 Fuera de alcance de esta sesión.
+
+## 22-sep-2026 (cont. 19) — deuda corregida de raíz, emisor por emisor
+
+Se hizo el trabajo que la sesión anterior dejó fuera de alcance: validar emisor por emisor contra
+su propia nota. El resultado es que **no existe un mapeo genérico correcto** -- las mismas
+etiquetas XBRL significan cosas distintas según el preparador, y se puede demostrar sobre el
+cierre 2025:
+
+| emisor | `Borrowings` | total real de su nota | qué pasa |
+|---|---|---|---|
+| CELSIA / GRUPO_ARGOS | 5.010,9 / 9.686,3 | 5.010,9 / 9.686,3 | correcto, con bonos dentro |
+| CEMENTOS_ARGOS | 0 | 2.801,2 | no la etiqueta; y sus obligaciones EXCLUYEN los bonos |
+| **GEB** | **929,8** | **20.692,8** | trae solo la porción corriente — 22 veces menos |
+| MINEROS | 17,2 | 57,9 | trae solo la porción no corriente |
+| PROMIGAS | ausente | 5.558,4 | no etiqueta `Borrowings` |
+| TERPEL | 0 | 3.651,4 | su deuda va en `Other*FinancialLiabilities` |
+
+**El hallazgo más grave no era un hueco sino un número silenciosamente equivocado**: GEB venía con
+929,8 MMM de deuda cuando la real es 20.692,8, y esa fila nunca salió en ningún inventario de
+huecos porque traía un valor. Lo mismo, en menor escala, MINEROS y EXITO.
+
+Implementado como `DEUDA_FINANCIERA_POR_EMISOR` en `lector_xbrl.py`: una fórmula por emisor, con
+su nivel de evidencia declarado (9 verificados contra nota, 1 parcial, 7 por estructura, 4
+heredados de banca, 2 declarados como hueco). Dos controles antes de escribir una cifra: todas las
+etiquetas de la fórmula tienen que estar, y el total no puede exceder los pasivos del propio
+balance -- este último detecta automáticamente el doble conteo que hundió el intento anterior
+(para ISA daría 62.210 contra 47.823 de pasivos). Cubierto por pruebas en `test_lector_xbrl.py`.
+
+Reprocesado todo el corpus XBRL: **116 filas ganaron deuda donde no había, 66 tenían una cifra
+equivocada y quedaron corregidas**, y las filas sin deuda bajaron de 281 a 168 de 630.
+
+En `fundamentales_analisis` (lo que consume la app) **cambió el signo del EVA en tres emisores**:
+GRUPO_NUTRESA +725,7 -> -1.031,6, PROMIGAS +284,8 -> -231,8 y, en magnitud, GEB -935,1 ->
+-2.797,7. Nutresa y Promigas venían apareciendo como creadoras de valor porque su deuda estaba en
+cero; con su deuda real no lo son. Es un cambio de conclusión de inversión, no cosmético.
+
+Tabla completa, evidencia por emisor y pendientes en `db/DOCTRINA_VALOR.md`, sección
+"`deuda_financiera` — corregido de raíz, emisor por emisor".

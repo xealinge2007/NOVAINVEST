@@ -274,7 +274,8 @@ def main():
             leidos = []
             for indice, anio in ((1, anio_informe), (2, anio_informe - 1)):
                 try:
-                    r = lector_xbrl.leer(arch, anio, periodo, indice_periodo=indice, escala_conocida=escala)
+                    r = lector_xbrl.leer(arch, anio, periodo, indice_periodo=indice,
+                                         escala_conocida=escala, emisor=slug)
                 except Exception as e:
                     print(f"  {slug} {anio}-{periodo} idx{indice}: ERROR {type(e).__name__}: {e}")
                     resumen["error"] += 1
