@@ -69,12 +69,10 @@ con Inversionistas del emisor, no hace falta SIMEV), buscar la nota de obligacio
 préstamos / bonos del cierre 2025, y **anotar solo el total** en el reporte final. No guardes PDF
 de 400 páginas.
 
-Lo que hay que buscar y contra qué debe cuadrar (cifras en miles de millones de pesos):
-
 Todas las cifras son del cierre **2025-12-31, CONSOLIDADO**, en **miles de millones de pesos**.
 Si el informe viene en millones, divide por 1.000; si viene en miles, por 1.000.000.
 
-### El total que tiene que dar la nota
+#### El total que tiene que dar la nota
 
 | emisor | TOTAL objetivo | corriente | no corriente | pasivos totales (para ubicarte) |
 |---|---|---|---|---|
@@ -87,7 +85,7 @@ Si el informe viene en millones, divide por 1.000; si viene en miles, por 1.000.
 | FABRICATO | **136,956** | 25,291 | 111,665 | 499,263 |
 | GRUPO_CIBEST_BANCOLOMBIA | **20.452,413** | ver abajo | ver abajo | 258.775,571 |
 
-### Lo que tiene que pasar con los bonos — esto es lo que de verdad hay que confirmar
+#### Lo que tiene que pasar con los bonos — esto es lo que de verdad hay que confirmar
 
 El punto de la revisión no es el total: es **si los bonos están dentro o fuera** de la línea de
 obligaciones financieras. En estos emisores la fórmula asume que están **DENTRO**, y eso es
@@ -101,7 +99,7 @@ justamente lo que no se ha podido comprobar contra una nota.
 | EL_CONDOR, ENKA, FABRICATO | no tagean bonos | íd. |
 | EXITO | no tagea bonos | **ojo con este**: su `ShorttermBorrowings` (26,777) NO es la porción corriente; la corriente buena es `ObligacionesFinancierasCorrientes` (1.992,729). Confirma cuál de las dos coincide con la nota |
 
-### GRUPO_CIBEST_BANCOLOMBIA va aparte (es banca)
+#### GRUPO_CIBEST_BANCOLOMBIA va aparte (es banca)
 
 Su total no sale de una sola nota sino de **tres líneas del balance consolidado de Bancolombia
 S.A.**, que es como quedó verificada la fórmula en los otros tres bancos:
@@ -119,7 +117,7 @@ del negocio bancario, no deuda. No los sumes.
 Recuerda: hace falta el consolidado de **BANCOLOMBIA S.A.** (pasivos 258.775,571), no el de Grupo
 Cibest (338.756,746) que es el que ya está en el corpus. Son perímetros distintos.
 
-### Por qué el PDF que ya hay no sirve
+#### Por qué el PDF que ya hay no sirve
 
 | emisor | problema del archivo local |
 |---|---|
