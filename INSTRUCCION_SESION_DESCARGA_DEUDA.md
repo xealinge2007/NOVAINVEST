@@ -117,6 +117,30 @@ del negocio bancario, no deuda. No los sumes.
 Recuerda: hace falta el consolidado de **BANCOLOMBIA S.A.** (pasivos 258.775,571), no el de Grupo
 Cibest (338.756,746) que es el que ya está en el corpus. Son perímetros distintos.
 
+#### Hipótesis ya evaluada y descartada: "`Borrowings` ya incluye los títulos" (24-sep-2026)
+
+Se propuso que el total de CIBEST cuenta los bonos dos veces, porque
+`Borrowings` (12.917,989) − `TitulosEmitidos` (7.250,632) = 5.667,358, y 5.667,358 + 7.250,632
+vuelve a dar 12.917,990. **Esa igualdad es trivial** — es `a − b + b = a` — así que no prueba
+nada; y el 5.667,358 no sale de ninguna nota: sale de esa misma resta.
+
+Lo que sí dice el informe de Grupo Cibest 2025: **Nota 17 Obligaciones financieras = 9.356,428**
+y **Nota 18 Títulos de deuda emitidos = 7.409,693**, dos líneas separadas del balance.
+
+La hipótesis queda refutada por una prueba aritmética que no depende de ninguna nota: **en
+BANCO_DE_BOGOTA `Borrowings` (6.538,082) es MENOR que `TitulosEmitidos` (7.607,848), y en
+GRUPO_AVAL (20.491,699) también es menor (21.456,986)**. Un total no puede ser más pequeño que
+una de sus partes. Y en esos dos bancos está verificado al peso contra su balance que las dos
+líneas son distintas y se suman. Misma taxonomía (`ec-1-bco-con-cie_entry-point`), mismas
+etiquetas: `Borrowings` NO incluye los títulos emitidos.
+
+De paso quedó cerrado por qué el informe local no sirve para verificar a CIBEST: el propio XBRL
+declara `NameOfReportingEntityOrOtherMeansOfIdentification = "BANCOLOMBIA S.A."`, mientras la
+serie con sufijo `-CIBEST` declara "Grupo Cibest S.A. y compañías subsidiarias". Y ninguna cifra
+del XBRL (pasivos 258.775,571, depósitos 226.848,574, títulos 7.250,632) aparece en el informe de
+Grupo Cibest, ni al revés. Son dos entidades, no dos versiones del mismo dato.
+
+
 #### Por qué el PDF que ya hay no sirve
 
 | emisor | problema del archivo local |
