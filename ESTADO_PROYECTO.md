@@ -1811,3 +1811,43 @@ ROIC/WACC de los bancos ya estaba marcado como no comparable por otras razones.
 
 Pruebas nuevas en `test_lector_xbrl.py` con las tres cifras del balance. Detalle en
 `db/DOCTRINA_VALOR.md`, "Los bancos tenían el mismo bug, y más grande".
+
+## 24-sep-2026 — corregido un doble conteo que yo mismo había defendido (CIBEST)
+
+La sesión de descarga propuso que el total de GRUPO_CIBEST_BANCOLOMBIA contaba los bonos dos
+veces. **Lo descarté, y me equivoqué.** Vale la pena dejar por qué, porque el error no estuvo en
+la conclusión ajena sino en cómo la evalué.
+
+Su aritmética inicial era circular (`Borrowings − TitulosEmitidos + TitulosEmitidos =
+Borrowings`), y el número que citaba como "Nota 17" no salía de ninguna nota. Eso lo rechacé bien.
+Lo que hice mal fue lo siguiente: al refutar la evidencia, di por cerrada también la conclusión, y
+me apoyé en que la fórmula estaba verificada en los otros tres bancos — que es justo la
+generalización contra la que advierte toda esta sección del proyecto.
+
+Alex consiguió después los **EEFF consolidados de BANCOLOMBIA S.A. 2025** (Total Pasivo
+258.775.569, el perímetro del XBRL). Con el documento correcto: Nota 17 'Obligaciones financieras'
+= 5.667.358 y Nota 18 'Títulos de deuda emitidos' = 7.250.632, que suman los 12.917.990 de
+`Borrowings`. Y lo que lo cierra de verdad, porque no depende de esa suma: el **desglose de
+vencimientos** de las dos notas reproduce las DOS etiquetas del XBRL por separado y al peso, en
+dos años distintos —
+
+| | Nota 17 | Nota 18 | suma | XBRL |
+|---|---|---|---|---|
+| corto 2025 | 846.756 | 1.020.053 | 1.866.809 | `ShorttermBorrowings` 1.866.809 |
+| largo 2025 | 4.820.602 | 6.230.579 | 11.051.181 | `LongtermBorrowings` 11.051.181 |
+| corto 2024 | 8.108.012 | 1.297.811 | 9.405.823 | `ShorttermBorrowings` 9.405.823 |
+| largo 2024 | 7.581.520 | 9.977.405 | 17.558.925 | `LongtermBorrowings` 17.558.925 |
+
+Cuatro ecuaciones independientes, las cuatro exactas. En BANCOLOMBIA S.A. `Borrowings` sí agrega
+los títulos; en Banco de Bogotá, Corficolombiana y Grupo Aval no. Ni dentro de un mismo sector se
+puede generalizar.
+
+CIBEST pasó de `_FORMULAS_BANCA` a `Borrowings + mercado monetario` y de nivel `estructura` a
+`nota`. Su deuda 2025 baja de **20.452,413 a 13.201,781** y el EV de 66.581 a 59.075. La serie
+anual queda 35.195 / 37.953 / 38.247 / 39.458 / 30.782 / 28.025 / 13.202 — la caída de 2025 es
+real: escisión parcial en favor de Grupo Cibest y Banistmo clasificado como mantenido para la
+venta, ambas explicadas en las propias notas.
+
+El test de `Borrowings < TitulosEmitidos` (Banco de Bogotá, Grupo Aval) sigue siendo válido, pero
+solo en un sentido: descarta la agregación donde se cumple, y no concluye nada donde no. Queda
+anotado así en `lector_xbrl.py` y en `db/DOCTRINA_VALOR.md`.

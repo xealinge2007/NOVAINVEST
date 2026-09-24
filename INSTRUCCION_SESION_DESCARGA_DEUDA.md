@@ -59,7 +59,7 @@ comparativo 2019** — solo en el del período del informe. Hace falta el 2019-A
 2018-T1, 2018-T4, 2019-T2, 2019-T3, 2020-T1, 2022-T2, 2022-T3, 2023-T1. Baratos si ya estás
 dentro del portal; de bajo impacto (es el emisor más pequeño del universo).
 
-### 4. Los informes con notas (8 PDF) — **no bajes nada, léelos en pantalla**
+### 4. Los informes con notas (7 PDF, era 8) — **no bajes nada, léelos en pantalla**
 
 Esto **no cambia ninguna cifra**: solo sube el nivel de evidencia de `estructura` a `nota`. Las 7
 fórmulas de nivel `estructura` ya coinciden entre sí y dan series continuas 2019–2026.
@@ -83,7 +83,7 @@ Si el informe viene en millones, divide por 1.000; si viene en miles, por 1.000.
 | EL_CONDOR | **739,132** | 194,010 | 545,122 | 1.066,658 |
 | ENKA | **38,839** | 6,125 | 32,714 | 142,442 |
 | FABRICATO | **136,956** | 25,291 | 111,665 | 499,263 |
-| GRUPO_CIBEST_BANCOLOMBIA | **20.452,413** | ver abajo | ver abajo | 258.775,571 |
+| ~~GRUPO_CIBEST_BANCOLOMBIA~~ | **YA CERRADO** | | | ver abajo |
 
 #### Lo que tiene que pasar con los bonos — esto es lo que de verdad hay que confirmar
 
@@ -99,25 +99,27 @@ justamente lo que no se ha podido comprobar contra una nota.
 | EL_CONDOR, ENKA, FABRICATO | no tagean bonos | íd. |
 | EXITO | no tagea bonos | **ojo con este**: su `ShorttermBorrowings` (26,777) NO es la porción corriente; la corriente buena es `ObligacionesFinancierasCorrientes` (1.992,729). Confirma cuál de las dos coincide con la nota |
 
-#### GRUPO_CIBEST_BANCOLOMBIA va aparte (es banca)
+#### GRUPO_CIBEST_BANCOLOMBIA — YA NO HACE FALTA, quedó cerrado el 24-sep-2026
 
-Su total no sale de una sola nota sino de **tres líneas del balance consolidado de Bancolombia
-S.A.**, que es como quedó verificada la fórmula en los otros tres bancos:
+Alex consiguió los EEFF consolidados de **BANCOLOMBIA S.A.** 2025 y ya están en el corpus como
+`SIMEV_BVC/GRUPO_CIBEST_BANCOLOMBIA/2025-ANUAL_BANCOLOMBIA-SA_Estados-Financieros-Consolidados.pdf`.
+El emisor pasó a nivel `nota` y su total corregido es **13.201,781** (antes decía 20.452,413, que
+contaba los bonos dos veces).
 
-| línea del balance | valor esperado | etiqueta XBRL |
+| línea | valor | etiqueta XBRL |
 |---|---|---|
-| obligaciones financieras / créditos con bancos | 12.917,989 | `Borrowings` |
-| títulos de deuda emitidos | 7.250,632 | `TitulosEmitidos` |
-| operaciones de mercado monetario (interbancarios, repos) | 283,792 | `PasivosDiversos...MercadoMonetario` |
-| **TOTAL** | **20.452,413** | |
+| obligaciones financieras (Nota 17) + títulos de deuda emitidos (Nota 18) | 12.917,989 | `Borrowings` — **ya trae las dos** |
+| operaciones de mercado monetario / repos (Nota 16) | 283,792 | `PasivosDiversos...MercadoMonetario` |
+| **TOTAL** | **13.201,781** | |
 
-Los **depósitos de clientes quedan fuera a propósito** (226.848,574): son financiación operativa
-del negocio bancario, no deuda. No los sumes.
+El detalle de por qué, y por qué esto NO aplica a los otros tres bancos, está más abajo.
 
-Recuerda: hace falta el consolidado de **BANCOLOMBIA S.A.** (pasivos 258.775,571), no el de Grupo
-Cibest (338.756,746) que es el que ya está en el corpus. Son perímetros distintos.
+#### La hipótesis del doble conteo en CIBEST: descartada primero, CONFIRMADA después (24-sep-2026)
 
-#### Hipótesis ya evaluada y descartada: "`Borrowings` ya incluye los títulos" (24-sep-2026)
+**Resultado: era cierta.** Lo que sigue queda como está escrito, en orden, porque el error de
+razonamiento del primer intento es tan instructivo como la corrección.
+
+##### Primer intento — descartada, con evidencia mala de un lado y generalización indebida del otro
 
 Se propuso que el total de CIBEST cuenta los bonos dos veces, porque
 `Borrowings` (12.917,989) − `TitulosEmitidos` (7.250,632) = 5.667,358, y 5.667,358 + 7.250,632
@@ -140,6 +142,47 @@ serie con sufijo `-CIBEST` declara "Grupo Cibest S.A. y compañías subsidiarias
 del XBRL (pasivos 258.775,571, depósitos 226.848,574, títulos 7.250,632) aparece en el informe de
 Grupo Cibest, ni al revés. Son dos entidades, no dos versiones del mismo dato.
 
+##### Segundo intento — con el documento correcto en mano, la hipótesis resultó cierta
+
+Alex consiguió los **EEFF consolidados de BANCOLOMBIA S.A. 2025** (radicación
+`0054371376_0001_000007_..._C-C_2025-12-31`, Total Pasivo 258.775.569, que es el perímetro del
+XBRL). Con ese documento:
+
+- **Nota 17. Obligaciones financieras = 5.667.358** (nacionales 5.192.531 + exterior 474.827).
+  Es una nota real, del documento correcto, no una resta.
+- **Nota 18. Títulos de deuda emitidos = 7.250.632.**
+- 5.667.358 + 7.250.632 = 12.917.990 = `Borrowings` del XBRL (12.917.989).
+
+Lo que lo cierra sin depender de esa suma —que por sí sola seguiría siendo débil— es el **desglose
+de vencimientos** de las dos notas, que reproduce las DOS etiquetas del XBRL **por separado**:
+
+| | Nota 17 | Nota 18 | suma | etiqueta XBRL |
+|---|---|---|---|---|
+| corto plazo 2025 | 846.756 | 1.020.053 | **1.866.809** | `ShorttermBorrowings` = 1.866.809 ✓ |
+| largo plazo 2025 | 4.820.602 | 6.230.579 | **11.051.181** | `LongtermBorrowings` = 11.051.181 ✓ |
+| corto plazo 2024 | 8.108.012 | 1.297.811 | **9.405.823** | `ShorttermBorrowings` = 9.405.823 ✓ |
+| largo plazo 2024 | 7.581.520 | 9.977.405 | **17.558.925** | `LongtermBorrowings` = 17.558.925 ✓ |
+
+Cuatro ecuaciones independientes, dos años, las cuatro al peso. En BANCOLOMBIA S.A. `Borrowings`
+agrega las dos notas. Sumar `TitulosEmitidos` aparte contaba los bonos dos veces.
+
+**Corregido**: la fórmula de GRUPO_CIBEST_BANCOLOMBIA pasó de `_FORMULAS_BANCA` a
+`Borrowings + mercado monetario`, y de nivel `estructura` a `nota`. El total 2025 baja de
+**20.452,413 a 13.201,781**.
+
+##### Qué se aprende de haberla descartado primero
+
+La prueba de que `Borrowings < TitulosEmitidos` en Banco de Bogotá y Grupo Aval **sigue siendo
+válida**: en esos dos bancos `Borrowings` no agrega los títulos, y está verificado contra su
+balance. El error fue otro: **dar por buena para el cuarto banco una fórmula verificada en tres**,
+que es exactamente contra lo que advierte el resto de esta sección. Esa prueba solo funciona en un
+sentido — donde `Borrowings` < `TitulosEmitidos` queda descartado que los agregue, pero donde es
+mayor no concluye nada y hay que ir a la nota.
+
+También conviene separar las dos cosas que traía la hipótesis original: su **aritmética** era
+circular (`a − b + b = a`) y merecía el rechazo; su **conclusión** era correcta. Rechazar la una
+no autorizaba a dar por cerrada la otra.
+
 
 #### Por qué el PDF que ya hay no sirve
 
@@ -149,7 +192,7 @@ Grupo Cibest, ni al revés. Son dos entidades, no dos versiones del mismo dato.
 | ISA | el local es el Reporte Integrado de Gestión (149 pág), sin estados financieros |
 | GRUPO_NUTRESA | el local (72 pág) no trae balance ni nota |
 | EXITO, EL_CONDOR, ENKA, FABRICATO | no hay **ningún** informe suyo en `SIMEV_BVC` |
-| GRUPO_CIBEST_BANCOLOMBIA | el que hay es de Grupo Cibest, no de Bancolombia S.A. |
+| ~~GRUPO_CIBEST_BANCOLOMBIA~~ | resuelto: ya está el de Bancolombia S.A. en el corpus |
 
 Si alguno **no** cuadra, no toques nada: anótalo y repórtalo. Es un hallazgo, no un error a
 corregir sobre la marcha.

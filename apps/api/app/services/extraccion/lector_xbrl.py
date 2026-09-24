@@ -175,12 +175,24 @@ _FOMENTO = "OtherCurrentBorrowingsAndCurrentPortionOfOtherNoncurrentBorrowings"
 _TITULOS = "TitulosEmitidos"
 _MERCADO_MONETARIO = "PasivosDiversosOperacionesMercadoMonetarioOperacionesMercadoMonetario"
 
-# La deuda de un banco no es `Borrowings` a secas: eso es solo la línea de
-# créditos con otros bancos. Hay que sumarle los títulos/bonos emitidos y la
-# financiación de mercado monetario (interbancarios, overnight, repos). Los
-# depósitos de clientes quedan FUERA a propósito: son financiación operativa
-# del negocio bancario, no deuda. Comprobado contra el balance consolidado
-# 2025 de tres de los cuatro bancos (ver cada entrada).
+# En BANCO_DE_BOGOTA, CORFICOLOMBIANA y GRUPO_AVAL, `Borrowings` es solo la
+# línea de créditos con otros bancos: hay que sumarle los títulos/bonos
+# emitidos y la financiación de mercado monetario (interbancarios, overnight,
+# repos). Los depósitos de clientes quedan FUERA a propósito: son financiación
+# operativa del negocio bancario, no deuda. Comprobado al peso contra el
+# balance consolidado 2025 de los tres.
+#
+# **Esta lista NO sirve para el cuarto banco.** En BANCOLOMBIA S.A.
+# (GRUPO_CIBEST_BANCOLOMBIA) el mismo `Borrowings` YA agrega los títulos
+# emitidos, así que sumarlos aparte los cuenta dos veces -- ver su entrada. Es
+# el recordatorio de que ni siquiera dentro de un mismo sector se puede
+# generalizar una fórmula: se verifica emisor por emisor o no se escribe.
+#
+# Cómo se distingue sin la nota, si hiciera falta: donde `Borrowings` <
+# `TitulosEmitidos` es imposible que los agregue (Banco de Bogotá 6.538,082 <
+# 7.607,848; Grupo Aval 20.491,699 < 21.456,986). Donde `Borrowings` es mayor,
+# ese test no concluye nada y hay que ir a la nota, que es exactamente lo que
+# pasó con Bancolombia.
 _FORMULAS_BANCA = [
     [_TOTAL, _FOMENTO, _TITULOS, _MERCADO_MONETARIO],
     [_TOTAL, _TITULOS, _MERCADO_MONETARIO],
@@ -273,15 +285,24 @@ DEUDA_FINANCIERA_POR_EMISOR = {
                    "entidades de fomento 4.067.476, al peso) + bonos en circulación "
                    "21.456.986 + créditos interbancarios y fondos overnight 22.655.425 = "
                    "68.671.586 millones. `Borrowings` sola daba 20.491,7 -- 3,3 veces menos"),
-    "GRUPO_CIBEST_BANCOLOMBIA": (_FORMULAS_BANCA, "estructura",
-                                 "misma taxonomía y mismas etiquetas que los otros tres "
-                                 "bancos, donde la fórmula está verificada al peso; aquí NO "
-                                 "se pudo contrastar contra el informe porque el XBRL "
-                                 "2025-ANUAL es del perímetro Bancolombia S.A. (pasivos "
-                                 "258.775.571) mientras el PDF local es el de Grupo Cibest "
-                                 "(338.756.746) -- son entidades distintas, no cuadran ni "
-                                 "deben cuadrar. Ver EMISORES_SERIE_PARALELA_REEMPLAZA en "
-                                 "jobs/extraer_xbrl.py"),
+    # CIBEST NO usa `_FORMULAS_BANCA`: es el contraejemplo. Aquí `Borrowings`
+    # SÍ agrega los títulos emitidos, al revés que en los otros tres bancos.
+    "GRUPO_CIBEST_BANCOLOMBIA": ([[_TOTAL, _MERCADO_MONETARIO]], "nota",
+                                 "EEFF consolidados de BANCOLOMBIA S.A. 2025 (pasivos "
+                                 "258.775.569, que es el perímetro del XBRL; el otro informe "
+                                 "del corpus es de Grupo Cibest y NO sirve). Aquí `Borrowings` "
+                                 "agrega la Nota 17 'Obligaciones financieras' (5.667.358) MÁS "
+                                 "la Nota 18 'Títulos de deuda emitidos' (7.250.632) = "
+                                 "12.917.990 -- lo contrario de lo que hacen los otros tres "
+                                 "bancos, donde los títulos van aparte. Probado con el "
+                                 "desglose de vencimientos de las dos notas, que reproduce las "
+                                 "DOS etiquetas del XBRL por separado y al peso: corto "
+                                 "846.756 + 1.020.053 = 1.866.809 = `ShorttermBorrowings`; "
+                                 "largo 4.820.602 + 6.230.579 = 11.051.181 = "
+                                 "`LongtermBorrowings`. Y otra vez en el comparativo 2024: "
+                                 "8.108.012 + 1.297.811 = 9.405.823 y 7.581.520 + 9.977.405 = "
+                                 "17.558.925, ambos al peso. Por eso NO se suma "
+                                 "`TitulosEmitidos` aparte: ya está dentro"),
     "DAVIVIENDA_GROUP": ([[_CORTO, _LARGO]], "nota_parcial",
                          "el balance consolidado 2025 separa 'Créditos de bancos y otras "
                          "obligaciones' (16.143.780 millones) de 'Instrumentos de deuda "

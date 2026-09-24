@@ -147,6 +147,21 @@ for emisor, (esperado, origen) in DEUDA_BANCA_2025.items():
     obtenido = lx.leer(arch, 2025, "ANUAL", emisor=emisor)["campos"]["deuda_financiera"]["valor"]
     revisar(f"deuda {emisor} ({origen})", obtenido, esperado)
 
+print("\n--- ...pero en BANCOLOMBIA `Borrowings` YA agrega los títulos: no se suman aparte ---")
+# Contraejemplo dentro del mismo sector y la misma taxonomía. Probado contra
+# los EEFF consolidados de BANCOLOMBIA S.A. 2025 con el desglose de
+# vencimientos de sus Notas 17 y 18, que reproduce las DOS etiquetas del XBRL
+# por separado y al peso:
+#   corto  846.756 (Nota 17) + 1.020.053 (Nota 18) = 1.866.809 = ShorttermBorrowings
+#   largo  4.820.602        + 6.230.579          = 11.051.181 = LongtermBorrowings
+# Sumar `TitulosEmitidos` aparte daría 20.452,413 -- los bonos dos veces.
+cibest = CORPUS / "GRUPO_CIBEST_BANCOLOMBIA" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+if cibest.is_file():
+    revisar("deuda GRUPO_CIBEST_BANCOLOMBIA (Nota 17 + Nota 18 ya dentro de `Borrowings`, "
+            "más repos 283.792)",
+            lx.leer(cibest, 2025, "ANUAL", emisor="GRUPO_CIBEST_BANCOLOMBIA")["campos"]["deuda_financiera"]["valor"],
+            13201.781459)
+
 # El punto del cambio: `Borrowings` sola se queda corta en los tres.
 for emisor, minimo in (("BANCO_DE_BOGOTA", 6538.082), ("CORFICOLOMBIANA", 11901.608),
                        ("GRUPO_AVAL", 20491.700)):

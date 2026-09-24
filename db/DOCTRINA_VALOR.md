@@ -1648,7 +1648,12 @@ Efecto en `fundamentales_analisis`: el EV se movió fuerte (GRUPO_AVAL 33.590 ->
 BANCO_DE_BOGOTA 19.298 -> 31.775; CORFICOLOMBIANA 20.102 -> 34.408). El EVA casi no, porque para
 los bancos el ROIC/WACC ya estaba marcado como no comparable por otras razones.
 
-#### Hipótesis ya evaluada y descartada: "`Borrowings` ya incluye los títulos" (24-sep-2026)
+#### La hipótesis del doble conteo en CIBEST: descartada primero, CONFIRMADA después (24-sep-2026)
+
+**Resultado: era cierta.** Lo que sigue queda como está escrito, en orden, porque el error de
+razonamiento del primer intento es tan instructivo como la corrección.
+
+##### Primer intento — descartada, con evidencia mala de un lado y generalización indebida del otro
 
 Se propuso que el total de CIBEST cuenta los bonos dos veces, porque
 `Borrowings` (12.917,989) − `TitulosEmitidos` (7.250,632) = 5.667,358, y 5.667,358 + 7.250,632
@@ -1670,6 +1675,47 @@ declara `NameOfReportingEntityOrOtherMeansOfIdentification = "BANCOLOMBIA S.A."`
 serie con sufijo `-CIBEST` declara "Grupo Cibest S.A. y compañías subsidiarias". Y ninguna cifra
 del XBRL (pasivos 258.775,571, depósitos 226.848,574, títulos 7.250,632) aparece en el informe de
 Grupo Cibest, ni al revés. Son dos entidades, no dos versiones del mismo dato.
+
+##### Segundo intento — con el documento correcto en mano, la hipótesis resultó cierta
+
+Alex consiguió los **EEFF consolidados de BANCOLOMBIA S.A. 2025** (radicación
+`0054371376_0001_000007_..._C-C_2025-12-31`, Total Pasivo 258.775.569, que es el perímetro del
+XBRL). Con ese documento:
+
+- **Nota 17. Obligaciones financieras = 5.667.358** (nacionales 5.192.531 + exterior 474.827).
+  Es una nota real, del documento correcto, no una resta.
+- **Nota 18. Títulos de deuda emitidos = 7.250.632.**
+- 5.667.358 + 7.250.632 = 12.917.990 = `Borrowings` del XBRL (12.917.989).
+
+Lo que lo cierra sin depender de esa suma —que por sí sola seguiría siendo débil— es el **desglose
+de vencimientos** de las dos notas, que reproduce las DOS etiquetas del XBRL **por separado**:
+
+| | Nota 17 | Nota 18 | suma | etiqueta XBRL |
+|---|---|---|---|---|
+| corto plazo 2025 | 846.756 | 1.020.053 | **1.866.809** | `ShorttermBorrowings` = 1.866.809 ✓ |
+| largo plazo 2025 | 4.820.602 | 6.230.579 | **11.051.181** | `LongtermBorrowings` = 11.051.181 ✓ |
+| corto plazo 2024 | 8.108.012 | 1.297.811 | **9.405.823** | `ShorttermBorrowings` = 9.405.823 ✓ |
+| largo plazo 2024 | 7.581.520 | 9.977.405 | **17.558.925** | `LongtermBorrowings` = 17.558.925 ✓ |
+
+Cuatro ecuaciones independientes, dos años, las cuatro al peso. En BANCOLOMBIA S.A. `Borrowings`
+agrega las dos notas. Sumar `TitulosEmitidos` aparte contaba los bonos dos veces.
+
+**Corregido**: la fórmula de GRUPO_CIBEST_BANCOLOMBIA pasó de `_FORMULAS_BANCA` a
+`Borrowings + mercado monetario`, y de nivel `estructura` a `nota`. El total 2025 baja de
+**20.452,413 a 13.201,781**.
+
+##### Qué se aprende de haberla descartado primero
+
+La prueba de que `Borrowings < TitulosEmitidos` en Banco de Bogotá y Grupo Aval **sigue siendo
+válida**: en esos dos bancos `Borrowings` no agrega los títulos, y está verificado contra su
+balance. El error fue otro: **dar por buena para el cuarto banco una fórmula verificada en tres**,
+que es exactamente contra lo que advierte el resto de esta sección. Esa prueba solo funciona en un
+sentido — donde `Borrowings` < `TitulosEmitidos` queda descartado que los agregue, pero donde es
+mayor no concluye nada y hay que ir a la nota.
+
+También conviene separar las dos cosas que traía la hipótesis original: su **aritmética** era
+circular (`a − b + b = a`) y merecía el rechazo; su **conclusión** era correcta. Rechazar la una
+no autorizaba a dar por cerrada la otra.
 
 
 #### Resultado sobre los datos (corrida del 22-sep-2026)
