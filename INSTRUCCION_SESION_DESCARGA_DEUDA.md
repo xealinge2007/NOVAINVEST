@@ -71,16 +71,63 @@ de 400 páginas.
 
 Lo que hay que buscar y contra qué debe cuadrar (cifras en miles de millones de pesos):
 
-| emisor | debe cuadrar contra | por qué no sirve el PDF que ya hay |
+Todas las cifras son del cierre **2025-12-31, CONSOLIDADO**, en **miles de millones de pesos**.
+Si el informe viene en millones, divide por 1.000; si viene en miles, por 1.000.000.
+
+### El total que tiene que dar la nota
+
+| emisor | TOTAL objetivo | corriente | no corriente | pasivos totales (para ubicarte) |
+|---|---|---|---|---|
+| ECOPETROL | **109.200,642** | 10.080,406 | 99.120,236 | 174.890,272 |
+| ISA | **33.790,917** | 1.753,654 | 32.037,264 | 47.823,263 |
+| GRUPO_NUTRESA | **16.311,566** | 909,355 | 15.402,210 | 22.002,614 |
+| EXITO | **2.143,408** | 1.992,729 | 150,678 | 9.178,903 |
+| EL_CONDOR | **739,132** | 194,010 | 545,122 | 1.066,658 |
+| ENKA | **38,839** | 6,125 | 32,714 | 142,442 |
+| FABRICATO | **136,956** | 25,291 | 111,665 | 499,263 |
+| GRUPO_CIBEST_BANCOLOMBIA | **20.452,413** | ver abajo | ver abajo | 258.775,571 |
+
+### Lo que tiene que pasar con los bonos — esto es lo que de verdad hay que confirmar
+
+El punto de la revisión no es el total: es **si los bonos están dentro o fuera** de la línea de
+obligaciones financieras. En estos emisores la fórmula asume que están **DENTRO**, y eso es
+justamente lo que no se ha podido comprobar contra una nota.
+
+| emisor | bonos tageados en el XBRL | qué esperamos de la nota |
 |---|---|---|
-| ECOPETROL | 109.200,642 | el local es el Informe Integrado de Gestión, sin balance ni notas |
-| ISA | 33.790,917 | el local es el Reporte Integrado de Gestión (149 pág) |
-| GRUPO_NUTRESA | 16.311,566 | el local (72 pág) no trae balance ni nota |
-| EXITO | 2.143,408 | no hay **ningún** informe suyo en `SIMEV_BVC` |
-| EL_CONDOR | 739,132 | íd. |
-| ENKA | 38,839 | íd. |
-| FABRICATO | 136,956 | íd. |
-| GRUPO_CIBEST_BANCOLOMBIA | 20.452,413 | hace falta el consolidado de **BANCOLOMBIA S.A.** (pasivos 258.775.571 millones), no el de Grupo Cibest (338.756.746): son perímetros distintos |
+| ECOPETROL | 84.207,359 (corr. 5.118,399 + no corr. 79.088,960) | que los 84.207,359 estén **dentro** de los 109.200,642, no aparte. Si la nota suma préstamos + bonos y da ~193.408, la fórmula está mal |
+| ISA | 28.419,074 (corr. 1.258,480 + no corr. 27.160,594) | igual: dentro de los 33.790,917. Sumarlos aparte daría 62.210, más que los pasivos totales (47.823) — imposible, que es la razón por la que creemos que van dentro |
+| GRUPO_NUTRESA | no tagea bonos | la nota debería dar un solo total, sin línea de bonos aparte |
+| EL_CONDOR, ENKA, FABRICATO | no tagean bonos | íd. |
+| EXITO | no tagea bonos | **ojo con este**: su `ShorttermBorrowings` (26,777) NO es la porción corriente; la corriente buena es `ObligacionesFinancierasCorrientes` (1.992,729). Confirma cuál de las dos coincide con la nota |
+
+### GRUPO_CIBEST_BANCOLOMBIA va aparte (es banca)
+
+Su total no sale de una sola nota sino de **tres líneas del balance consolidado de Bancolombia
+S.A.**, que es como quedó verificada la fórmula en los otros tres bancos:
+
+| línea del balance | valor esperado | etiqueta XBRL |
+|---|---|---|
+| obligaciones financieras / créditos con bancos | 12.917,989 | `Borrowings` |
+| títulos de deuda emitidos | 7.250,632 | `TitulosEmitidos` |
+| operaciones de mercado monetario (interbancarios, repos) | 283,792 | `PasivosDiversos...MercadoMonetario` |
+| **TOTAL** | **20.452,413** | |
+
+Los **depósitos de clientes quedan fuera a propósito** (226.848,574): son financiación operativa
+del negocio bancario, no deuda. No los sumes.
+
+Recuerda: hace falta el consolidado de **BANCOLOMBIA S.A.** (pasivos 258.775,571), no el de Grupo
+Cibest (338.756,746) que es el que ya está en el corpus. Son perímetros distintos.
+
+### Por qué el PDF que ya hay no sirve
+
+| emisor | problema del archivo local |
+|---|---|
+| ECOPETROL | el local es el Informe Integrado de Gestión (483 pág): no trae balance ni notas |
+| ISA | el local es el Reporte Integrado de Gestión (149 pág), sin estados financieros |
+| GRUPO_NUTRESA | el local (72 pág) no trae balance ni nota |
+| EXITO, EL_CONDOR, ENKA, FABRICATO | no hay **ningún** informe suyo en `SIMEV_BVC` |
+| GRUPO_CIBEST_BANCOLOMBIA | el que hay es de Grupo Cibest, no de Bancolombia S.A. |
 
 Si alguno **no** cuadra, no toques nada: anótalo y repórtalo. Es un hallazgo, no un error a
 corregir sobre la marcha.
