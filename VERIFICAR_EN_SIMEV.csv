@@ -1,0 +1,80 @@
+﻿estado,emisor,anio,periodo,tipo,entidad,url_consulta
+SIN VERIFICAR,BANCO_DE_BOGOTA,2018,ANUAL,0001,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000001/3
+SIN VERIFICAR,BANCO_DE_BOGOTA,2019,T2,0001,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000001/3
+SIN VERIFICAR,BANCO_DE_BOGOTA,2019,T3,0001,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000001/3
+SIN VERIFICAR,BVC,2019,ANUAL,0082,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/82/000004/3
+SIN VERIFICAR,BVC,2020,T1,0082,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/82/000004/3
+SIN VERIFICAR,BVC,2020,T2,0082,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/82/000004/3
+SIN VERIFICAR,BVC,2020,T3,0082,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/82/000004/3
+SIN VERIFICAR,CELSIA,2019,T1,0066,000061,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000061/3
+SIN VERIFICAR,CELSIA,2019,T3,0066,000061,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000061/3
+SIN VERIFICAR,CEMENTOS_ARGOS,2018,ANUAL,0043,000005,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/43/000005/3
+SIN VERIFICAR,CONSTRUCTORA_CONCONCRETO,2018,ANUAL,0055,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/55/000003/3
+SIN VERIFICAR,CONSTRUCTORA_CONCONCRETO,2019,T2,0055,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/55/000003/3
+SIN VERIFICAR,CONSTRUCTORA_CONCONCRETO,2019,T3,0055,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/55/000003/3
+SIN VERIFICAR,CORFICOLOMBIANA,2018,ANUAL,0002,000011,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/2/000011/3
+SIN VERIFICAR,CORFICOLOMBIANA,2019,T1,0002,000011,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/2/000011/3
+SIN VERIFICAR,CORFICOLOMBIANA,2019,T2,0002,000011,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/2/000011/3
+SIN VERIFICAR,DAVIVIENDA_GROUP,2025,T1,0066,000068,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000068/3
+SIN VERIFICAR,ECOPETROL,2024,T4,0260,000036,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000036/3
+SIN VERIFICAR,EL_CONDOR,2019,T1,0056,000008,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/56/000008/3
+SIN VERIFICAR,EL_CONDOR,2019,T2,0056,000008,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/56/000008/3
+SIN VERIFICAR,EL_CONDOR,2019,T3,0056,000008,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/56/000008/3
+SIN VERIFICAR,ENKA,2019,T1,0039,000021,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/39/000021/3
+SIN VERIFICAR,ENKA,2019,T2,0039,000021,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/39/000021/3
+SIN VERIFICAR,ETB,2019,T1,0260,000047,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000047/3
+SIN VERIFICAR,ETB,2019,T2,0260,000047,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000047/3
+SIN VERIFICAR,FABRICATO,2021,ANUAL,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,BANCO_DE_BOGOTA,2020,T1,0001,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000001/3
+dado por ausente,CELSIA,2019,T2,0066,000061,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000061/3
+dado por ausente,CELSIA,2020,T2,0066,000061,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000061/3
+dado por ausente,CEMENTOS_ARGOS,2020,T1,0043,000005,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/43/000005/3
+dado por ausente,CEMENTOS_ARGOS,2020,T2,0043,000005,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/43/000005/3
+dado por ausente,CEMENTOS_ARGOS,2020,T3,0043,000005,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/43/000005/3
+dado por ausente,CONSTRUCTORA_CONCONCRETO,2020,T1,0055,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/55/000003/3
+dado por ausente,CORFICOLOMBIANA,2020,T3,0002,000011,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/2/000011/3
+dado por ausente,DAVIVIENDA_GROUP,2025,T2,0066,000068,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000068/3
+dado por ausente,ECOPETROL,2020,T1,0260,000036,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000036/3
+dado por ausente,ECOPETROL,2020,T2,0260,000036,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000036/3
+dado por ausente,ECOPETROL,2020,T3,0260,000036,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000036/3
+dado por ausente,ENKA,2020,T3,0039,000021,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/39/000021/3
+dado por ausente,ETB,2020,T3,0260,000047,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000047/3
+dado por ausente,EXITO,2020,T1,0058,000006,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/58/000006/3
+dado por ausente,EXITO,2020,T2,0058,000006,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/58/000006/3
+dado por ausente,EXITO,2020,T3,0058,000006,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/58/000006/3
+dado por ausente,FABRICATO,2018,T1,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2018,T4,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2019,T2,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2019,T3,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2020,T1,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2022,T2,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2022,T3,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,FABRICATO,2023,T1,0034,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/34/000004/3
+dado por ausente,GEB,2020,T1,0260,000043,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000043/3
+dado por ausente,GEB,2020,T2,0260,000043,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000043/3
+dado por ausente,GEB,2020,T3,0260,000043,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000043/3
+dado por ausente,GRUPO_ARGOS,2020,T1,0066,000058,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000058/3
+dado por ausente,GRUPO_ARGOS,2020,T2,0066,000058,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000058/3
+dado por ausente,GRUPO_ARGOS,2020,T3,0066,000058,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000058/3
+dado por ausente,GRUPO_AVAL,2019,ANUAL,0142,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/142/000001/3
+dado por ausente,GRUPO_AVAL,2020,T1,0142,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/142/000001/3
+dado por ausente,GRUPO_AVAL,2020,T2,0142,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/142/000001/3
+dado por ausente,GRUPO_AVAL,2020,T3,0142,000001,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/142/000001/3
+dado por ausente,GRUPO_CIBEST_BANCOLOMBIA,2020,T1,0001,000007,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000007/3
+dado por ausente,GRUPO_CIBEST_BANCOLOMBIA,2020,T2,0001,000007,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000007/3
+dado por ausente,GRUPO_CIBEST_BANCOLOMBIA,2020,T3,0001,000007,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/1/000007/3
+dado por ausente,GRUPO_NUTRESA,2020,T1,0066,000032,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000032/3
+dado por ausente,GRUPO_NUTRESA,2020,T2,0066,000032,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000032/3
+dado por ausente,GRUPO_NUTRESA,2020,T3,0066,000032,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/66/000032/3
+dado por ausente,ISA,2020,T1,0260,000034,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000034/3
+dado por ausente,ISA,2020,T2,0260,000034,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000034/3
+dado por ausente,ISA,2020,T3,0260,000034,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/260/000034/3
+dado por ausente,MINEROS,2020,T1,0030,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/30/000003/3
+dado por ausente,MINEROS,2020,T2,0030,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/30/000003/3
+dado por ausente,MINEROS,2020,T3,0030,000003,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/30/000003/3
+dado por ausente,PROMIGAS,2020,T1,0261,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/261/000004/3
+dado por ausente,PROMIGAS,2020,T2,0261,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/261/000004/3
+dado por ausente,PROMIGAS,2020,T3,0261,000004,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/261/000004/3
+dado por ausente,TERPEL,2020,T1,0053,000022,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/53/000022/3
+dado por ausente,TERPEL,2020,T2,0053,000022,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/53/000022/3
+dado por ausente,TERPEL,2020,T3,0053,000022,https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/53/000022/3
