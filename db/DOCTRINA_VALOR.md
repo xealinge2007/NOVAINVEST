@@ -1845,6 +1845,47 @@ estados financieros, y su deuda es 0,608 MMM sobre un EV de 1.018: moverla cambi
 
 Estado tras la carga: **657 filas, 491 con deuda (74,7 %), 166 sin**.
 
+#### Segunda vuelta de la carga manual: PEI completo y BVC cerrado (25-sep-2026)
+
+Al leer el balance en vez de las notas, y tras dos ajustes al lector, PEI quedó **completo: 25 de
+25 filas con deuda, cero huecos**. Los dos ajustes valen la pena como advertencia para el
+siguiente que lea PDF de este corpus:
+
+- **La misma línea cambia de nombre entre años.** PEI la llama "Obligaciones financieras" en 2024
+  y "Obligaciones financieras corto plazo" en 2023 y 2021. Hay que permitir alias, con el más
+  específico primero (si no, "Obligaciones financieras" se come a "…largo plazo").
+- **Y cambia de capitalización.** "Total pasivos" en 2021, "Total Pasivos" en 2023. El match
+  tiene que ignorar mayúsculas, pero seguir siendo EXACTO de línea, o "Total pasivos corrientes"
+  se confunde con el total.
+
+Serie de PEI ya completa (MMM): 1.186 · 1.853 · 1.206 · 1.505 · 1.723 · 2.219 · 1.896 · 2.028 ·
+2.166 · 2.219 · 2.306 · 2.255 · 2.295 · 2.309 · 2.306 · 2.510 · 2.330 · 2.364 · 2.364 · 2.515 ·
+2.502 · 2.014 · 2.146 · 2.213 · 2.709. Continua, sin saltos.
+
+**BVC dejó de ser un hueco declarado.** Alex bajó su XBRL 2025-ANUAL — resultó ser byte a byte el
+mismo que ya estaba en el corpus (mismo sha256), pero sirvió para hacer un barrido exhaustivo:
+las **únicas** dos bolsas de deuda que ese emisor etiqueta en todo el archivo son
+`ShorttermBorrowings` (0,608) y `NoncurrentFinanceLeaseLiabilities` (0,392).
+
+Eso cambia el razonamiento. En CEMENTOS_ARGOS o BANCOLOMBIA el problema era **elegir entre varias
+combinaciones posibles**, y por eso se declaró el hueco. Aquí no hay elección: solo hay una
+candidata. Así que se carga, con nivel `estructura` y la advertencia de que no hay nota que lo
+confirme. `OperacionesMercadoMonetario` (26.683,673) queda fuera a propósito: es la operación de
+la bolsa, no financiación propia — el grueso de sus 187.112 de pasivos son posiciones de
+contrapartida, no deuda.
+
+Es inmaterial de todas formas (1,0 sobre un EV de ~1.006), pero cierra 19 filas y quita de la
+lista de pendientes algo que no lo era.
+
+**Estado final: 657 filas, 526 con deuda (80,1 %), 131 sin.** Se arrancó con 281 de 630 sin deuda
+(44,6 %). De las 131 que quedan:
+
+| causa | filas |
+|---|---|
+| el período no existe en SIMEV (verificado uno por uno) | 79 |
+| hay XBRL pero ese archivo no trae las etiquetas | 29 |
+| GRUPO_SURA en los trimestrales sin estado de situación financiera | 23 |
+
 #### Lo que sigue pendiente
 
 - Verificar contra nota los 7 de nivel `estructura` (ECOPETROL, ISA, EXITO, GRUPO_NUTRESA,

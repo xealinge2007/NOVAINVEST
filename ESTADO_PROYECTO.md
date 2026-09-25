@@ -1911,3 +1911,25 @@ perimetro de una sola vez. Funciono como filtro real: descarto el 2022-ANUAL de 
               1.018 (0,06%), y su 2025-ANUAL local es solo Informe de Gestion.
 
 Estado: 657 filas, 491 con deuda (74,7%), 166 sin.
+
+## 25-sep-2026 (cont. 2) — PEI completo, BVC cerrado: 80,1% de cobertura
+
+PEI quedo **completo: 25 de 25 filas, cero huecos**, tras dos ajustes al lector de PDF que valen
+como advertencia: (1) la misma linea cambia de nombre entre anios ("Obligaciones financieras" en
+2024, "Obligaciones financieras corto plazo" en 2023 y 2021) -- hay que permitir alias con el mas
+especifico primero; (2) y cambia de capitalizacion ("Total pasivos" / "Total Pasivos") -- el match
+debe ignorar mayusculas pero seguir siendo EXACTO de linea, o "Total pasivos corrientes" se
+confunde con el total.
+
+BVC dejo de ser hueco declarado. Alex bajo su XBRL 2025-ANUAL: resulto ser byte a byte el mismo
+que ya estaba en el corpus (mismo sha256), pero sirvio para un barrido exhaustivo que demostro que
+las UNICAS dos bolsas de deuda que etiqueta son ShorttermBorrowings (0,608) y
+NoncurrentFinanceLeaseLiabilities (0,392). Eso cambia el razonamiento: en CEMENTOS_ARGOS o
+BANCOLOMBIA el problema era elegir entre varias combinaciones y por eso se declaro el hueco; aqui
+no hay eleccion, solo una candidata. Se carga con nivel `estructura`.
+OperacionesMercadoMonetario (26.683,673) queda fuera: es la operacion de la bolsa, no
+financiacion propia.
+
+Estado final: **657 filas, 526 con deuda (80,1%), 131 sin**. Se arranco con 281 de 630 sin deuda
+(44,6%). De las 131: 79 periodos que no existen en SIMEV, 29 archivos sin las etiquetas, 23
+trimestrales de GRUPO_SURA sin estado de situacion financiera.

@@ -343,9 +343,17 @@ DEUDA_FINANCIERA_POR_EMISOR = {
                          "malos heredados y quedaron en `None`"),
 
     # --- no etiquetan nada reconocible: hueco declarado ---------------------
-    "BVC": ([], "sin_verificar",
-            "solo etiqueta `ShorttermBorrowings` (607.698) y un pasivo por arrendamiento; no "
-            "hay con qué armar un total de deuda financiera"),
+    "BVC": ([[_CORTO, "NoncurrentFinanceLeaseLiabilities"], [_CORTO]], "estructura",
+            "barrido exhaustivo del XBRL 2025-ANUAL (25-sep-2026): las ÚNICAS dos bolsas de "
+            "deuda que este emisor etiqueta en todo el archivo son `ShorttermBorrowings` "
+            "(0,608) y `NoncurrentFinanceLeaseLiabilities` (0,392) -- total 1,000. No hay "
+            "nota que lo confirme (su 2025-ANUAL local es solo el Informe de Gestión, sin "
+            "estados financieros), pero tampoco hay ninguna otra etiqueta candidata: el caso "
+            "es distinto al de CEMENTOS_ARGOS o BANCOLOMBIA, donde el problema era elegir "
+            "entre varias combinaciones posibles. Aquí solo hay una. `OperacionesMercadoMonetario` "
+            "(26.683,673) NO se incluye: es la operación de la bolsa, no financiación propia "
+            "-- de hecho el grueso de sus 187.112 de pasivos son posiciones de contrapartida. "
+            "La cifra es inmaterial de todas formas: 1,0 sobre un EV de ~1.018 (0,1 %)"),
     "GRUPO_SURA": ([], "carga_manual",
                    "el XBRL consolidado no etiqueta ninguna bolsa de deuda, así que por este "
                    "canal la fila sale vacía a propósito. PERO la cifra sí existe y se carga a "
