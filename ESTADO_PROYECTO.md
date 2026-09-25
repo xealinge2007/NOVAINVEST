@@ -1851,3 +1851,34 @@ venta, ambas explicadas en las propias notas.
 El test de `Borrowings < TitulosEmitidos` (Banco de Bogotá, Grupo Aval) sigue siendo válido, pero
 solo en un sentido: descarta la agregación donde se cumple, y no concluye nada donde no. Queda
 anotado así en `lector_xbrl.py` y en `db/DOCTRINA_VALOR.md`.
+
+## 25-sep-2026 — revisada la sesion de descarga: 20/23 emisores verificados contra nota
+
+La sesion de descarga barrio SIMEV emisor por emisor y leyo en pantalla los 7 informes que
+faltaban de la Prioridad 4. **Los 7 cuadraron** con las cifras objetivo: ECOPETROL (Nota 20.1,
+bonos dentro), ISA (linea "Pasivos financieros", sin bonos aparte), GRUPO_NUTRESA (Nota 23),
+EXITO (Nota 20 -- confirma que la corriente buena es `ObligacionesFinancierasCorrientes` y no
+`ShorttermBorrowings`, que era la duda abierta), EL_CONDOR (Nota 14, sus obligaciones incluyen
+arrendamientos), FABRICATO (Nota 11) y ENKA (Nota 16, que no estaba en Informes Financieros sino
+en "Informacion relevante").
+
+Con eso el nivel `estructura` desaparece: **20 emisores en `nota`, 1 `nota_parcial`
+(DAVIVIENDA) y 2 huecos declarados (BVC, GRUPO_SURA)**.
+
+El hallazgo mas util del barrido fue otro: **el techo no era de descarga, era de
+disponibilidad**. De los 20 emisores de 2020-T1/T2/T3 solo 8 tenian algo radicado en SIMEV, y
+los 15 periodos de FABRICATO y el 2019-ANUAL de GRUPO_AVAL estan todos ausentes. La Prioridad 1
+queda agotada, no incompleta.
+
+Estado: 657 filas, **486 con deuda (74,0%)**, 171 sin. De las 171: 74 son periodos que no
+existen en SIMEV, 56 son BVC y GRUPO_SURA (su XBRL no etiqueta deuda), 25 son archivos sin las
+etiquetas y 16 son PEI. Ninguna se arregla bajando mas: lo unico que queda es decidir si se
+cargan a mano.
+
+Revisado tambien el codigo que agrego esa sesion fuera de alcance (`extractor_xlsx.py` +
+soporte XLSX en `ingesta_simev.py` y `extraer_fundamentales.py`), por el caso real de ETB
+2019-T3 que solo existe en Excel. Esta bien resuelto y documentado, **pero ese extractor escribe
+`deuda_financiera` sumando dos etiquetas de texto fijas** -- el mapeo generico que todo este
+trabajo desaconseja. Para ETB coincide con su formula verificada y la fila quedo marcada
+`provisional`, asi que no hay dato malo publicado; queda la advertencia de no ampliarlo a mas
+emisores sin darle el mismo tratamiento por emisor. Detalle en `db/DOCTRINA_VALOR.md`.

@@ -134,12 +134,20 @@ def prioridad_emisor(slug: str) -> int:
     return 100
 
 
+EXTENSIONES_VALIDAS = (".pdf", ".xlsx")
+
+
 def parsear_nombre_archivo(nombre_archivo: str) -> dict | None:
     """Devuelve {anio, periodo, tipo_documento, tipo_documento_crudo} o None
-    si el nombre no sigue el patrón mínimo `AAAA-PERIODO_Tipo.pdf`."""
-    if not nombre_archivo.lower().endswith(".pdf"):
+    si el nombre no sigue el patrón mínimo `AAAA-PERIODO_Tipo.pdf` (o
+    `.xlsx` -- agregado 24-sep-2026 para el caso real de ETB 2019-T3, que
+    solo existe como EEFF consolidado en Excel, nunca en PDF; el resto del
+    corpus sigue siendo casi enteramente PDF, esto NO cambia esa mayoría)."""
+    nombre_bajo = nombre_archivo.lower()
+    ext = next((e for e in EXTENSIONES_VALIDAS if nombre_bajo.endswith(e)), None)
+    if ext is None:
         return None
-    sin_ext = nombre_archivo[:-4]
+    sin_ext = nombre_archivo[: -len(ext)]
     partes = sin_ext.split("_", 1)
     if len(partes) != 2:
         return None
@@ -168,7 +176,11 @@ def detectar_pdf_protegido(ruta: Path) -> str | None:
     (`ECOPETROL/2026-T1_..._PROTEGIDO-IRM.pdf`, la única de 409 encontrada):
     el metadato `MSIP_Label_*` es la señal más barata y estable -- sobrevive
     aunque `extract_text()` llegue con acentos rotos por el encoding del
-    stub. Devuelve el motivo si detecta la firma, None si el PDF es legible."""
+    stub. Devuelve el motivo si detecta la firma, None si el PDF es legible.
+    No aplica a XLSX (nunca se ha visto la protección en ese formato en el
+    corpus) -- se salta directo, no tiene sentido abrirlo con pdfplumber."""
+    if ruta.suffix.lower() != ".pdf":
+        return None
     with pdfplumber.open(ruta) as pdf:
         if any(str(k).startswith("MSIP_Label") for k in (pdf.metadata or {})):
             return "PDF protegido (Microsoft Information Protection / Azure Rights Management) -- pedir a Alex que lo re-descargue sin cifrado"
@@ -226,15 +238,16 @@ def _validar(carpetas_emisor: list[Path], raiz: Path, manifiesto: dict) -> int:
     sin_procedencia: list[str] = []
     total = 0
     for carpeta in carpetas_emisor:
-        for pdf in sorted(carpeta.glob("*.pdf")):
+        archivos = sorted(p for ext in EXTENSIONES_VALIDAS for p in carpeta.glob(f"*{ext}"))
+        for archivo in archivos:
             total += 1
-            if parsear_nombre_archivo(pdf.name) is None:
-                malos.append(str(pdf.relative_to(raiz)))
-            if (carpeta.name, pdf.name) not in manifiesto:
-                sin_procedencia.append(carpeta.name + "/" + pdf.name)
+            if parsear_nombre_archivo(archivo.name) is None:
+                malos.append(str(archivo.relative_to(raiz)))
+            if (carpeta.name, archivo.name) not in manifiesto:
+                sin_procedencia.append(carpeta.name + "/" + archivo.name)
 
-    print(f"Validacion del corpus: {total} PDF en {len(carpetas_emisor)} carpetas de emisor")
-    print(f"  contrato de nombre AAAA-PERIODO_Tipo.pdf: {total - len(malos)}/{total} cumplen")
+    print(f"Validacion del corpus: {total} archivos (PDF/XLSX) en {len(carpetas_emisor)} carpetas de emisor")
+    print(f"  contrato de nombre AAAA-PERIODO_Tipo.<ext>: {total - len(malos)}/{total} cumplen")
     if malos:
         print(f"  INCUMPLEN el contrato ({len(malos)}) -- renombrar antes de entregar:")
         for m in malos:
@@ -295,7 +308,7 @@ def main():
 
     for carpeta_emisor in carpetas_emisor:
         slug = carpeta_emisor.name
-        pdfs = sorted(carpeta_emisor.glob("*.pdf"))
+        pdfs = sorted(p for ext in EXTENSIONES_VALIDAS for p in carpeta_emisor.glob(f"*{ext}"))
         if not pdfs:
             continue
 

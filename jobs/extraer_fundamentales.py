@@ -30,7 +30,7 @@ class TimeoutExtraccion(Exception):
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
-from app.services.extraccion import extractor_generico, plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
+from app.services.extraccion import extractor_generico, extractor_xlsx, plantilla_ecopetrol, plantilla_ecopetrol_eeff_anual  # noqa: E402
 
 TIMEOUT_SEGUNDOS = 300  # un solo PDF no debe poder bloquear el lote entero.
 # Subido de 120s a 300s junto con el arreglo de rendimiento del extractor (una
@@ -249,22 +249,30 @@ def _procesar_reporte(cliente, r, slug, id_a_sector) -> str:
         return f"OK-PLANTILLA ({len(campos_con_valor)}/{len(CAMPOS_NUMERICOS)} campos)"
 
     # Sin plantilla específica -- el extractor genérico (triage + etiqueta,
-    # §5.1.3 paso 6) no necesita una por emisor.
+    # §5.1.3 paso 6) no necesita una por emisor. Los XLSX (24-sep-2026: caso
+    # real ETB 2019-T3, único hasta hoy) van por `extractor_xlsx`, que sigue
+    # el mismo contrato de salida -- el resto de este método no distingue.
+    es_xlsx = Path(r["ruta_local"]).suffix.lower() == ".xlsx"
     try:
-        resultado = _con_limite_de_tiempo(
-            extractor_generico.extraer,
-            Path(r["ruta_local"]), id_a_sector.get(r["emisor_id"], "sin_clasificar"), r["anio"], r["periodo"],
-        )
+        if es_xlsx:
+            resultado = _con_limite_de_tiempo(
+                extractor_xlsx.extraer, Path(r["ruta_local"]), r["anio"], r["periodo"],
+            )
+        else:
+            resultado = _con_limite_de_tiempo(
+                extractor_generico.extraer,
+                Path(r["ruta_local"]), id_a_sector.get(r["emisor_id"], "sin_clasificar"), r["anio"], r["periodo"],
+            )
     except TimeoutExtraccion:
         cliente.table("reportes_archivo").update(
-            {"estado": "error", "error_detalle": f"timeout ({TIMEOUT_SEGUNDOS}s) -- PDF anormalmente lento o pesado"}
+            {"estado": "error", "error_detalle": f"timeout ({TIMEOUT_SEGUNDOS}s) -- archivo anormalmente lento o pesado"}
         ).eq("id", r["id"]).execute()
         return "TIMEOUT"
     except Exception as e:
         cliente.table("reportes_archivo").update(
             {"estado": "error", "error_detalle": f"{type(e).__name__}: {e}"}
         ).eq("id", r["id"]).execute()
-        return f"ERROR-GENERICO: {type(e).__name__}"
+        return f"ERROR-{'XLSX' if es_xlsx else 'GENERICO'}: {type(e).__name__}"
 
     campos_generico = resultado["campos"]
     campos_con_valor = {c: campos_generico[c]["valor"] for c in CAMPOS_NUMERICOS if c in campos_generico and campos_generico[c]["valor"] is not None}

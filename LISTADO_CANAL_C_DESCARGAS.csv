@@ -1,0 +1,18 @@
+﻿emisor,anio,periodo_pedido,archivo_local,estado_reportes_archivo,publicado_en_fundamentales
+BANCO_DE_BOGOTA,2019,T4,2019-ANUAL_Estados-Financieros-Consolidados.pdf,procesado,SI
+CELSIA,2019,T2,2019-T2_Informe-Trimestral-Estados-Financieros-Condensados-Consolidados.pdf,procesado,SI
+CELSIA,2019,T4,2019-ANUAL_Estados-Financieros-Consolidados.pdf,procesado,SI
+CONSTRUCTORA_CONCONCRETO,2019,T4,2019-ANUAL_Informe-de-Gestion-Estados-Financieros-Consolidados.pdf,procesado,SI
+CORFICOLOMBIANA,2019,T3,2019-T3_Estados-Financieros-Consolidados.pdf,procesado,SI
+CORFICOLOMBIANA,2019,T4,2019-ANUAL_Estados-Financieros-Consolidados.pdf,procesado,SI
+ENKA,2019,T3,2019-T3_Estados-Financieros-Intermedios-Separados.pdf,requiere_revision,"NO (separado, excluido)"
+ENKA,2019,T4,2019-ANUAL_Informe-de-Gestion-Estados-Financieros-Consolidados.pdf,procesado,SI
+ETB,2019,T3,2019-T3_Estados-Financieros-Consolidados-NIIF.xlsx,procesado,SI
+ETB,2019,T4,2019-ANUAL_Estados-Financieros-Consolidados.pdf,procesado,SI
+FABRICATO,2018,T2,2018-T2_Estados-Financieros-Consolidados.pdf,procesado,SI
+FABRICATO,2018,T3,2018-T3_Estados-Financieros-Consolidados.pdf,procesado,SI
+FABRICATO,2021,T2,2021-T2_Estados-Financieros-Individuales.pdf,requiere_revision,"NO (separado, excluido)"
+FABRICATO,2021,T3,2021-T3_Estados-Financieros-Individuales.pdf,requiere_revision,"NO (separado, excluido)"
+FABRICATO,2021,T4,2021-ANUAL_Informe-Anual-Estados-Financieros-Separados-y-Consolidados.pdf,procesado,SI
+FABRICATO,2022,T1,2022-T1_Estados-Financieros-Individuales.pdf,requiere_revision,"NO (separado, excluido)"
+FABRICATO,2022,T4,2022-ANUAL_Informe-Anual-Estados-Financieros-Consolidados.pdf,procesado,SI

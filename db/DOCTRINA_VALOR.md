@@ -1748,6 +1748,63 @@ emisores, no solo la magnitud.
 Nutresa y Promigas venían apareciendo como creadoras de valor **porque su deuda estaba en cero**.
 No lo son con su deuda real. Eso es un cambio de conclusión de inversión, no un ajuste cosmético.
 
+### Cierre: 20 de 23 emisores verificados contra su nota, y el techo real (25-sep-2026)
+
+La sesión de descarga barrió SIMEV emisor por emisor y leyó en pantalla los informes de la
+Prioridad 4. Resultado:
+
+**Los 7 que faltaban por nota quedaron verificados, y los 7 cuadraron:**
+
+| emisor | fuente | lo que confirmó |
+|---|---|---|
+| ECOPETROL | Nota 20.1 | total 109.200; los bonos (84.207) van **dentro**, no aparte |
+| ISA | balance, línea "Pasivos financieros" | 1.754 + 32.037 = 33.791, una sola línea sin bonos aparte |
+| GRUPO_NUTRESA | Nota 23 | 909.355 + 15.402.210 = 16.311.565; la nota desglosa bonos (11.271.240) **dentro** |
+| EXITO | Nota 20 | 1.992.729 + 150.678 = 2.143.407 — **confirma que la corriente buena es `ObligacionesFinancierasCorrientes`, no `ShorttermBorrowings` (26.777)** |
+| EL_CONDOR | balance + Nota 14 | 194.010 + 545.122 = 739.132; sus obligaciones **incluyen** arrendamientos |
+| FABRICATO | Nota 11 | 25.291 + 111.665 = 136.956 |
+| ENKA | Nota 16 | 6.125 + 32.714 = 38.839; el informe no está en Informes Financieros sino en "Información relevante" |
+
+Con eso **el nivel `estructura` desaparece**: quedan 20 emisores en `nota`, 1 en `nota_parcial`
+(DAVIVIENDA) y 2 huecos declarados (BVC, GRUPO_SURA).
+
+**El techo real no era de descarga, era de disponibilidad.** Lo importante del barrido fue
+descubrir que la mayor parte de lo que faltaba **no existe en SIMEV**: de los 20 emisores de
+2020-T1/T2/T3 solo 8 tenían algo radicado, y los 15 períodos de FABRICATO y el 2019-ANUAL de
+GRUPO_AVAL están todos ausentes. No era un bache de descarga como se creyó: es que el emisor
+nunca radicó ese XBRL.
+
+Estado final: **657 filas, 486 con deuda (74,0 %), 171 sin**. Las 171 se reparten así, y ninguna
+se arregla bajando más archivos:
+
+| causa | filas |
+|---|---|
+| el período NO existe en SIMEV (techo duro, ya verificado uno por uno) | 74 |
+| el emisor no etiqueta deuda en su XBRL (BVC 27, GRUPO_SURA 29) | 56 |
+| hay XBRL pero ese archivo no trae las etiquetas (CIBEST trimestral, Corfi, sueltos) | 25 |
+| PEI, que no tiene XBRL nunca (canal manual) | 16 |
+
+Lo único que queda por decidir es si se cargan a mano BVC, GRUPO_SURA y la línea que le falta a
+DAVIVIENDA — 56+ filas que dependen de una decisión, no de un archivo.
+
+#### Una advertencia sobre el canal XLSX
+
+La misma sesión agregó `extractor_xlsx.py` para un caso real (ETB 2019-T3, que solo existe en
+Excel). Está bien resuelto, pero **ese extractor escribe `deuda_financiera` sumando dos etiquetas
+de texto fijas** ("Obligaciones financieras corrientes" + "no corrientes"), que es justo el tipo
+de mapeo genérico que esta sección entera existe para desaconsejar. Para ETB coincide con su
+fórmula verificada, así que el único dato que produjo es defendible; y el pipeline lo marcó
+`metodo_validacion='provisional'`, que es la señal correcta. Pero si ese canal se usa para un
+emisor donde ese par NO sea el total —CEMENTOS_ARGOS lo excluye de los bonos, BANCOLOMBIA los
+mete dentro— escribiría una cifra mal sin que nadie lo note. Antes de ampliarlo a más emisores
+hay que darle el mismo tratamiento por emisor que tiene el canal XBRL.
+
+Dato concreto para quien lo revise: la fila ETB 2019-T3 quedó en **540,894** (corrientes 10,714 +
+no corrientes 530,180), contra ~362 en 2019-ANUAL y ~361 en 2020-T1. El salto puede ser real (una
+amortización grande en el último trimestre de 2019) pero no está comprobado, y en el XLSX la fila
+de "no corrientes" trae el mismo valor en las cuatro columnas, así que la columna elegida no se
+puede discriminar por ahí.
+
 #### Lo que sigue pendiente
 
 - Verificar contra nota los 7 de nivel `estructura` (ECOPETROL, ISA, EXITO, GRUPO_NUTRESA,

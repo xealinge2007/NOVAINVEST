@@ -240,27 +240,44 @@ DEUDA_FINANCIERA_POR_EMISOR = {
                "2025-ANUAL: 3.651.381.242 (corriente 623.333.334 + no corriente "
                "3.028.047.908), al peso. Comprobado también en 2024 (3.930.659.272)"),
 
-    # --- sin informe con notas en el corpus local; fórmulas concordantes ----
-    "ECOPETROL": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
-                  "las tres fórmulas dan lo mismo en 2025 (109.200,642); serie continua "
-                  "2019-2026"),
-    "ISA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
-            "las tres dan 33.790,917 en 2025. Sumar `BondsIssued` aparte daría 62.210, más "
-            "que los pasivos totales (47.823) -- o sea los bonos YA están dentro"),
-    "EL_CONDOR": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
-                  "las tres coinciden en 2025 (739,132)"),
-    "ENKA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
-             "las tres coinciden en 2025 (38,839)"),
-    "FABRICATO": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
-                  "las tres coinciden en 2025 (136,956)"),
-    "GRUPO_NUTRESA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "estructura",
-                      "las tres coinciden en 2025 (16.311,566). El salto de 4.404 "
-                      "(2024-ANUAL) a 13.047 (2025-T1) es real -- es el endeudamiento de la "
-                      "reorganización societaria, no un cambio de etiqueta"),
-    "EXITO": ([[_OBL_C, _OBL_NC], [_TOTAL]], "estructura",
-              "el par de obligaciones va PRIMERO a propósito: el `Borrowings` de Éxito trae "
-              "solo una parte en los cierres anuales (803,7 en 2022-12-31 contra 2.194,9 el "
-              "trimestre anterior y 2.141,6 el siguiente). Con el par la serie es continua"),
+    # --- verificado leyendo la nota en pantalla (24-sep-2026) --------------
+    "ECOPETROL": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+                  "Nota 20.1 del informe 2025-ANUAL: total 109.200 (corriente 10.080 + no "
+                  "corriente 99.120). Los bonos (4.985 nacional + 79.222 extranjera = 84.207) "
+                  "están DENTRO del total, no aparte -- que era justo lo que había que "
+                  "confirmar. Las tres fórmulas dan lo mismo y la serie es continua 2019-2026"),
+    "ISA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+            "estado de situación financiera consolidado 2025, línea 'Pasivos financieros': "
+            "corriente 1.754 + no corriente 32.037 = 33.791. Se presenta como UNA sola línea, "
+            "sin desglose de bonos aparte -- coherente con que los bonos van dentro. Sumarlos "
+            "aparte daría 62.210, más que los pasivos totales (47.823)"),
+    "EL_CONDOR": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+                  "balance consolidado 2025 y su Nota 14: corriente = obligaciones 167.219 + "
+                  "arrendamientos 26.792 = 194.010; no corriente = 515.028 + 30.094 = 545.122; "
+                  "total 739.132, al peso. Ojo: sus `ObligacionesFinancieras*` INCLUYEN los "
+                  "arrendamientos. No tagea bonos"),
+    "ENKA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+             "Nota 16 del informe 2025-ANUAL: corriente 6.125 + no corriente 32.714 = 38.839, "
+             "al peso. Una sola obligación (Bancolombia, IBR+1,44%), sin bonos. El informe no "
+             "está en el módulo de Informes Financieros de SIMEV sino en 'Información "
+             "relevante' (publicado 12-mar-2026)"),
+    "FABRICATO": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+                  "Nota 11 del informe 2025-ANUAL: corriente 25.291 + no corriente 111.665 = "
+                  "136.956, al peso. No tagea bonos"),
+    "GRUPO_NUTRESA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+                      "Nota 23 del informe 2025-ANUAL: total 16.311.565 (corriente 909.355 + "
+                      "no corriente 15.402.210), al peso. La nota SÍ desglosa los bonos "
+                      "(11.271.240) como línea propia DENTRO de la sumatoria, y el XBRL no los "
+                      "tagea aparte -- así que no hay riesgo de contarlos dos veces. El salto "
+                      "de 4.404 (2024-ANUAL) a 13.047 (2025-T1) es real: es el endeudamiento "
+                      "de la reorganización societaria, no un cambio de etiqueta"),
+    "EXITO": ([[_OBL_C, _OBL_NC], [_TOTAL]], "nota",
+              "Nota 20 del informe 2025-ANUAL: total 2.143.407 (corriente 1.992.729 + no "
+              "corriente 150.678), al peso. **Confirma que la porción corriente buena es "
+              "`ObligacionesFinancierasCorrientes` (1.992.729) y NO `ShorttermBorrowings` "
+              "(26.777)**, que era la duda abierta -- por eso el par de obligaciones va "
+              "PRIMERO. Con `Borrowings` la serie se rompía en los cierres anuales (803,7 en "
+              "2022-12-31 contra 2.194,9 el trimestre anterior y 2.141,6 el siguiente)"),
 
     # --- banca: créditos + títulos emitidos + mercado monetario, sin depósitos
     "BANCO_DE_BOGOTA": (_FORMULAS_BANCA, "nota",

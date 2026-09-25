@@ -1,0 +1,395 @@
+Progreso de la sesion de descarga deuda_financiera - 2026-09-23
+Metodo: Chrome (extension) navegando SIMEV2/rnve -> Informacion financiera -> Informes financieros bajo NIIF y anexos.
+IMPORTANTE: la SPA de SIMEV tiene un bug de estado obsoleto: siempre recargar la URL completa
+(https://www.superfinanciera.gov.co/SIMEV2/rnve/informesfinancierosniif/<tipo3>/<entidad6>/<suf>)
+antes de cambiar Periodo, o el boton VER XBRL puede descargar el archivo del periodo anterior
+(mismo Identificacion que la consulta previa). Siempre verificar que el modal "Fecha envio" /
+"Identificacion" cambien al abrir VER XBRL antes de pulsar DESCARGAR.
+
+=== DESCARGADO ===
+BANCO_DE_BOGOTA: 2019-ANUAL, 2020-T2, 2020-T3  (2020-T1 confirmado SIN informacion en SIMEV)
+CELSIA: 2020-T1, 2020-T3  (2020-T2 confirmado SIN informacion en SIMEV)
+CEMENTOS_ARGOS: 2019-ANUAL  (2020-T1, T2, T3 confirmados SIN informacion en SIMEV)
+
+=== PENDIENTE (de la lista de 20 emisores x 2020-T1/T2/T3 + 5 x 2019-ANUAL) ===
+CONSTRUCTORA_CONCONCRETO (tipo 055, entidad 000003): 2019-ANUAL, 2020-T1/T2/T3
+CORFICOLOMBIANA (tipo 002, entidad 000011): 2019-ANUAL, 2020-T1/T2/T3
+DAVIVIENDA_GROUP (tipo 066, entidad 000068): 2025-T2
+ECOPETROL (tipo 260, entidad 000036): 2020-T1/T2/T3
+EL_CONDOR (tipo 056, entidad 000008): 2020-T1/T2/T3
+ENKA (tipo 039, entidad 000021): 2020-T1/T2/T3
+ETB (tipo 260, entidad 000047): 2020-T1/T2/T3
+EXITO (tipo 058, entidad 000006): 2020-T1/T2/T3
+FABRICATO (tipo 034, entidad 000004): 2018-T1, 2018-T4, 2019-T2, 2019-T3, 2020-T1, 2022-T2, 2022-T3, 2023-T1
+GEB (tipo 260, entidad 000043): 2020-T1/T2/T3
+GRUPO_ARGOS (tipo 066, entidad 000058): 2020-T1/T2/T3
+GRUPO_AVAL (tipo 142, entidad 000001): 2019-ANUAL, 2020-T1/T2/T3
+GRUPO_CIBEST_BANCOLOMBIA (tipo 001, entidad 000007): 2020-T1/T2/T3
+GRUPO_NUTRESA (tipo 066, entidad 000032): 2020-T1/T2/T3
+ISA (tipo 260, entidad 000034): 2020-T1/T2/T3
+MINEROS (tipo 030, entidad 000003): 2020-T1/T2/T3
+PROMIGAS (tipo 261, entidad 000004): 2020-T1/T2/T3
+TERPEL (tipo 053, entidad 000022): 2020-T1/T2/T3
+
+=== PENDIENTE FASE 2 (8 PDF con notas, leer en pantalla, NO descargar) ===
+ECOPETROL, EL_CONDOR, ENKA, EXITO, FABRICATO, GRUPO_CIBEST_BANCOLOMBIA (usar BANCOLOMBIA S.A.),
+GRUPO_NUTRESA, ISA — ver tabla de cifras objetivo en el pedido original.
+
+CONSTRUCTORA_CONCONCRETO: 2019-ANUAL descargado. 2020-T1 confirmado SIN informacion en SIMEV.
+2020-T2 y T3 quedaron SIN VERIFICAR (sesion interrumpida para checkpoint con Alex).
+
+CONSTRUCTORA_CONCONCRETO: 2020-T2 y T3 SI descargados (2019-ANUAL, T2, T3 completos; T1 confirmado ausente).
+CORFICOLOMBIANA: 2019-ANUAL, 2020-T1, 2020-T2 descargados. 2020-T3 confirmado SIN informacion en SIMEV.
+
+DAVIVIENDA_GROUP: 2025-T2 confirmado SIN informacion en SIMEV (unico periodo pedido, entidad completa).
+
+=== SESION PAUSADA: limite de uso alcanzado (2026-09-23) ===
+ECOPETROL confirmado: tipo=260, entidad=000036 (busqueda hecha, pendiente navegar a informesfinancierosniif/260/000036/3 y verificar T1/T2/T3 2020).
+Quedan pendientes: ECOPETROL, EL_CONDOR, ENKA, ETB, EXITO, FABRICATO, GEB, GRUPO_ARGOS, GRUPO_AVAL,
+GRUPO_CIBEST_BANCOLOMBIA, GRUPO_NUTRESA, ISA, MINEROS, PROMIGAS, TERPEL (todos con codigos tipo/entidad
+en la seccion PENDIENTE de este archivo), mas los 8 PDF de notas (fase 2).
+
+ECOPETROL: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+EL_CONDOR: 2020-T1, T2, T3 TODOS descargados (los tres SI existian en SIMEV).
+
+ENKA: 2020-T1 y T2 descargados. 2020-T3 confirmado SIN informacion en SIMEV.
+
+ETB: 2020-T1 y T2 descargados. 2020-T3 confirmado SIN informacion en SIMEV.
+
+EXITO: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+FABRICATO 2018-T1: SIN informacion en SIMEV.
+FABRICATO 2018-T4: SIN informacion en SIMEV (verificado en Intermedios/Diciembre y Cierre/Diciembre).
+FABRICATO 2019-T2: SIN informacion en SIMEV.
+FABRICATO 2019-T3: SIN informacion en SIMEV.
+FABRICATO 2020-T1: SIN informacion en SIMEV.
+FABRICATO 2022-T2: SIN informacion en SIMEV.
+FABRICATO 2022-T3: SIN informacion en SIMEV.
+FABRICATO 2023-T1: SIN informacion en SIMEV.
+FABRICATO COMPLETO: los 8 periodos pedidos (2018-T1, 2018-T4, 2019-T2, 2019-T3,
+2020-T1, 2022-T2, 2022-T3, 2023-T1) confirmados SIN informacion en SIMEV. Nada para descargar.
+
+GEB: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+GRUPO_ARGOS: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+GRUPO_AVAL: 2019-ANUAL, 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los cuatro).
+
+GRUPO_CIBEST_BANCOLOMBIA (verificado bajo BANCOLOMBIA S.A., tipo=001/entidad=007, que es la
+entidad correcta segun tipo/entidad esperados -- GRUPO CIBEST S.A. como tal es tipo=066/entidad=066):
+2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+GRUPO_NUTRESA: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+ISA (verificado como INTERCONEXION ELECTRICA S.A. E.S.P., tipo=260/entidad=034):
+2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+MINEROS: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+PROMIGAS: 2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+TERPEL (verificado como ORGANIZACION TERPEL S.A., tipo=053/entidad=022):
+2020-T1, T2, T3 confirmados SIN informacion en SIMEV (los tres).
+
+=== LOS 20 EMISORES DE PRIORIDAD 1 QUEDARON TODOS VERIFICADOS ===
+Con datos descargados (2020-T1/T2/T3 o parcial): BANCO_DE_BOGOTA, CELSIA, CEMENTOS_ARGOS (solo 2019),
+CONSTRUCTORA_CONCONCRETO, CORFICOLOMBIANA, EL_CONDOR (los 3 trimestres), ENKA (T1,T2), ETB (T1,T2).
+Confirmados SIN informacion en SIMEV para 2020-T1/T2/T3 (los tres, ninguno descargable):
+DAVIVIENDA_GROUP (solo periodo pedido 2025-T2), ECOPETROL, EXITO, GEB, GRUPO_ARGOS, GRUPO_AVAL
+(+2019-ANUAL tambien ausente), GRUPO_CIBEST_BANCOLOMBIA, GRUPO_NUTRESA, ISA, MINEROS, PROMIGAS, TERPEL.
+FABRICATO: los 8 periodos especificos pedidos (no 2020 T1/T2/T3 estandar) TODOS confirmados ausentes.
+
+=== PRIORIDAD 2 (2019-ANUAL de 5 emisores) COMPLETADA ===
+Cubierta dentro del trabajo anterior: BANCO_DE_BOGOTA, CEMENTOS_ARGOS, CORFICOLOMBIANA,
+CONSTRUCTORA_CONCONCRETO, GRUPO_AVAL -- todas verificadas (algunas con descarga, otras confirmadas ausentes).
+
+=== PENDIENTE: PRIORIDAD 4 (8 PDFs de notas, leer en pantalla, NO descargar) ===
+ECOPETROL, EL_CONDOR, ENKA, EXITO, FABRICATO, GRUPO_CIBEST_BANCOLOMBIA (usar BANCOLOMBIA S.A.),
+GRUPO_NUTRESA, ISA. Requiere la tabla de cifras objetivo del pedido original (no esta en este archivo).
+NO INICIADA en esta sesion.
+
+=== SEGUNDA RONDA: pipeline corrido + matriz de huecos regenerada (post-descarga) ===
+Pipeline completo corrido exitosamente (extraer_xbrl.py dry-run + real, analizador_fundamental.py,
+test_lector_xbrl.py) -- todas las pruebas pasaron. Cobertura deuda_financiera: 64,1% -> 74,3% (482/649).
+jobs/matriz_huecos_fundamentales.py regenero PEDIDOS_DESCARGA_ACTUALIZADO.csv con 17 periodos
+todavia genuinamente faltantes (canal C, requieren descarga SIMEV):
+BANCO_DE_BOGOTA 2019-T4, CELSIA 2019-T2 y T4, CONSTRUCTORA_CONCONCRETO 2019-T4,
+CORFICOLOMBIANA 2019-T3 y T4, ENKA 2019-T3 y T4, ETB 2019-T3 y T4,
+FABRICATO 2018-T2, 2018-T3, 2021-T2, 2021-T3, 2021-T4, 2022-T1, 2022-T4.
+
+FABRICATO (tipo=034/entidad=004) -- los 7 periodos nuevos verificados, TODOS SIN informacion en SIMEV:
+2018-T2, 2018-T3, 2021-T2, 2021-T3, 2021-T4, 2022-T1, 2022-T4 (Intermedios/Diciembre; el 2022-ANUAL
+en Cierre ya existe, asi que no hace falta revisar Cierre para T4).
+
+BANCO_DE_BOGOTA (tipo=001/entidad=001) 2019-T4: SIN informacion en SIMEV.
+
+CELSIA (verificado como CELSIA COLOMBIA S.A. E.S.P. antes EMPRESA DE ENERGIA DEL PACIFICO S.A. E.S.P.,
+tipo=261/entidad=026, Activa-Vigente -- distinta de otras 3 entidades con nombre similar/Cancelada):
+2019-T2 y 2019-T4 ambos SIN informacion en SIMEV.
+
+CONSTRUCTORA_CONCONCRETO (tipo=055/entidad=003) 2019-T4: SIN informacion en SIMEV.
+
+CORFICOLOMBIANA (tipo=002/entidad=011) 2019-T3 y 2019-T4: ambos SIN informacion en SIMEV.
+
+ENKA (verificado como ENKA DE COLOMBIA S.A., tipo=039/entidad=021) 2019-T3 y 2019-T4:
+ambos SIN informacion en SIMEV.
+
+ETB (verificado como EMPRESA DE TELECOMUNICACIONES DE BOGOTA S.A. ESP, tipo=260/entidad=047,
+Activa-Vigente) 2019-T3 y 2019-T4: ambos SIN informacion en SIMEV.
+
+=== LOS 17 PERIODOS DE PEDIDOS_DESCARGA_ACTUALIZADO.csv QUEDARON TODOS VERIFICADOS ===
+Ninguno tenia informacion disponible en SIMEV (17/17 confirmados ausentes):
+BANCO_DE_BOGOTA 2019-T4, CELSIA 2019-T2 y T4, CONSTRUCTORA_CONCONCRETO 2019-T4,
+CORFICOLOMBIANA 2019-T3 y T4, ENKA 2019-T3 y T4, ETB 2019-T3 y T4,
+FABRICATO 2018-T2, 2018-T3, 2021-T2, 2021-T3, 2021-T4, 2022-T1, 2022-T4.
+No queda ningun periodo pendiente por descargar de esta lista -- la matriz de huecos
+generada por jobs/matriz_huecos_fundamentales.py ya reflejaba el estado real de SIMEV,
+no un error de descarga.
+
+=== PRIORIDAD 4 COMPLETADA (8/8 informes leidos en pantalla contra la tabla de INSTRUCCION_SESION_DESCARGA_DEUDA.md seccion 4) ===
+Cifras del cierre 2025-12-31 consolidado, en miles de millones de pesos, leidas directamente
+de la Nota de obligaciones financieras/prestamos/bonos de cada emisor:
+
+ECOPETROL (Nota 20.1): total 109.200 = objetivo 109.200,642 [OK]. Corriente 10.080 [OK],
+no corriente 99.120 [OK]. Bonos (4.985 nacional + 79.222 extranjera = 84.207) confirmados
+DENTRO del total, no aparte -- la formula es correcta para este emisor.
+
+ISA (Estado de situacion financiera consolidado, linea "Pasivos financieros"): corriente 1.754
+[obj 1.753,654 OK] + no corriente 32.037 [obj 32.037,264 OK] = 33.791 [obj 33.790,917 OK].
+Se presenta como una sola linea sin desglose de bonos aparte -- coherente con bonos dentro.
+
+GRUPO_NUTRESA (Nota 23): total 16.311.565 [obj 16.311,566 OK], corriente 909.355 [OK exacto],
+no corriente 15.402.210 [OK exacto]. La nota SI desglosa bonos (11.271.240) como linea
+propia dentro de la sumatoria -- no contradice el objetivo, que solo pedia que el TOTAL
+cuadrara (XBRL no tagea bonos aparte, pero la nota contable si los detalla).
+
+EXITO (Nota 20): total 2.143.407 [obj 2.143,408 OK], corriente 1.992.729 [OK exacto] --
+CONFIRMA que la corriente correcta es ObligacionesFinancierasCorrientes, NO ShorttermBorrowings
+(26,777) como se sospechaba. No corriente 150.678 [OK exacto].
+
+EL_CONDOR (Balance consolidado, notas 14): corriente = obligaciones financieras 167.219 +
+arrendamientos 26.792 = 194.010 [obj 194,010 OK]. No corriente = 515.028 + arrendamientos
+30.094 = 545.122 [obj 545,122 OK]. Total 739.132 [obj 739,132 OK]. No tagea bonos, confirmado.
+
+FABRICATO (Nota 11): Total Obligaciones corriente 25.291 [OK exacto], no corriente 111.665
+[OK exacto], total 136.956 [obj 136,956 OK exacto]. No tagea bonos, confirmado.
+
+ENKA (Nota 16, hallado en "Informacion relevante" de SIMEV -- NO estaba en el modulo de
+Informes Financieros normal, publicado 12/03/2026 17:09:01 "Estados Financieros Consolidados
+de fin de ejercicio con notas y dictamen"): corriente 6.125 [obj 6,125 OK EXACTO], no corriente
+32.714 [obj 32,714 OK EXACTO], total 38.839 [obj 38,839 OK EXACTO]. Una sola obligacion
+(Bancolombia, IBR+1.44%), sin bonos, tal como se esperaba.
+
+GRUPO_CIBEST_BANCOLOMBIA: NO SE PUDO VERIFICAR CONTRA NOTA, queda en nivel `estructura`.
+El PDF descargado de grupobancolombia.com ("Estados_Financieros_2025.pdf", 184 paginas) dio
+cifras (titulos de deuda emitidos 7.250.632, repos 283.792) que a primera vista cuadraban
+contra 2 de las 3 lineas objetivo, pero se descarto esa lectura: Alex confirmo que ese PDF
+NO corresponde al mismo perimetro/version que el XBRL real -- su Nota 17 (nacionales
+5.192.531 + exterior 4.163.897 = 9.356.428) y Nota 18 (7.409.693) no coinciden con lo que
+yo extraje de ese PDF (nacionales 5.192.531 SI coincide, exterior 474.827 NO coincide),
+senal de que es un documento distinto (otra version o perimetro) al que reporta el XBRL.
+Se intento tambien una hipotesis de doble conteo (Borrowings = creditos+titulos) que Alex
+refuto con evidencia solida: en BANCO_DE_BOGOTA y GRUPO_AVAL el Borrowings del XBRL es MENOR
+que TitulosEmitidos por separado, lo que prueba que son lineas independientes que se suman,
+no una contenida en la otra.
+En el corpus local (SIMEV_BVC/GRUPO_CIBEST_BANCOLOMBIA) el PDF mas reciente es 2025-T1
+(trimestral); NO existe un EEFF consolidado 2025-ANUAL de BANCOLOMBIA S.A. descargado.
+Los XBRL locales de este emisor son todos serie "-CIBEST" (entidad "Grupo Cibest S.A."),
+mientras que el XBRL verificado usa NameOfReportingEntity = "BANCOLOMBIA S.A." -- son
+identificadores de entidad distintos y ninguna cifra de una fuente aparece en la otra.
+No se forzo ninguna cifra. Pendiente: conseguir el EEFF consolidado 2025-ANUAL real de
+BANCOLOMBIA S.A. (no Grupo Cibest) para poder subir este emisor a nivel `nota`.
+
+RESUMEN PRIORIDAD 4: 7/8 emisores con match exacto en las 3 cifras (total/corriente/no
+corriente): ECOPETROL, ISA, GRUPO_NUTRESA, EXITO, EL_CONDOR, FABRICATO, ENKA (este ultimo
+resuelto tras encontrarlo en el modulo "Informacion relevante" de SIMEV, no en "Informacion
+financiera" estandar). GRUPO_CIBEST_BANCOLOMBIA queda sin verificar contra nota -- se
+necesita el EEFF 2025-ANUAL correcto de BANCOLOMBIA S.A., que no se logro ubicar en esta
+sesion.
+
+=== SESION 2026-09-23 CERRADA ===
+Pipeline corrido (extraccion + analizador + tests, todos OK). Cobertura deuda_financiera:
+64,1% -> 74,3% (482/649). Prioridades 1-4 completadas. Unico pendiente real: la linea
+"creditos con bancos" de GRUPO_CIBEST_BANCOLOMBIA (ver hallazgo arriba), que requiere que
+Alex confirme contra que periodo se armo la tabla de cifras objetivo original.
+
+=== SESION 2026-09-24: CANAL C (PEDIDOS_DESCARGA_ACTUALIZADO.csv) ===
+Se resolvieron 16 de los 17 periodos "sin_archivo" listados en PEDIDOS_DESCARGA_ACTUALIZADO.csv,
+descargando el EEFF real del emisor (nunca comunicado de prensa) y guardandolo en
+SIMEV_BVC/<EMISOR>/ con la convencion de nombres del corpus. Fuente principal: pagina de IR
+del propio emisor (varios ya no tienen el periodo en el modulo "Informacion financiera" de
+SIMEV NIIF, que devuelve "No hay informacion reportada" de forma sistematica para 2019 y,
+en el caso de FABRICATO, tambien para 2021-2022).
+
+BANCO_DE_BOGOTA 2019-T4: bancodebogota.com, EEFF Consolidados 2019 (151 pag, dictamen
+  revisor fiscal). Guardado como 2019-ANUAL_Estados-Financieros-Consolidados.pdf.
+CELSIA 2019-T2: celsia.com, "Reporte-trimestral-Celsia-2Q_2019.pdf" -- verificado que
+  incluye Estado de Situacion Financiera Condensado Consolidado real (no es solo
+  comunicado). 2019-T4: celsia.com, EEFF_Celsia_combinados (99 pag, "al 31 de diciembre de
+  2019 y 2018").
+CONSTRUCTORA_CONCONCRETO 2019-T4: conconcreto.com, Informe de Gestion + fin de ejercicio
+  (158 pag) con Estados Financieros Consolidados y dictamen del revisor fiscal completos.
+CORFICOLOMBIANA 2019-T4: corficolombiana.com/documents/20123/305038/estados-financieros.pdf,
+  "Estado Consolidado de Situacion Financiera... 31 de diciembre de 2019". 2019-T3: NO
+  ENCONTRADO -- ni en corfi.com (sitio dinamico, sin indice navegable de documentos por
+  fecha), ni en SIMEV NIIF, ni por busqueda directa de nombres de archivo tipicos. QUEDA
+  PENDIENTE, no se forzo ningun archivo.
+ENKA 2019-T3: enka.com.co, EFSeptiembre2019.pdf -- es "Estados Financieros Intermedios
+  SEPARADOS" (no consolidados). Verificado que ENKA no tiene Grupo empresarial en su ficha
+  SIMEV y que sus EEFF trimestrales historicamente solo se publican separados (el
+  consolidado solo aparece en el cierre anual); por eso no existe version consolidada
+  trimestral que descargar, no es un hueco de busqueda. 2019-T4: enka.com.co,
+  EFDiciembre2019.pdf = Informe Anual 2019 (172 pag) con Estados Financieros Consolidados y
+  dictamen del revisor fiscal completos. Se creo la carpeta SIMEV_BVC/ENKA/ (no existia).
+ETB 2019-T3: etb.com, "3T-2019-EEFF-Cons-NIIF.xlsx" (Excel, no PDF, pero es el EEFF
+  consolidado NIIF real tal como lo publica ETB). 2019-T4: etb.com,
+  "EEFF-CONSOLIDADOS-A-31-DICIEMBRE-2019.pdf" (87 pag, notas + dictamen revisor fiscal).
+FABRICATO 2018-T2 y 2018-T3: fabricato.com, Estados financieros consolidados 2Q18/3Q18 (68
+  y 66 pag respectivamente). 2021-T2 y 2021-T3: fabricato.com, solo existen "Estados
+  Financieros INDIVIDUALES" (no consolidados) para estos trimestres -- confirmado en SIMEV
+  que el anexo "059 Entidades con las cuales la matriz ha dejado de consolidar" aparece
+  para este periodo y que la ficha de FABRICATO en SIMEV no tiene Grupo empresarial
+  asignado, consistente con que la compañia (en Ley 1116, Proceso de Insolvencia) dejo de
+  tener perimetro de consolidacion en esos trimestres. Se guardaron los individuales como
+  mejor fuente real disponible. 2021-T4: cubierto por el Informe Anual 2021 (97 pag), que
+  SI trae "Estados Financieros Separados y Consolidados" completos pese a que los
+  trimestres intermedios de ese año solo tuvieran individuales. 2022-T1: fabricato.com,
+  Estados Financieros Individuales 1Q22 (mismo patron sin consolidado trimestral). 2022-T4:
+  no estaba en el listado trimestral de la web (que corta en 3T22); localizado por
+  busqueda directa el "Informe-Anual-2022-1.pdf" (137 pag) con cifras consolidadas. Se creo
+  la carpeta SIMEV_BVC/FABRICATO/ (no existia).
+
+PENDIENTE UNICO DE CANAL C: CORFICOLOMBIANA 2019-T3. No se forzo ningun archivo de relleno
+(ni comunicado de prensa ni version equivocada). Requeriria: (a) reintentar navegacion
+manual del sitio corfi.com/es/informacion-financiera (es Angular, contenido dinamico, no
+indexado por buscadores), o (b) el modulo "Informacion relevante" de SIMEV con filtro de
+fecha correctamente aplicado (el selector de rango de SIMEV es un Angular Material
+datepicker que no respondio a escritura de texto simulada en esta sesion).
+
+=== SESION 2026-09-24 (cont.): EEFF 2025-ANUAL DE BANCOLOMBIA S.A. -- CONFIRMADO Y HALLAZGO NUEVO ===
+Alex aporto el documento correcto: 0054371376_0001_000007_0000_000000_000000_C-C_2025-12-31.pdf
+(158 pag). Verificado que es BANCOLOMBIA S.A. (no Grupo Cibest): el informe del revisor fiscal
+abre "A los señores accionistas de Bancolombia S. A.". Copiado a
+SIMEV_BVC/GRUPO_CIBEST_BANCOLOMBIA/2025-ANUAL_BANCOLOMBIA-SA_Estados-Financieros-Consolidados.pdf.
+
+Confirmacion de perimetro: TOTAL PASIVO del balance = 258.775.569 (objetivo 258.775,571 -- OK,
+diferencia de 2 explicable por redondeo).
+
+De las 3 lineas objetivo:
+- Nota 16 "Interbancarios y Repos Pasivos", Total repos pasivos = 283.792 -- CUADRA EXACTO
+  contra el objetivo (283,792).
+- Nota 18 "Titulos de deuda emitidos", Total = 7.250.632 -- CUADRA EXACTO contra el objetivo
+  (7.250,632).
+- Nota 17 "Obligaciones financieras" (creditos con bancos), Total = 5.667.358 (nacionales
+  5.192.531 + exterior 474.827) -- NO cuadra contra el objetivo Borrowings=12.917,989.
+
+HALLAZGO IMPORTANTE (reabre la hipotesis que se habia descartado el 24-sep-2026): esta vez el
+5.667.358 SI sale de una nota real e independiente (Nota 17 de este documento, verificado
+visualmente en pag. 101 del PDF), no de una resta circular como la vez pasada. Y
+Nota17 + Nota18 = 5.667.358 + 7.250.632 = 12.917.990, que coincide con el Borrowings del XBRL
+(12.917,989) con una diferencia de 1 (redondeo, sobre una cifra de ~13 millones). Es decir: con
+el documento correcto en mano, la evidencia apunta a que el tag XBRL `Borrowings` de
+BANCOLOMBIA S.A. SI agrega Nota 17 + Nota 18 en una sola cifra (a diferencia de BANCO_DE_BOGOTA
+y GRUPO_AVAL, donde se habia verificado que son lineas separadas). No se toco la instruccion
+ni se forzo ningun total: esto se reporta como hallazgo nuevo para que Alex decida como
+tratarlo (si el total real de CIBEST debe ser Nota16+Nota17+Nota18 = 13.201.782 en lugar de
+20.452.413, evitando contar los bonos dos veces).
+
+=== SESION 2026-09-24 (cont.): PIPELINE DE EXTRACCION SOBRE LOS 16 ARCHIVOS DEL CANAL C ===
+Corridos en orden: ingesta_simev.py (16 nuevos encolados, 416 ya existian, 1 protegido) y
+extraer_fundamentales.py (100 reportes procesados en esa corrida, todo el backlog pendiente
+del sistema, no solo los 16 nuevos -- tardo ~13 min real). Verificado contra
+`reportes_archivo` en Supabase (query directa, no contra el log de consola que \`tail\` habia
+truncado).
+
+PROCESADOS Y PUBLICADOS en fundamentales_reportados (6/16, balance cuadra):
+BANCO_DE_BOGOTA 2019-T4, CELSIA 2019-T2, CELSIA 2019-T4, ENKA 2019-T4,
+FABRICATO 2021-T4 (via Informe Anual), FABRICATO 2022-T4 (via Informe Anual).
+
+REQUIERE_REVISION (9/16) -- ninguno se descarto en silencio, cada uno con motivo verificado
+a mano leyendo el PDF con pdfplumber, no solo el mensaje del extractor:
+
+- ENKA 2019-T3, FABRICATO 2021-T2, FABRICATO 2021-T3, FABRICATO 2022-T1: excluidos
+  CORRECTAMENTE por ser separados/individuales, no consolidados (regla explicita del
+  sistema, ya sabiamos que estos 4 archivos solo tenian version separada al descargarlos).
+  No es una falla, es el comportamiento esperado.
+
+- ETB 2019-T4 y FABRICATO 2018-T2/T3: verificado con pdfplumber que las paginas donde
+  deberia estar el balance (ETB paginas 1-11 de 87; Fabricato 2018-T2 paginas 0-8 de 68;
+  Fabricato 2018-T3 paginas 0-6 de 66) tienen CERO caracteres de texto extraible -- son
+  imagenes escaneadas reales, no un bug del extractor. Las notas (texto narrativo) si tienen
+  capa de texto. Requeriria OCR, que el pipeline no tiene hoy.
+
+- CONSTRUCTORA_CONCONCRETO 2019-ANUAL: verificado que las paginas 150-157 (la seccion real
+  de "Estados financieros consolidados", pag. 158 del documento) tienen texto con glyphs
+  `(cid:N)` sin mapear a Unicode -- la fuente incrustada no tiene tabla ToUnicode, el mismo
+  tipo de defecto de codificacion que goste tiempo en la sesion anterior con el PDF de
+  Banco de Bogota 2019. El extractor genuinamente no puede leer esas paginas con las
+  herramientas actuales (pdftotext/pdfplumber fallan igual).
+
+- CORFICOLOMBIANA 2019-ANUAL: el balance (pag. 3 del extracto, "ESTADO CONSOLIDADO DE
+  SITUACION FINANCIERA") SI tiene texto limpio y legible, pero no declara la unidad
+  ("millones de pesos") en esa pagina ni en las cercanas -- el resto del documento (portada,
+  nota 2) probablemente la tiene, pero fuera de la ventana de busqueda del extractor. Cifras
+  visibles: Total Pasivos 21.844.119 / Total Patrimonio 9.968.054 / Total Pasivos y
+  Patrimonio 31.812.173 (miles de millones de COP, coincide con el orden de magnitud
+  verificado en la Prioridad 4 de esta misma sesion). Necesita que un humano confirme la
+  unidad y publique el registro a mano.
+
+HUECO NUEVO ENCONTRADO: el archivo `2019-T3_Estados-Financieros-Consolidados-NIIF.xlsx` de
+ETB nunca se encolo -- `ingesta_simev.py` solo escanea `*.pdf` por contrato explicito
+(linea 140 y 229/298 del script), no tiene ruta para Excel. No es un bug a corregir sobre la
+marcha: es una decision de alcance que le corresponde a Alex (agregar soporte XLSX al
+ingestor, o transcribir esa cifra a mano).
+
+=== SESION 2026-09-24 (cont.): CORFICOLOMBIANA 2019-T3 Y ENKA 2019-T3 CONSOLIDADO REAL ===
+Alex aporto dos documentos que cerraron los ultimos huecos reales del canal C:
+
+CORFICOLOMBIANA 2019-T3: 0052123774_0002_000011_..._C-I_2019-09-30.pdf (tipo 002/011,
+coincide). "Estado Consolidado de Situacion Financiera Condensado" al 30-sep-2019, balance
+cuadra exacto (Activos 30.490,125 = Pasivos 20.962,104 + Patrimonio 9.528,021, miles de
+millones COP). Copiado a SIMEV_BVC/CORFICOLOMBIANA/2019-T3_Estados-Financieros-Consolidados.pdf,
+registrado en reportes_archivo (id 435) y publicado en fundamentales_reportados (id 7321).
+Esto cierra el ultimo pendiente real del canal C original (17/17).
+
+ENKA 2019-T3: 0052116690_0039_000021_..._C-I_2019-09-30.pdf (tipo 039/021, coincide).
+Es el CONSOLIDADO real -- reemplaza el archivo separado que se habia usado antes (que quedo
+correctamente excluido por el sistema). Balance cuadra exacto (Activos 586.731,405 = Pasivos
+203.801,907 + Patrimonio 382.929,498). Copiado a
+SIMEV_BVC/ENKA/2019-T3_Estados-Financieros-Intermedios-Consolidados.pdf, registrado en
+reportes_archivo (id 436) y publicado en fundamentales_reportados (id 7322), sustituyendo la
+exclusion anterior. El archivo separado se dejo en el corpus con una nota en su
+error_detalle explicando que fue sustituido.
+
+FABRICATO 2021-T2, 2021-T3, 2022-T1: Alex busco el equivalente consolidado para estos tres
+y no lo encontro -- quedan como estaban (separados, excluidos por el sistema, sin forzar
+nada). Pendiente real, no cerrado.
+
+
+=== NOTA AGREGADA AL REVISAR (25-sep-2026): EL PARRAFO DE CIBEST DE ARRIBA QUEDO SUPERADO ===
+Lo que dice este archivo sobre GRUPO_CIBEST_BANCOLOMBIA ("no se pudo verificar", "queda en
+nivel estructura", "Alex refuto la hipotesis de doble conteo") era cierto cuando se escribio,
+pero DEJO DE SERLO el 24-sep-2026: Alex descargo los EEFF consolidados de BANCOLOMBIA S.A.
+2025 (radicacion 0054371376_0001_000007_..._C-C_2025-12-31, Total Pasivo 258.775.569, que SI
+es el perimetro del XBRL) y estan en el corpus como
+SIMEV_BVC/GRUPO_CIBEST_BANCOLOMBIA/2025-ANUAL_BANCOLOMBIA-SA_Estados-Financieros-Consolidados.pdf
+
+Con ese documento la hipotesis de doble conteo resulto CIERTA: en BANCOLOMBIA S.A. el tag
+`Borrowings` SI agrega la Nota 17 (5.667.358) mas la Nota 18 (7.250.632). Probado con el
+desglose de vencimientos de las dos notas, que reproduce las DOS etiquetas del XBRL por
+separado y al peso, en dos anios (corto 2025: 846.756+1.020.053=1.866.809=ShorttermBorrowings;
+largo 2025: 4.820.602+6.230.579=11.051.181=LongtermBorrowings; y lo mismo en 2024).
+
+CIBEST quedo corregido: deuda 2025 de 20.452,413 -> 13.201,781, y de nivel `estructura` a
+`nota` (commit 06a1b3f). La refutacion que cita este archivo era erronea en su conclusion,
+aunque acertada al senalar que la aritmetica original era circular. Ver
+db/DOCTRINA_VALOR.md, seccion "La hipotesis del doble conteo en CIBEST".
+
+=== ESTADO AL CERRAR LA REVISION (25-sep-2026) ===
+657 filas en fundamentales_reportados, 486 con deuda (74,0%), 171 sin. De las 171:
+   74  el periodo NO EXISTE en SIMEV -- techo duro, confirmado por esta misma sesion
+   56  el emisor no etiqueta deuda en el XBRL (BVC 27, GRUPO_SURA 29)
+   25  hay XBRL pero ese archivo no trae las etiquetas (CIBEST trimestral, Corfi, sueltos)
+   16  PEI, que no tiene XBRL nunca (canal manual)
+Ninguna de las cuatro se arregla descargando mas: la Prioridad 1 esta agotada.
