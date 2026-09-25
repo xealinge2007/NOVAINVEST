@@ -339,9 +339,21 @@ def main():
                 # había extraído bien -- verificado real en TERPEL 2025-T1
                 # (11 campos desde su propio archivo, reducido a 5 al procesar
                 # 2026-T1 como comparativo, en la misma corrida).
+                # `manual` va en la lista a propósito. Una fila cargada a mano es una
+                # decisión humana con su fuente citada (la página del informe), no un
+                # residuo de otra corrida: si no se fusiona, el reproceso la borra en
+                # silencio. Verificado real el 25-sep-2026: al recargar el corpus,
+                # GRUPO_SURA perdió los 6 períodos que se habían leído de su balance
+                # consolidado y volvió a salir con deuda cero, que es justo el bug que
+                # esa carga venía a corregir.
+                #
+                # El orden de la fusión sigue siendo el correcto: lo que el XBRL trae
+                # PISA a lo manual. La carga a mano solo sobrevive donde el canal no
+                # tiene nada que decir, que es para lo que existe.
                 campos_previos_xbrl = (
                     {c: previa.get(c) for c in CAMPOS_NUMERICOS}
-                    if previa and previa.get("metodo_validacion") in ("xbrl_radicado", "doble_extraccion")
+                    if previa and previa.get("metodo_validacion") in (
+                        "xbrl_radicado", "doble_extraccion", "manual")
                     else {}
                 )
                 campos_fusionados = {**campos_previos_xbrl, **campos}

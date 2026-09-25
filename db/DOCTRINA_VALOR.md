@@ -1886,6 +1886,52 @@ lista de pendientes algo que no lo era.
 | hay XBRL pero ese archivo no trae las etiquetas | 29 |
 | GRUPO_SURA en los trimestrales sin estado de situación financiera | 23 |
 
+### Los 20 XBRL que faltaban, y un bug que casi borra el trabajo (25-sep-2026)
+
+Alex bajó 24 XBRL de SIMEV. Tres cosas que salieron de organizarlos:
+
+**`C-I` no significa "individual".** El sufijo del nombre de SIMEV distingue el consolidado de
+**CIErre** (`C-C`, anual) del consolidado **INTermedio** (`C-I`, trimestral) — lo confirma el
+punto de entrada del propio archivo (`-con-cie` / `-con-int`). Los dos son consolidados y los dos
+sirven. Casi se descartan 16 archivos buenos por leer mal esa letra.
+
+**Dos archivos eran de otra empresa.** Se bajaron buscando CELSIA pero declaran **"EPSA E.S.P."**
+(Empresa de Energía del Pacífico), que es la filial: activos 6.189,3 MMM contra los 11.378-12.590
+que la base ya tiene para Celsia en 2019-2020, aproximadamente la mitad de la compañía. Están en
+`C:\Proyectos\BVC\_descartados\` con su LEEME.
+
+> **Esto invalida lo que la sesión anterior concluyó sobre CELSIA.** Su informe dice que la
+> verificó "como CELSIA COLOMBIA S.A. E.S.P., tipo=261/entidad=026" — esa es la filial. La matriz
+> cotizada, Celsia S.A., es **tipo 0066 / entidad 000061**. Así que sus 2019-T1, 2019-T2, 2019-T3
+> y 2020-T2 hay que volver a buscarlos en la entidad correcta.
+
+**Las filas `T4` son el mismo cierre que `ANUAL`.** Se pidió el "2024-T4" de ECOPETROL y el
+archivo que llegó era byte a byte el 2024-ANUAL que ya estaba. Es lo esperable: SIMEV no publica
+un T4 aparte. Verificado en la base — las filas T4 y ANUAL del mismo año tienen los mismos
+`pasivos_totales` salvo redondeo. Así que ese hueco no se llena descargando sino copiando del
+ANUAL, con el control de que los pasivos coincidan.
+
+#### El bug: **un reproceso borraba las cargas manuales**
+
+Al recargar el corpus, la cobertura **bajó** de 80,1 % a 79,3 % y GRUPO_SURA volvió a salir con
+deuda cero — justo lo que la carga manual venía a corregir. Causa: `extraer_xbrl.py` solo fusiona
+con la fila previa si su `metodo_validacion` es `xbrl_radicado` o `doble_extraccion`. Una fila
+`manual` no entraba en esa lista, así que el job la reemplazaba con el `None` del XBRL.
+
+Corregido: `manual` va ahora en la lista de fusión. El orden se mantiene —lo que el XBRL trae
+sigue pisando a lo manual—, así que la carga a mano solo sobrevive donde el canal no tiene nada
+que decir, que es para lo que existe. Comprobado reprocesando GRUPO_SURA: los 6 períodos siguen
+ahí.
+
+**Es el tipo de bug que no da error y deshace trabajo en silencio.** PEI no lo sufrió solo porque
+no tiene XBRL y el job no lo toca.
+
+#### Estado
+
+**677 filas, 543 con deuda (80,2 %), 134 sin.** De las 134: 78 períodos sin XBRL en el corpus, 33
+archivos que no traen las etiquetas, 23 trimestrales de GRUPO_SURA sin estado de situación
+financiera.
+
 #### Lo que sigue pendiente
 
 - Verificar contra nota los 7 de nivel `estructura` (ECOPETROL, ISA, EXITO, GRUPO_NUTRESA,

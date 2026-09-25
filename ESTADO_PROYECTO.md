@@ -1933,3 +1933,29 @@ financiacion propia.
 Estado final: **657 filas, 526 con deuda (80,1%), 131 sin**. Se arranco con 281 de 630 sin deuda
 (44,6%). De las 131: 79 periodos que no existen en SIMEV, 29 archivos sin las etiquetas, 23
 trimestrales de GRUPO_SURA sin estado de situacion financiera.
+
+## 25-sep-2026 (cont. 3) — 20 XBRL nuevos y un bug que borraba las cargas manuales
+
+Alex bajo 24 XBRL. Se cargaron 20 (BVC 2019-ANUAL y 2020-T1/T2/T3, CORFICOLOMBIANA 2018-ANUAL y
+2019-T1/T2, CONCONCRETO 2018-ANUAL y 2019-T2/T3, EL_CONDOR 2019-T1/T2/T3, BANCO_DE_BOGOTA
+2018-ANUAL y 2019-T2, ETB 2019-T1/T2, ENKA 2019-T1/T2, CEMENTOS_ARGOS 2018-ANUAL), con su
+procedencia en el MANIFESTO.
+
+Tres hallazgos al organizarlos:
+  - `C-I` NO es "individual": es consolidado INTERMEDIO (trimestral), frente a `C-C` = consolidado
+    de CIERRE. Lo confirma el punto de entrada (-con-int / -con-cie). Casi se descartan 16
+    archivos buenos.
+  - Dos archivos eran de EPSA E.S.P. (la filial), no de Celsia S.A. Esto INVALIDA lo que la sesion
+    anterior concluyo sobre CELSIA: busco en tipo=261/entidad=026 cuando la matriz cotizada es
+    tipo 0066/entidad 000061.
+  - Las filas T4 son el mismo cierre que ANUAL (mismos pasivos salvo redondeo). SIMEV no publica
+    un T4 aparte, asi que ese hueco se llena copiando del ANUAL, no descargando.
+
+**El bug:** al recargar el corpus la cobertura BAJO de 80,1% a 79,3% y GRUPO_SURA volvio a deuda
+cero. `extraer_xbrl.py` solo fusionaba con la fila previa si su metodo era xbrl_radicado o
+doble_extraccion; una fila `manual` no entraba, asi que el job la reemplazaba con el None del
+XBRL. Corregido: `manual` va en la lista de fusion, manteniendo el orden (el XBRL sigue pisando a
+lo manual). Comprobado reprocesando GRUPO_SURA. Es el tipo de bug que no da error y deshace
+trabajo en silencio.
+
+Estado: 677 filas, 543 con deuda (80,2%), 134 sin.
