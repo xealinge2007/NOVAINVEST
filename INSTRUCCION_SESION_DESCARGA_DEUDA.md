@@ -1,3 +1,22 @@
+# ⛔ OPERACIÓN CERRADA (25-sep-2026) — NO EJECUTAR
+
+> **Este documento ya se ejecutó y está cumplido. No se lo pases a una sesión nueva.**
+>
+> La sesión de descarga barrió SIMEV emisor por emisor y leyó los informes de la Prioridad 4.
+> Resultado: la cobertura de `deuda_financiera` pasó de 44,6 % de filas vacías a **19,9 %**
+> (657 filas, 526 con deuda). **No queda nada por descargar**: de lo que falta, 79 períodos
+> no existen en SIMEV (verificados uno por uno), 29 son archivos que el emisor no etiquetó y
+> 23 son trimestrales de GRUPO_SURA que no publican estado de situación financiera.
+>
+> Se conserva por el método, que sirve para la próxima descarga de SIMEV: cómo está armada la
+> URL, por qué la API devuelve 401 sin sesión, el bug de estado obsoleto de la SPA y la tabla
+> de identificadores tipo/entidad de cada emisor.
+>
+> El estado final está en `db/DOCTRINA_VALOR.md` y `ESTADO_PROYECTO.md`. Lo que la sesión
+> encontró, en `PROGRESO_DESCARGA_2026-09-23.txt`.
+
+---
+
 # Instrucción para la sesión de descarga — cerrar `deuda_financiera`
 
 > Pégale esto completo a una sesión nueva de Claude Code abierta en
