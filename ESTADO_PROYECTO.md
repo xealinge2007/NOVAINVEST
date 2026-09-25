@@ -1882,3 +1882,32 @@ soporte XLSX en `ingesta_simev.py` y `extraer_fundamentales.py`), por el caso re
 trabajo desaconseja. Para ETB coincide con su formula verificada y la fila quedo marcada
 `provisional`, asi que no hay dato malo publicado; queda la advertencia de no ampliarlo a mas
 emisores sin darle el mismo tratamiento por emisor. Detalle en `db/DOCTRINA_VALOR.md`.
+
+## 25-sep-2026 (cont.) — carga manual: GRUPO_SURA deja de tener deuda cero
+
+Alex autorizo cargar a mano lo que el XBRL no puede leer. No hizo falta descargar nada: todo
+estaba ya en el corpus, leyendo el BALANCE consolidado en vez de las notas.
+
+El control que lo hace auditable: el "Total pasivos" leido del PDF tiene que coincidir (+-0,5%)
+con el `pasivos_totales` que el XBRL ya dejo en la fila -- eso valida pagina, columna y
+perimetro de una sola vez. Funciono como filtro real: descarto el 2022-ANUAL de GRUPO_SURA.
+
+  GRUPO_SURA  deuda 0 -> 11.049,96   EV 11.426 -> 22.373 (casi el doble)
+              balance consolidado 2025-ANUAL pag. 238: obligaciones financieras
+              5.247.172 + bonos emitidos 5.802.786. Su Total pasivos (71.577.449)
+              cuadra al peso con el Liabilities del XBRL. Lo que NO servia, y por
+              eso se creyo imposible, era su Nota 6.2.1: esa es del SEPARADO.
+              6 periodos cargados.
+
+  PEI         2024-T2 636,877 -> 2.364,165 y 2024-T3 523,207 -> 2.364,250.
+              No eran huecos sino datos MALOS: traian solo la porcion corriente.
+
+  DAVIVIENDA  se decidio NO completarla (seria 28.907,336 en 2025): solo 2 de sus
+              7 periodos tienen informe parseable y completar esos dos rompe la
+              serie. Si se limpiaron dos datos malos heredados: 2025-T1 (7.962,514,
+              que era BondsIssued) y 2025-T2 (0.0) -> None.
+
+  BVC         se deja como hueco a proposito: su deuda es 0,608 MMM sobre un EV de
+              1.018 (0,06%), y su 2025-ANUAL local es solo Informe de Gestion.
+
+Estado: 657 filas, 491 con deuda (74,7%), 166 sin.

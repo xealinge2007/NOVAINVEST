@@ -159,6 +159,9 @@ MIEMBRO_PATRIMONIO_TOTAL = "EquityMember"
 #   `nota_parcial`  reproduce una línea concreta del balance del informe, pero
 #                   se sabe que deja fuera otra que también es deuda, porque el
 #                   XBRL no trae con qué reproducirla. Queda dicho cuál.
+#   `carga_manual`  el XBRL no permite leerla, pero la cifra existe en el
+#                   informe y se carga a mano (`metodo_validacion='manual'`),
+#                   con el período y la página citados.
 #   `sin_verificar` lista de fórmulas vacía -> `None`, hueco declarado.
 
 _OBL_C = "ObligacionesFinancierasCorrientes"
@@ -329,16 +332,32 @@ DEUDA_FINANCIERA_POR_EMISOR = {
                          "instrumentos de deuda. Se toma la línea de créditos bancarios, que "
                          "es el mismo concepto que se está usando en los otros cuatro bancos. "
                          "**Excluye los 12.763,6 de instrumentos de deuda emitidos**: el XBRL "
-                         "no trae ninguna etiqueta que reproduzca esa línea"),
+                         "no trae ninguna etiqueta que reproduzca esa línea. Se evaluó "
+                         "completarla a mano desde el balance (créditos 16.143.780 + "
+                         "instrumentos de deuda 12.763.556 = 28.907.336 en 2025) y se decidió "
+                         "NO hacerlo: solo 2 de sus 7 períodos tienen informe local parseable, "
+                         "así que completar esos dos rompería la serie -- es preferible una "
+                         "serie consistente y declarada parcial que una mezclada. Lo que sí se "
+                         "limpió: 2025-T1 traía 7.962,514 (= `BondsIssued`, que no es ni una "
+                         "línea ni la otra del balance) y 2025-T2 un 0.0; los dos eran datos "
+                         "malos heredados y quedaron en `None`"),
 
     # --- no etiquetan nada reconocible: hueco declarado ---------------------
     "BVC": ([], "sin_verificar",
             "solo etiqueta `ShorttermBorrowings` (607.698) y un pasivo por arrendamiento; no "
             "hay con qué armar un total de deuda financiera"),
-    "GRUPO_SURA": ([], "sin_verificar",
-                   "no etiqueta ninguna de las bolsas de deuda en el XBRL consolidado. Su "
-                   "Nota 6.2.1 en el corpus local es la del estado SEPARADO, que no "
-                   "corresponde al perímetro del XBRL"),
+    "GRUPO_SURA": ([], "carga_manual",
+                   "el XBRL consolidado no etiqueta ninguna bolsa de deuda, así que por este "
+                   "canal la fila sale vacía a propósito. PERO la cifra sí existe y se carga a "
+                   "mano: el **balance consolidado** del informe (2025-ANUAL, pág. 238) trae "
+                   "'Obligaciones financieras' 5.247.172 + 'Bonos emitidos' 5.802.786 = "
+                   "11.049.958 millones, y su 'Total pasivos' (71.577.449) coincide al peso "
+                   "con el `Liabilities` del XBRL (71.577.448) -- mismo perímetro, cifra "
+                   "utilizable. Lo que NO sirve es su Nota 6.2.1, que es del estado SEPARADO. "
+                   "Cargados así 6 períodos (2023-ANUAL, 2024-ANUAL, 2025-T1/T2/T3, "
+                   "2025-ANUAL) con `metodo_validacion='manual'`; los trimestrales de "
+                   "2023-2024 no traen estado de situación financiera, así que no hay con qué "
+                   "validar el perímetro y quedan en hueco"),
 }
 
 

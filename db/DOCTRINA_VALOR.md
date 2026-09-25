@@ -1805,6 +1805,46 @@ amortización grande en el último trimestre de 2019) pero no está comprobado, 
 de "no corrientes" trae el mismo valor en las cuatro columnas, así que la columna elegida no se
 puede discriminar por ahí.
 
+### Carga manual de lo que el XBRL no puede leer (25-sep-2026)
+
+Tres emisores tenían la deuda vacía o mal no por el mapeo sino porque su XBRL no la etiqueta. Se
+resolvieron leyendo el **balance consolidado** de los informes que ya estaban en el corpus -- no
+hizo falta descargar nada.
+
+**El control que hace esto auditable**: el "Total pasivos" leído del PDF tiene que coincidir
+(±0,5 %) con el `pasivos_totales` que el XBRL ya dejó en la fila. Eso valida a la vez la página,
+la columna del comparativo y el perímetro. Sin esa coincidencia no se escribe. Funcionó como
+filtro real: descartó el 2022-ANUAL de GRUPO_SURA, cuyas columnas no cuadraban con la base.
+
+**GRUPO_SURA — de deuda cero a su deuda real.** Balance consolidado 2025-ANUAL, pág. 238:
+"Obligaciones financieras" 5.247.172 + "Bonos emitidos" 5.802.786 = **11.049.958 millones**. Su
+Total pasivos (71.577.449) coincide al peso con el `Liabilities` del XBRL (71.577.448). Lo que
+NO sirve, y por eso se creyó imposible, es su Nota 6.2.1: esa es del estado SEPARADO. Cargados 6
+períodos (2023-ANUAL, 2024-ANUAL, 2025-T1/T2/T3, 2025-ANUAL). Los trimestrales de 2023-2024 no
+traen estado de situación financiera, así que quedan en hueco.
+
+Efecto: **EV de 11.426 a 22.373 -- casi el doble**. EVA de -4.194,6 a -4.943,2. Era el mismo
+error de fondo que tenían Nutresa y Promigas.
+
+**PEI — dos datos malos, no dos huecos.** 2024-T2 traía 636,877 y 2024-T3 523,207, contra 2.509,5
+en 2024-ANUAL y 2.514,7 en 2025-T1. Verificado contra la fuente: eran **solo la porción
+corriente**; la línea "Obligaciones financieras largo plazo" quedaba fuera. Corregidos a
+**2.364,165** y **2.364,250**, validados contra sus pasivos totales, y ahora encajan en la serie.
+Se respeta la definición que ya fijó la doctrina para PEI: obligaciones financieras corriente +
+largo plazo, **sin** los bonos ordinarios.
+
+**DAVIVIENDA — se decidió NO completarla.** Su cifra completa 2025 sería 28.907.336 (créditos
+16.143.780 + instrumentos de deuda emitidos 12.763.556), pero solo 2 de sus 7 períodos tienen
+informe local parseable: completar esos dos rompería la serie. Queda como `nota_parcial`,
+consistente y declarada. Lo que sí se limpió: 2025-T1 traía 7.962,514 (= `BondsIssued`, que no
+es ni una línea ni la otra del balance) y 2025-T2 un 0.0 -- datos malos heredados, ahora `None`.
+
+**BVC se dejó como hueco a propósito.** Su `2025-ANUAL` local es solo el Informe de Gestión, sin
+estados financieros, y su deuda es 0,608 MMM sobre un EV de 1.018: moverla cambia el EV un
+0,06 %. Son 27 filas que se ven mal en el conteo y no cambian ninguna conclusión.
+
+Estado tras la carga: **657 filas, 491 con deuda (74,7 %), 166 sin**.
+
 #### Lo que sigue pendiente
 
 - Verificar contra nota los 7 de nivel `estructura` (ECOPETROL, ISA, EXITO, GRUPO_NUTRESA,
