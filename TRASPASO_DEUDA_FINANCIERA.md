@@ -1,7 +1,8 @@
 # Traspaso — `deuda_financiera` en NOVAINVEST
 
-> Estado al 25-sep-2026. Documento autocontenido: se puede leer sin haber visto la sesión
-> anterior. Si vas a seguir con esto, **lee primero la sección "Antes de tocar nada"**.
+> Estado al 25-sep-2026 (actualizado más tarde el mismo día, ver §8). Documento autocontenido:
+> se puede leer sin haber visto la sesión anterior. Si vas a seguir con esto, **lee primero la
+> sección "Antes de tocar nada"**.
 
 ---
 
@@ -11,13 +12,16 @@
 corregidos contra la nota de su propio informe. Eso **cambió el signo del EVA en tres emisores**,
 que es un cambio de conclusión de inversión, no un ajuste cosmético.
 
-**Lo que no avanza es el último 20 % de cobertura**, y ahí es donde se han ido las últimas
-rondas. No es un atasco por dificultad: es que **lo que queda no tiene fuente**. Ver §4.
+**Actualización del mismo día (§8): la cobertura de GRUPO_SURA que este documento daba por
+estructuralmente cerrada NO lo estaba.** 13 de sus 23 huecos se llenaron en la misma sesión con
+archivos que ya estaban en el corpus — el diagnóstico original ("su informe trimestral no trae
+balance") era incorrecto para esos 13. Ver §8 antes de asumir que el §4 de abajo sigue vigente
+tal cual para GRUPO_SURA.
 
-| | al empezar | hoy |
-|---|---|---|
-| filas con deuda | 349 de 630 (55,4 %) | **543 de 677 (80,2 %)** |
-| emisores verificados contra su nota | 0 | **20 de 23** |
+| | al empezar | tras la sesión original | tras §8 (mismo día) |
+|---|---|---|---|
+| filas con deuda | 349 de 630 (55,4 %) | 543 de 677 (80,2 %) | **556 de 677 (82,1 %)** |
+| emisores verificados contra su nota | 0 | 20 de 23 | **20 de 23** (GRUPO_SURA ahora bien parcialmente, no en 0) |
 
 ---
 
@@ -76,17 +80,23 @@ Cada una costó una ronda entera. Están documentadas en detalle en `db/DOCTRINA
 
 ## 4. Lo que queda, y por qué casi nada vale la pena
 
-**134 filas sin deuda.** Repartidas así:
+**Esta sección describe el estado ANTES de §8. Para GRUPO_SURA, la fila de "sin estado de
+situación financiera" de la tabla de abajo estaba mal diagnosticada — ver §8.** Se deja tal cual
+se escribió porque el resto (78 + 33) sigue vigente y verificado.
+
+**134 filas sin deuda** (121 después de §8). Repartidas así:
 
 | causa | filas | ¿se puede arreglar? |
 |---|---|---|
 | el período **no existe en SIMEV** | 78 | **No.** Verificado uno por uno |
 | hay XBRL pero **el emisor no etiquetó** la deuda ese trimestre | 33 | **No.** Volver a bajarlo da el mismo archivo |
-| trimestrales de GRUPO_SURA **sin estado de situación financiera** | 23 | **No.** Su informe trimestral no trae balance |
+| trimestrales de GRUPO_SURA "sin estado de situación financiera" | ~~23~~ **10** | **Estaba mal.** 13 de los 23 SÍ tenían balance (páginas escaneadas, canal B) — corregido en §8. Los 10 que quedan (2019-ANUAL, 2020/2021/2022 T1-T3) sí carecen de archivo local |
 
 Y por antigüedad: **81 son de 2020 o antes**, 34 de 2021-2023, y **solo 19 de 2024-2026**. El
 análisis usa el último saldo y el TTM, así que **los huecos viejos no afectan ninguna conclusión
-actual** — solo las series históricas y los backtests.
+actual** — salvo la excepción real que sí importaba: antes de §8, el "último saldo" de GRUPO_SURA
+caía en 2025-T3 porque 2025-T4/2026-T1/2026-T2 estaban vacíos — es decir, el emisor SÍ tenía un
+hueco en su dato más reciente, no solo en la historia vieja. Ya está cerrado.
 
 ### Lo único con pista concreta
 
@@ -138,7 +148,88 @@ de inversión.
 
 ---
 
-## 7. Dónde está cada cosa
+## 7. Corrección — 13 de los 23 huecos de GRUPO_SURA sí tenían balance (25-sep-2026, misma tarde)
+
+Alex pidió revisar si había forma de acercar esto al 100 %. Antes de tocar nada se verificaron
+los tres números de §1/§4 contra Supabase en vivo — coinciden exactos (543/677, el desglose por
+causa y por antigüedad también). El documento no estaba desactualizado. El error estaba en el
+diagnóstico de una de las tres causas.
+
+**La fila "GRUPO_SURA sin estado de situación financiera" (23) estaba mal explicada.** Revisando
+`fundamentales_reportados` fila por fila: 18 de esos 23 SÍ tenían `activos_totales`,
+`pasivos_totales` y `patrimonio` cargados (varios vía XBRL, otros vía la lectura visual de
+`db/CANAL_B_GRUPO_SURA_STAGING.md`) — si el balance no existiera, esos campos también estarían
+vacíos. La razón real, ya documentada en `DEUDA_FINANCIERA_POR_EMISOR["GRUPO_SURA"]`
+(`lector_xbrl.py`): **el XBRL consolidado de SURA nunca etiqueta la deuda**, a propósito, así que
+esa columna sale vacía por diseño — pero la cifra sí está en el balance del PDF (línea
+"Obligaciones financieras" + línea "Bonos emitidos"), sin necesidad de nota aparte. Ya se había
+hecho esta lectura para 6 períodos (2023/2024/2025-ANUAL, 2025-T1/T2/T3). Para los otros 18 nadie
+había repetido el ejercicio — `jobs/cargar_staging_sura_canal_b.py` cargó activos/pasivos/
+patrimonio pero nunca tocó la línea de deuda.
+
+**De esos 18, 13 tenían el PDF fuente ya descargado en `SIMEV_BVC/GRUPO_SURA/`** (los otros 5 —
+2021 completo y 2022-T1/T2/T3 — no tienen archivo local, son huecos reales de descarga). Las
+páginas del Estado de Situación Financiera Consolidado en estos informes trimestrales son
+**imágenes escaneadas sin capa de texto** (por eso ningún `grep`/regex las encontró antes — el
+mismo patrón de bug #1 de `db/DOCTRINA_VALOR.md`, "residuo de texto real en el pie de página").
+Se renderizaron a imagen (`pdfplumber.to_image()`) y se leyeron visualmente, canal B, el mismo
+método que ya usa el proyecto para GRUPO_SURA y PEI.
+
+**Bono inesperado**: el informe 2022-ANUAL trae en sus columnas comparativas el cierre de
+2020 ("1 de enero de 2021 Re-expresado") y de 2021 ("Diciembre 2021 Re-expresado") — dos períodos
+más, de un solo documento, sin necesitar archivo propio.
+
+**Cada cifra se verificó cruzando el `activos_totales` de la imagen contra el valor YA cargado
+en Supabase — coincidieron exactos en los 13, 0 discrepancias**, y dos de los trece coinciden
+además al peso con un período hermano ya cargado por otro canal (2023-T4 = 2023-ANUAL =
+9.784,262; 2025-T4 = 2025-ANUAL = 11.049,958, misma fecha de corte, dos filas separadas en la
+tabla).
+
+| período | Obligaciones financieras + Bonos emitidos (MMM) | fuente |
+|---|---:|---|
+| 2020-ANUAL | 10.267,702 | comparativo en 2022-ANUAL, pág. 116 |
+| 2021-ANUAL | 9.587,228 | comparativo en 2022-ANUAL, pág. 116 |
+| 2022-ANUAL | 10.453,457 | 2022-ANUAL, pág. 116 |
+| 2023-T1 | 10.328,234 | 2023-T1, pág. 58 |
+| 2023-T2 | 9.434,168 | 2023-T2, pág. 52 |
+| 2023-T3 | 9.679,796 | 2023-T3, pág. 51 |
+| 2023-T4 | 9.784,262 | 2023-T4, pág. 42 (= 2023-ANUAL) |
+| 2024-T1 | 10.044,907 | 2024-T1, pág. 46 |
+| 2024-T2 | 10.935,419 | 2024-T2, pág. 9 |
+| 2024-T3 | 11.269,524 | 2024-T3, pág. 9 |
+| 2025-T4 | 11.049,958 | 2025-T4, pág. 26 (= 2025-ANUAL) |
+| 2026-T1 | 11.422,601 | 2026-T1, pág. 37 |
+| 2026-T2 | 10.613,167 | 2026-T2, pág. 38 |
+
+Cargado con `jobs/cargar_deuda_sura_canal_b2.py` (deja el script y el razonamiento documentado
+para la próxima vez). `python jobs/test_lector_xbrl.py` sigue pasando completo.
+`python jobs/analizador_fundamental.py` corrido de nuevo: sin errores nuevos, y el "último saldo"
+de GRUPO_SURA que usa el motor de valor pasó de 2025-T3 (11.284,865, un dato de hace un año) a
+**2026-T2 (10.613,167, el trimestre más reciente que existe)** — esto sí movía la cifra que
+alimenta el EVA/ROIC actual de uno de los 5 holdings del MVP W3a, no solo una serie histórica.
+
+**Resultado**: 543 → **556 de 677 (82,1 %)**. GRUPO_SURA pasó de 6/29 a **19/29 (65,5 %)**.
+
+**Lo que sigue sin tener arreglo** (121 filas, verificado que la causa no cambió para las otras
+dos categorías): los 78 períodos que no existen en SIMEV, los 33 que el emisor no etiquetó, y
+ahora **10** de GRUPO_SURA (2019-ANUAL, 2020 completo, 2021 completo, 2022-T1/T2/T3) — estos sí
+son huecos de descarga genuinos, sin PDF local, mismo patrón que el resto del universo.
+
+**No se tocó CELSIA en esta pasada** (2019-T1/T3, §4 punto 1 de arriba): se confirmó que
+tampoco tienen archivo local (`SIMEV_BVC/CELSIA/` solo tiene 2019-ANUAL y 2019-T2), así que
+requieren una sesión de descarga con navegador autenticado (mismo método de
+`INSTRUCCION_SESION_DESCARGA_DEUDA.md`), no lectura de un archivo que ya esté en el corpus. Bajo
+impacto (2 filas de 2019), no se persiguió.
+
+**Lección para la próxima sesión que toque cobertura**: antes de aceptar "no se puede arreglar"
+para un emisor, comprobar si `activos_totales`/`pasivos_totales` ya están cargados en esa fila —
+si lo están, el balance existe y el hueco es de una línea puntual (deuda, en este caso), no del
+documento completo. La sesión original de este documento no hizo esa comprobación fila por fila
+para GRUPO_SURA, solo revisó la causa a nivel de emisor.
+
+---
+
+## 8. Dónde está cada cosa
 
 | qué | dónde |
 |---|---|
@@ -150,6 +241,7 @@ de inversión.
 | el informe de la sesión de descarga | `PROGRESO_DESCARGA_2026-09-23.txt` (ojo: su párrafo sobre CIBEST quedó superado, tiene una nota al final) |
 | la instrucción de descarga | `INSTRUCCION_SESION_DESCARGA_DEUDA.md` — **operación cerrada**, se conserva por el método |
 | archivos descartados y por qué | `C:\Proyectos\BVC\_descartados\LEEME.txt` |
+| los 13 períodos de deuda de GRUPO_SURA leídos por canal B (§7) | `jobs/cargar_deuda_sura_canal_b2.py` |
 
 Para reprocesar después de agregar XBRL:
 
