@@ -1959,3 +1959,31 @@ lo manual). Comprobado reprocesando GRUPO_SURA. Es el tipo de bug que no da erro
 trabajo en silencio.
 
 Estado: 677 filas, 543 con deuda (80,2%), 134 sin.
+
+## 25-sep-2026 (cont. 4) — los archivos nuevos destaparon un bug en ETB y ENKA
+
+De los 20 periodos que trajeron los archivos de Alex, 16 ganaron deuda. Dos valores salieron
+absurdos y al tirar del hilo aparecio un fallo de fondo: **ETB 2019-T1 daba 12,5 cuando el real es
+542,7** (43 veces menos). Su `Borrowings` en ese archivo trae solo la porcion corriente -- el mismo
+modo de fallo de GEB y MINEROS, pero en un emisor cuya formula estaba VERIFICADA contra su nota,
+porque la verificacion fue sobre el cierre 2025, donde esa etiqueta si da el total.
+
+Barrido sistematico de los emisores con formula [[Borrowings],...]:
+  ETB          5/21 discrepan -> tiene razon el par de obligaciones
+  ENKA        12/27 discrepan -> tiene razon el par de obligaciones
+  CELSIA      25/25 discrepan -> tiene razon Borrowings (el par deja los bonos fuera)
+  GRUPO_ARGOS 23/23 discrepan -> tiene razon Borrowings
+  CONCONCRETO  2/29 discrepan -> tiene razon Borrowings (Nota 7.13)
+  ECOPETROL, ISA, EL_CONDOR, FABRICATO, NUTRESA: 0 discrepan
+
+No se puede generalizar en ninguna direccion. Corregidos solo ETB y ENKA, sin cambiar sus cifras
+verificadas de 2025.
+
+**Leccion:** verificar el cierre mas reciente contra la nota NO basta; hay que mirar la serie
+completa. La validacion de series del principio SI dio la senal (marco un "salto x2,6" en ENKA
+2022-09-30) y se interpreto como endeudamiento real. Era este bug.
+
+Queda senalado sin resolver un zigzag ANUAL-vs-trimestres en ETB y ENKA. Son los dos emisores mas
+pequenos del universo (EV 1.381 y 262) y no cambia ninguna conclusion.
+
+Estado: 677 filas, 543 con deuda (80,2%), 134 sin.

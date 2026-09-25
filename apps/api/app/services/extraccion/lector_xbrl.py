@@ -134,6 +134,14 @@ MIEMBRO_PATRIMONIO_TOTAL = "EquityMember"
 #     `ObligacionesFinancieras{Corrientes,NoCorrientes}`.
 #   - TERPEL: no etiqueta ninguna de las anteriores; su deuda va en
 #     `Other{Current,Noncurrent}FinancialLiabilities`.
+#   - **La fórmula correcta de un emisor puede fallar en períodos sueltos.** No
+#     basta con verificar el cierre más reciente: ETB reproduce su Nota 17 al
+#     peso en 2025 con `Borrowings`, y esa misma etiqueta da 12,5 en 2019-T1
+#     cuando el valor real es 542,7. Donde el emisor etiqueta las dos cosas, el
+#     par `ObligacionesFinancieras{Corrientes,NoCorrientes}` resultó más estable
+#     que `Borrowings` -- pero NO se puede generalizar: en CELSIA, GRUPO_ARGOS y
+#     CONSTRUCTORA_CONCONCRETO es al revés y el par deja los bonos fuera. Hay
+#     que mirar la serie completa de cada emisor, no un cierre.
 #   - Los BANCOS son un caso aparte: para ellos `Borrowings` es solo la línea
 #     de créditos con otros bancos, y deja fuera los títulos/bonos emitidos y
 #     la financiación de mercado monetario. Para GRUPO_AVAL eso era 20.491,7
@@ -217,9 +225,14 @@ DEUDA_FINANCIERA_POR_EMISOR = {
                                  "Nota 7.13 'Obligaciones financieras' consolidada "
                                  "2025-ANUAL: 264.230.452 = Borrowings al peso (y el "
                                  "comparativo 2024: 264.729.963)"),
-    "ETB": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+    "ETB": ([[_OBL_C, _OBL_NC], [_CORTO, _LARGO], [_TOTAL]], "nota",
             "Nota 17 'Obligaciones financieras' consolidada 2025-ANUAL: 852.889.908 "
-            "(corto 176.309.536 + largo 676.580.372) = Borrowings al peso"),
+            "(corto 176.309.536 + largo 676.580.372). En 2025 las tres fórmulas dan lo "
+            "mismo, pero el par de obligaciones va PRIMERO porque en 5 de 21 períodos el "
+            "`Borrowings` de ETB es un parcial: en 2019-T1 da 12,5 contra los 542,7 del par "
+            "(43 veces menos), y en 2022-T1 al revés -- ahí `ShorttermBorrowings` es el que "
+            "falla (175,4 cuando la obligación corriente real es 529,5). El par es el único "
+            "que da una serie continua en todo el rango"),
     "GEB": ([[_OBL_C, _OBL_NC]], "nota",
             "Nota 19 'Obligaciones financieras' consolidada 2025-ANUAL: 20.692.784 millones "
             "(corriente 929.806 + no corriente 19.762.978), bonos incluidos. `Borrowings` "
@@ -259,11 +272,14 @@ DEUDA_FINANCIERA_POR_EMISOR = {
                   "arrendamientos 26.792 = 194.010; no corriente = 515.028 + 30.094 = 545.122; "
                   "total 739.132, al peso. Ojo: sus `ObligacionesFinancieras*` INCLUYEN los "
                   "arrendamientos. No tagea bonos"),
-    "ENKA": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
+    "ENKA": ([[_OBL_C, _OBL_NC], [_CORTO, _LARGO], [_TOTAL]], "nota",
              "Nota 16 del informe 2025-ANUAL: corriente 6.125 + no corriente 32.714 = 38.839, "
              "al peso. Una sola obligación (Bancolombia, IBR+1,44%), sin bonos. El informe no "
              "está en el módulo de Informes Financieros de SIMEV sino en 'Información "
-             "relevante' (publicado 12-mar-2026)"),
+             "relevante' (publicado 12-mar-2026). El par de obligaciones va PRIMERO por lo "
+             "mismo que en ETB: en 12 de 27 períodos el `Borrowings` de ENKA es un parcial "
+             "(2021-T2 da 19,1 contra los 48,8 del par). El 'salto x2,6' que se había anotado "
+             "en 2022-09-30 como endeudamiento real era, en realidad, este bug"),
     "FABRICATO": ([[_TOTAL], [_CORTO, _LARGO], [_OBL_C, _OBL_NC]], "nota",
                   "Nota 11 del informe 2025-ANUAL: corriente 25.291 + no corriente 111.665 = "
                   "136.956, al peso. No tagea bonos"),

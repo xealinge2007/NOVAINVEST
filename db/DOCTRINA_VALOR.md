@@ -1932,6 +1932,42 @@ no tiene XBRL y el job no lo toca.
 archivos que no traen las etiquetas, 23 trimestrales de GRUPO_SURA sin estado de situación
 financiera.
 
+#### Lo que los 20 archivos nuevos destaparon: la fórmula puede fallar en períodos sueltos
+
+De los 20 períodos que llegaron, **16 ganaron deuda**. Pero dos de esos valores eran absurdos y al
+tirar del hilo apareció un fallo de fondo:
+
+**ETB 2019-T1 salió con 12,5 cuando el valor real es 542,7** — 43 veces menos. Su `Borrowings` de
+ese archivo trae solo la porción corriente, el mismo modo de fallo de GEB y MINEROS, pero **en un
+emisor cuya fórmula estaba verificada contra su nota**. Porque la verificación fue sobre el cierre
+2025, donde `Borrowings` sí da el total correcto.
+
+Barrido sistemático de todos los emisores cuya fórmula empieza por `Borrowings`, comparando contra
+`ShorttermBorrowings + LongtermBorrowings` y contra el par de obligaciones:
+
+| emisor | períodos que discrepan | quién tiene razón |
+|---|---|---|
+| ETB | 5 de 21 | el **par de obligaciones** |
+| ENKA | 12 de 27 | el **par de obligaciones** |
+| CELSIA | 25 de 25 | **`Borrowings`** (el par deja los bonos fuera) |
+| GRUPO_ARGOS | 23 de 23 | **`Borrowings`** (íd.) |
+| CONSTRUCTORA_CONCONCRETO | 2 de 29 | **`Borrowings`** (verificado contra su Nota 7.13) |
+| ECOPETROL, ISA, EL_CONDOR, FABRICATO, GRUPO_NUTRESA | 0 | da igual |
+
+Así que **no se puede generalizar en ninguna de las dos direcciones**. Corregido solo donde
+correspondía: ETB y ENKA pasan a `ObligacionesFinancieras{Corrientes,NoCorrientes}` primero, lo
+que no cambia sus cifras verificadas de 2025 (852,890 y 38,839) y elimina los valores absurdos.
+
+**La lección:** verificar el cierre más reciente contra la nota **no basta**. Hay que mirar la
+serie completa. La validación de series que se corrió al principio de este trabajo sí dio la señal
+—marcó un "salto x2,6" en ENKA 2022-09-30— y se interpretó como endeudamiento real. Era este bug.
+
+**Zigzag pendiente, sin resolver:** en ETB y ENKA los cierres ANUALES no cuadran con sus propios
+trimestres (ETB 2019-ANUAL 362,1 contra ~541 en T1/T2/T3; 2021-ANUAL 530,3 contra ~361). Puede ser
+amortización real de diciembre o puede ser otro artefacto de etiquetado. Queda señalado, no
+resuelto: son los dos emisores más pequeños del universo (EV 1.381 y 262) y no cambia ninguna
+conclusión.
+
 #### Lo que sigue pendiente
 
 - Verificar contra nota los 7 de nivel `estructura` (ECOPETROL, ISA, EXITO, GRUPO_NUTRESA,
