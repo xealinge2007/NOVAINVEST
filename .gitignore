@@ -4,3 +4,8 @@ __pycache__/
 *.pyc
 jobs/*.csv
 apps/web/node_modules/
+apps/web/dist/
+*.log
+apps/api/.uvicorn.log
+/ANALISIS_FUNDAMENTAL_BVC.csv
+/PEDIDOS_DESCARGA.csv

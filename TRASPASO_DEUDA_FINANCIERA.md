@@ -1,6 +1,6 @@
 # Traspaso — `deuda_financiera` en NOVAINVEST
 
-> Estado al 25-sep-2026 (actualizado más tarde el mismo día, ver §8). Documento autocontenido:
+> Estado al 25-sep-2026 (actualizado más tarde el mismo día, ver §7). Documento autocontenido:
 > se puede leer sin haber visto la sesión anterior. Si vas a seguir con esto, **lee primero la
 > sección "Antes de tocar nada"**.
 
@@ -12,13 +12,13 @@
 corregidos contra la nota de su propio informe. Eso **cambió el signo del EVA en tres emisores**,
 que es un cambio de conclusión de inversión, no un ajuste cosmético.
 
-**Actualización del mismo día (§8): la cobertura de GRUPO_SURA que este documento daba por
+**Actualización del mismo día (§7): la cobertura de GRUPO_SURA que este documento daba por
 estructuralmente cerrada NO lo estaba.** 13 de sus 23 huecos se llenaron en la misma sesión con
 archivos que ya estaban en el corpus — el diagnóstico original ("su informe trimestral no trae
-balance") era incorrecto para esos 13. Ver §8 antes de asumir que el §4 de abajo sigue vigente
+balance") era incorrecto para esos 13. Ver §7 antes de asumir que el §4 de abajo sigue vigente
 tal cual para GRUPO_SURA.
 
-| | al empezar | tras la sesión original | tras §8 (mismo día) |
+| | al empezar | tras la sesión original | tras §7 (mismo día) |
 |---|---|---|---|
 | filas con deuda | 349 de 630 (55,4 %) | 543 de 677 (80,2 %) | **556 de 677 (82,1 %)** |
 | emisores verificados contra su nota | 0 | 20 de 23 | **20 de 23** (GRUPO_SURA ahora bien parcialmente, no en 0) |
@@ -80,21 +80,21 @@ Cada una costó una ronda entera. Están documentadas en detalle en `db/DOCTRINA
 
 ## 4. Lo que queda, y por qué casi nada vale la pena
 
-**Esta sección describe el estado ANTES de §8. Para GRUPO_SURA, la fila de "sin estado de
-situación financiera" de la tabla de abajo estaba mal diagnosticada — ver §8.** Se deja tal cual
+**Esta sección describe el estado ANTES de §7. Para GRUPO_SURA, la fila de "sin estado de
+situación financiera" de la tabla de abajo estaba mal diagnosticada — ver §7.** Se deja tal cual
 se escribió porque el resto (78 + 33) sigue vigente y verificado.
 
-**134 filas sin deuda** (121 después de §8). Repartidas así:
+**134 filas sin deuda** (121 después de §7). Repartidas así:
 
 | causa | filas | ¿se puede arreglar? |
 |---|---|---|
 | el período **no existe en SIMEV** | 78 | **No.** Verificado uno por uno |
 | hay XBRL pero **el emisor no etiquetó** la deuda ese trimestre | 33 | **No.** Volver a bajarlo da el mismo archivo |
-| trimestrales de GRUPO_SURA "sin estado de situación financiera" | ~~23~~ **10** | **Estaba mal.** 13 de los 23 SÍ tenían balance (páginas escaneadas, canal B) — corregido en §8. Los 10 que quedan (2019-ANUAL, 2020/2021/2022 T1-T3) sí carecen de archivo local |
+| trimestrales de GRUPO_SURA "sin estado de situación financiera" | ~~23~~ **10** | **Estaba mal.** 13 de los 23 SÍ tenían balance (páginas escaneadas, canal B) — corregido en §7. Los 10 que quedan (2019-ANUAL, 2020/2021/2022 T1-T3) sí carecen de archivo local |
 
 Y por antigüedad: **81 son de 2020 o antes**, 34 de 2021-2023, y **solo 19 de 2024-2026**. El
 análisis usa el último saldo y el TTM, así que **los huecos viejos no afectan ninguna conclusión
-actual** — salvo la excepción real que sí importaba: antes de §8, el "último saldo" de GRUPO_SURA
+actual** — salvo la excepción real que sí importaba: antes de §7, el "último saldo" de GRUPO_SURA
 caía en 2025-T3 porque 2025-T4/2026-T1/2026-T2 estaban vacíos — es decir, el emisor SÍ tenía un
 hueco en su dato más reciente, no solo en la historia vieja. Ya está cerrado.
 

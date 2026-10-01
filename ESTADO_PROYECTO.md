@@ -1,7 +1,10 @@
 # NOVAINVEST — estado del proyecto (leer esto primero)
 
-Última actualización: 15-jul-2026, tras dejar F3 con código completo (falta
-verificación contra Supabase real — ver §"Pendiente para cerrar F3" abajo).
+Última actualización de este encabezado: 1-oct-2026. **El diario real llega hasta el
+25-sep-2026**; la tabla de fases de abajo se corrigió el 1-oct: F3 está desplegada y F4a quedó
+casi cerrada (`deuda_financiera` al 82,1 %, ver `TRASPASO_DEUDA_FINANCIERA.md`). El criterio de
+valor vigente es el Motor de Valor (W0–W7, `db/DOCTRINA_VALOR.md`): W0–W3c hechos, **W4–W7 sin
+empezar**. Plan de trabajo vigente: `C:\Users\Alex\.claude\plans\realiza-un-plan-para-magical-ember.md`.
 
 > ⚠️ **Plan actualizado a v3 (01-sep-2026): el análisis de acciones es exclusivo de la BVC.**
 > Se eliminó del alcance el análisis de empresas de bolsas del mundo (para eso Alex usa
@@ -50,7 +53,7 @@ el plan, solo evita tener que reconstruir el contexto de ejecución.
 | F2 | Plan de ahorro/inversión + portafolios | ✅ desplegado, verificado |
 | F3 | Señales de trading 4h/1D + backtesting | 🟡 ajustado a §3.5 y verificado contra Supabase real; **pusheado y desplegado** (verificado 03-sep-2026: `/senales` responde en produccion) — **1 punto abierto para Alex, ver abajo** |
 | F2b | Poda del universo a BVC + vehículos US (nueva en v3) | ✅ desplegado y **pusheado**, verificado contra Supabase real |
-| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟡 en curso — cola de ingesta lista (409 PDF); ECOPETROL con 2 plantillas reales (4 periodos consolidados verificados en Supabase); **faltan CIBEST/SURA + doble extracción, ver abajo** |
+| F4a | Motor de fundamentales BVC: ingesta de PDF trimestrales (5 años) | 🟢 casi cerrada (actualizado 1-oct-2026) — `deuda_financiera` 556/677 (82,1 %), 20 de 23 emisores verificados contra su nota; el resto son huecos sin fuente. Detalle en `TRASPASO_DEUDA_FINANCIERA.md`. (El texto original "en curso, faltan CIBEST/SURA" quedó superado.) |
 | F4b | Modelos + valor justo sobre esa base | ⬜ pendiente (mayor prob. de escalar a Opus) |
 | F4c | Creación de valor (ROIC/WACC/EVA) + **Estrellas de la BVC** (top 10 a 12 meses) con backtest walk-forward | ⬜ pendiente |
 | F5 | Analizador BVC en la PWA (Estrellas de la BVC de portada, ficha con márgenes, screener, comparador, dividendos, panel COLCAP) + dashboard | ⬜ pendiente |

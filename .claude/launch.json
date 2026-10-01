@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "novainvest-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/web"],
+      "port": 5173
+    },
+    {
+      "name": "novainvest-api",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--reload", "--app-dir", "apps/api", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}
