@@ -1,0 +1,26 @@
+name: Pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r apps/api/requirements.txt
+
+      # Sin Supabase ni corpus: las comprobaciones contra los informes reales
+      # (C:\Proyectos\BVC) se saltan y el runner lo reporta. Correr en local
+      # antes de cada reproceso de XBRL: python jobs/correr_pruebas.py
+      - name: Pruebas
+        run: python jobs/correr_pruebas.py
