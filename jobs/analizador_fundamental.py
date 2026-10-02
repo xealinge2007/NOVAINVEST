@@ -732,7 +732,7 @@ def main():
 
         ingresos, fuente_ing = ttm(desac, "ingresos", em["slug"])
         utilidad, fuente_ut = ttm(desac, "utilidad_neta", em["slug"])
-        operacional, _ = ttm(desac, "utilidad_operacional", em["slug"])
+        operacional, fuente_op = ttm(desac, "utilidad_operacional", em["slug"])
         ebitda, _ = ttm(desac, "ebitda", em["slug"])
         patrimonio, fecha_pat = ultimo_saldo(filas, "patrimonio")
         activos, _ = ultimo_saldo(filas, "activos_totales")
@@ -744,12 +744,27 @@ def main():
         efectivo = None if financiero_emisor else fila_balance.get("efectivo")
         minoritarios = fila_balance.get("interes_minoritario")
         deuda_balance = fila_balance.get("deuda_financiera")
-        fco, _ = ttm(desac, "flujo_caja_operativo", em["slug"])
-        capex_ttm, _ = ttm(desac, "capex", em["slug"])
-        gasto_fin_ttm, _ = ttm(desac, "gasto_financiero", em["slug"])
-        bruta_ttm, _ = ttm(desac, "utilidad_bruta", em["slug"])
-        uai_ttm, _ = ttm(desac, "utilidad_antes_impuestos", em["slug"])
-        impuesto_ttm, _ = ttm(desac, "impuesto_renta", em["slug"])
+        # Un cero exacto en el flujo operativo es una plantilla de flujo de caja sin llenar
+        # (Cementos Argos radica todo en 0), no un dato.
+        desac_fco = [{**f, "flujo_caja_operativo": None if f.get("flujo_caja_operativo") == 0 else f.get("flujo_caja_operativo")}
+                     for f in desac]
+        fco, fuente_fco = ttm(desac_fco, "flujo_caja_operativo", em["slug"])
+        capex_ttm, fuente_capex = ttm(desac, "capex", em["slug"])
+        gasto_fin_ttm, fuente_gasto = ttm(desac, "gasto_financiero", em["slug"])
+        bruta_ttm, fuente_bruta = ttm(desac, "utilidad_bruta", em["slug"])
+        uai_ttm, fuente_uai = ttm(desac, "utilidad_antes_impuestos", em["slug"])
+        impuesto_ttm, fuente_imp = ttm(desac, "impuesto_renta", em["slug"])
+        # Cada razón exige que numerador y denominador salgan del MISMO período base: `ttm()`
+        # toma el último ANUAL que tenga el campo, y un capex de 2023 contra un FCO de 2025 no
+        # dice nada. Verificado real: Cementos Argos daba un FCF de -327 mezclando años.
+        if fuente_fco != fuente_capex:
+            capex_ttm = fco = None
+        if fuente_bruta != fuente_ing:
+            bruta_ttm = None
+        if fuente_gasto != fuente_op:
+            gasto_fin_ttm = None
+        if fuente_uai != fuente_imp:
+            uai_ttm = impuesto_ttm = None
 
         acciones, fecha_acc = acciones_del_emisor(filas)
         if acciones is None and em["slug"] not in ACCIONES_CURADAS_MANUALMENTE:
