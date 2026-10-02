@@ -305,6 +305,13 @@ ACCIONES_PREFERENCIALES: dict[str, tuple[int, str]] = {
     "CORFICOLOMBIANA": (19_227_075, "XBRL 2026-T2, PreferenceSharesMember, IssuedAndFullyPaid"),
 }
 
+# Emisores donde el conteo DERIVADO (utilidad / utilidad por acción) pasa el umbral pero cuenta
+# TODAS las clases de acción (promedio ponderado del EPS), no solo la ordinaria. Grupo Argos:
+# derivado 654,9 M, pero ordinarias 395,8 M + preferenciales 285,9 M = 681,8 M (XBRL 2026-T2).
+# Con el derivado, sumar las preferenciales las contaba dos veces (capitalización de 18.994
+# en vez de ~16.700). Se fuerza el conteo curado de la ordinaria. Auditoría 02-oct-2026.
+FORZAR_ACCIONES_CURADAS = {"GRUPO_ARGOS"}
+
 UMBRAL_SUPERMAYORIA_ACCIONES = 0.75
 
 
@@ -767,6 +774,8 @@ def main():
             uai_ttm = impuesto_ttm = None
 
         acciones, fecha_acc = acciones_del_emisor(filas)
+        if em["slug"] in FORZAR_ACCIONES_CURADAS:
+            acciones = None
         if acciones is None and em["slug"] not in ACCIONES_CURADAS_MANUALMENTE:
             # Respaldo: una emisión histórica (Corficolombiana pasó de 195 M a 346 M entre 2018
             # y 2022) rompe la supermayoría de TODA la serie aunque los últimos años sean

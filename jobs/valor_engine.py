@@ -32,6 +32,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "api"))
 
 from app.database import cliente_servicio  # noqa: E402
+from app.services import valoracion as v  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from analizador_fundamental import ACCIONES_PREFERENCIALES  # noqa: E402
 
 
 def calcular_holding(cliente, emisor_id: int, slug: str):
@@ -69,54 +73,81 @@ def calcular_holding(cliente, emisor_id: int, slug: str):
 
     cotizadas = [p for p in participaciones if p["cotizada"]]
     todas = participaciones
+    analisis_todos = {
+        a["emisor_id"]: a for a in cliente.table("fundamentales_analisis")
+        .select("emisor_id,capitalizacion_mmm,acciones,precio").execute().data
+    }
 
+    # Snapshot VERIFICADO A MANO (precios congelados a la fecha de ingesta): es lo que fija
+    # `test_valor_engine.py` y deja reproducir la lectura de las notas. No cambia con el mercado.
     nav_mercado = sum(p["valor_participacion_mmm"] for p in cotizadas) + neto_propio_holding
     nav_lookthrough = sum(p["valor_participacion_mmm"] for p in todas) + neto_propio_holding
 
-    # Precio de mercado del propio holding -- misma convencion "ordinaria"
-    # que fundamentales_analisis usa en todo el proyecto. Limitacion
-    # declarada: usa el precio ACTUAL, no precio a fecha_corte_eeff + 45
-    # dias (anti look-ahead, plan §6) -- ese rezago no esta implementado
-    # todavia para Ruta H.
-    analisis = (
-        cliente.table("fundamentales_analisis").select("capitalizacion_mmm").eq("emisor_id", emisor_id).execute().data
-    )
-    precio_mercado = analisis[0]["capitalizacion_mmm"] if analisis else None
+    # Rango de valoración: las cotizadas a PRECIO VIVO (capitalización total de la participada en
+    # `fundamentales_analisis`) y las no cotizadas a un factor del libro. Auditoría 01-oct-2026
+    # E7/E9: antes el "central" era el piso (no cotizadas en cero) y los precios estaban escritos
+    # en el código.
+    n_vivas = 0
+    cotizadas_vivas = 0.0
+    for p in cotizadas:
+        viva = analisis_todos.get(p.get("participada_emisor_id"), {}).get("capitalizacion_mmm")
+        if viva is not None:
+            cotizadas_vivas += viva * p["pct_tenencia"] / 100
+            n_vivas += 1
+        else:
+            cotizadas_vivas += p["valor_participacion_mmm"]
+    no_cotizadas_libro = sum(p["valor_participacion_mmm"] for p in participaciones if not p["cotizada"])
+    rango = v.rango_nav_holding(cotizadas_vivas, no_cotizadas_libro, neto_propio_holding)
+    brutas = sum(p["valor_participacion_mmm"] for p in todas)
+    ltv = v.ltv_holding(neto_propio_holding, brutas)
 
-    descuento_pct = None
-    if precio_mercado is not None and nav_lookthrough:
-        descuento_pct = (nav_lookthrough - precio_mercado) / nav_lookthrough * 100
+    propio = analisis_todos.get(emisor_id, {})
+    precio_mercado = (cliente.table("fundamentales_analisis").select("capitalizacion_mmm")
+                      .eq("emisor_id", emisor_id).execute().data or [{}])[0].get("capitalizacion_mmm")
+    acciones_total = (propio.get("acciones") or 0) + ACCIONES_PREFERENCIALES.get(slug, (0, ""))[0]
+    por_accion = {k: (round(rango[k] * 1e9 / acciones_total, 1) if acciones_total else None) for k in rango}
+
+    descuento_pct = v.margen_seguridad(rango["central"], precio_mercado)
+    determinable = rango["central"] > 0
+    descuento_lookthrough = ((nav_lookthrough - precio_mercado) / nav_lookthrough * 100
+                             if precio_mercado is not None and nav_lookthrough else None)
 
     fila = {
         "emisor_id": emisor_id,
         "anio": int(anio),
         "periodo": periodo,
         "ruta": "holding",
-        "determinable": True,
+        "determinable": determinable,
+        "motivo_no_determinable": None if determinable else "NAV central <= 0 con el neto propio del holding",
         "nav_mercado_mmm": round(nav_mercado, 3),
         "nav_lookthrough_mmm": round(nav_lookthrough, 3),
-        # Plan §6: central = nav_mercado (la conservadora) SIEMPRE para
-        # Ruta H, aunque en holdings con poco free float cotizado (como
-        # este caso) nav_mercado quede por debajo del precio de mercado --
-        # eso es informativo (dice que la mayoria del portafolio no tiene
-        # precio verificable), no un error a corregir forzando otra regla.
-        "valor_p25_mmm": round(nav_mercado, 3),
-        "valor_central_mmm": round(nav_mercado, 3),
-        "valor_p75_mmm": round(nav_lookthrough, 3),
+        "valor_p25_mmm": round(rango["bajo"], 3),
+        "valor_central_mmm": round(rango["central"], 3),
+        "valor_p75_mmm": round(rango["alto"], 3),
         "precio_mercado_mmm": round(precio_mercado, 3) if precio_mercado is not None else None,
         "descuento_pct": round(descuento_pct, 2) if descuento_pct is not None else None,
         "tasa_descuento_detalle": {
-            "vpn_gastos_administracion": "no implementado",
-            "impuesto_latente_plusvalias": "no implementado",
-            "anti_look_ahead_45_dias": "no implementado -- usa precio de mercado actual",
+            "metodo": "suma de partes: cotizadas a precio vivo + no cotizadas a un factor del libro",
+            "por_accion": por_accion, "precio": propio.get("precio"),
+            "margen_seguridad_pct": round(descuento_pct, 1) if descuento_pct is not None else None,
+            "acciones_total": acciones_total,
+            "factor_no_cotizadas_bajo_central_alto": list(v.FACTOR_NO_COTIZADAS),
+            "participaciones_cotizadas_a_precio_vivo": f"{n_vivas} de {len(cotizadas)}",
+            "ltv_holding": round(ltv, 3) if ltv is not None else None,
+            "nav_mercado_y_lookthrough": "a precios de la fecha de ingesta, verificados a mano (congelados)",
+            "descuento_vs_lookthrough_snapshot_pct": round(descuento_lookthrough, 2) if descuento_lookthrough is not None else None,
+            "pendiente": ["VPN de gastos de administración del holding", "impuesto latente sobre plusvalías",
+                          "no cotizadas por múltiplos de pares (hoy: factor sobre libro, supuesto)"],
+            "avisos": ["el factor sobre el libro de las no cotizadas es un supuesto, no una valoración"],
         },
-        "confianza": "media",
+        "confianza": "baja",
         "fecha_corte_eeff": fecha_corte,
     }
     cliente.table("valor_estimado").upsert(fila, on_conflict="emisor_id,anio,periodo").execute()
 
-    print(f"{slug} {anio}-{periodo}: NAV-mercado={nav_mercado:.1f} MMM  NAV-lookthrough={nav_lookthrough:.1f} MMM  "
-          f"precio_mercado={precio_mercado}  descuento_vs_lookthrough={descuento_pct}%")
+    print(f"{slug} {anio}-{periodo}: NAV-mercado={nav_mercado:.1f}  NAV-lookthrough={nav_lookthrough:.1f} (snapshot)  |  "
+          f"rango vivo {rango['bajo']:.0f}/{rango['central']:.0f}/{rango['alto']:.0f} MMM  precio={precio_mercado}  "
+          f"margen={descuento_pct if descuento_pct is None else round(descuento_pct, 1)}%  LTV={ltv if ltv is None else round(ltv, 2)}")
 
 
 def main():

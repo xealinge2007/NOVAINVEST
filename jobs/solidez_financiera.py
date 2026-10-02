@@ -56,6 +56,7 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 import pandas as pd  # noqa: E402
 
 from app.services.liquidez import volumen_suficiente  # noqa: E402
+from app.services.valoracion import evaluar_seguridad, ltv_holding  # noqa: E402
 
 # DOCTRINA_VALOR.md §2 -- clasificación ya documentada, se siembra aquí
 # porque F0/W1 dejó `emisores.arquetipo` vacío a propósito ("sembrarla es
@@ -151,6 +152,25 @@ def _liquidez_ok(cliente, emisor_id):
     return False, "; ".join(detalles)
 
 
+def _ltv_holding(cliente, emisor_id):
+    """LTV del nivel holding: deuda neta propia (neto de `ajustes_nav`) sobre el valor bruto de
+    sus participaciones. None si el holding aún no tiene NAV calculado."""
+    ve = (cliente.table("valor_estimado").select("anio,periodo").eq("emisor_id", emisor_id)
+          .eq("ruta", "holding").order("anio", desc=True).limit(1).execute().data)
+    if not ve:
+        return None
+    anio, periodo = ve[0]["anio"], ve[0]["periodo"]
+    neto = sum(a["monto_mmm"] for a in cliente.table("ajustes_nav").select("monto_mmm")
+               .eq("emisor_id", emisor_id).eq("anio", anio).eq("periodo", periodo).execute().data)
+    parts = (cliente.table("participaciones_holding").select("valor_participacion_mmm,fecha_corte")
+             .eq("holding_emisor_id", emisor_id).order("fecha_corte", desc=True).execute().data)
+    if not parts:
+        return None
+    ultima = parts[0]["fecha_corte"]
+    bruto = sum(p["valor_participacion_mmm"] for p in parts if p["fecha_corte"] == ultima)
+    return ltv_holding(neto, bruto)
+
+
 def _ultimo_periodo_con_cifras(cliente, emisor_id):
     """(anio, periodo) más reciente con activos_totales no nulo -- es la
     fecha "as of" que se le asigna al veredicto de solidez en `score_valor`,
@@ -212,7 +232,11 @@ def main():
                          "pilar1_seguridad_ok": None, "pilar1_motivo": MOTIVO_BANCO_NO_EVALUADO}
         else:
             fa = analisis.get(slug, {})
-            ok, motivo = _seguridad_por_apalancamiento(fa.get("deuda_ebitda"), fa.get("deuda_patrimonio"), fa.get("ebitda_ttm"))
+            ltv = _ltv_holding(cliente, em["id"]) if arquetipo == "holding" else None
+            ok, motivo = evaluar_seguridad(
+                arquetipo, fa.get("sector"), deuda_ebitda=fa.get("deuda_ebitda"),
+                deuda_neta_ebitda=fa.get("deuda_neta_ebitda"), cobertura=fa.get("cobertura_intereses"),
+                deuda_patrimonio=fa.get("deuda_patrimonio"), ebitda=fa.get("ebitda_ttm"), ltv=ltv)
             faltantes = METRICAS_FALTANTES_POR_MOLDE.get(arquetipo, "")
             motivo_completo = f"{motivo} -- pendiente del plan completo: {faltantes}" if motivo else faltantes
             if ok is None:

@@ -104,7 +104,12 @@ for slug, (anio, periodo, esperado_mercado, esperado_lookthrough) in CASOS.items
     revisar(f"{slug}: NAV-mercado", round(f["nav_mercado_mmm"], 1), esperado_mercado)
     revisar(f"{slug}: NAV-lookthrough", round(f["nav_lookthrough_mmm"], 1), esperado_lookthrough)
     revisar(f"{slug}: lookthrough > mercado", f["nav_lookthrough_mmm"] > f["nav_mercado_mmm"], True)
-    revisar(f"{slug}: valor_central usa la conservadora (nav_mercado)", f["valor_central_mmm"], f["nav_mercado_mmm"])
+    # P2 (02-oct-2026): el central ya no es el piso (nav_mercado, no cotizadas en cero) sino un rango
+    # con las cotizadas a precio vivo y las no cotizadas a 50/75/100 % del libro.
+    revisar(f"{slug}: rango ordenado bajo < central < alto",
+            f["valor_p25_mmm"] < f["valor_central_mmm"] < f["valor_p75_mmm"], True)
+    revisar(f"{slug}: el rango declara que es un supuesto de confianza baja",
+            (f["confianza"], "avisos" in (f["tasa_descuento_detalle"] or {})), ("baja", True))
     revisar(f"{slug}: determinable", f["determinable"], True)
 
 reportar_y_salir()
