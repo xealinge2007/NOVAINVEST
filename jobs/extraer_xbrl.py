@@ -61,6 +61,9 @@ CAMPOS_NUMERICOS = [
     "activos_totales", "pasivos_totales", "patrimonio", "flujo_caja_operativo",
     "deuda_financiera", "acciones_en_circulacion", "dividendos_decretados",
 ]
+CAMPOS_NUMERICOS_BASE = list(CAMPOS_NUMERICOS)
+# P1: se leen siempre, pero solo se escriben si ya está aplicado db/migrate_p1_estados_ampliados.sql
+CAMPOS_NUMERICOS += list(lector_xbrl.CAMPOS_AMPLIADOS)
 # Campos que los dos canales extraen y significan LO MISMO. La lista es corta
 # a propósito.
 #
@@ -106,7 +109,7 @@ CAMPOS_INSTANTANEOS_NO_COMPARABLES_TRIMESTRE = {
 # Usarlo daba disparates: Davivienda salía con 268 % de margen neto (utilidad
 # 1.954 sobre "ingresos" 729). Se dejan en None a propósito, no se rellenan.
 SECTORES_FINANCIEROS = {"banca", "holding_financiero"}
-CAMPOS_NO_APLICABLES_FINANCIEROS = ("ingresos", "utilidad_operacional", "ebitda")
+CAMPOS_NO_APLICABLES_FINANCIEROS = ("ingresos", "utilidad_operacional", "ebitda", "utilidad_bruta", "gasto_financiero")
 
 # Emisores donde la serie paralela (sufijo `-XBRL-<SERIE>.xbrl`) reemplaza a
 # la principal, en vez de ignorarse. GRUPO_CIBEST_BANCOLOMBIA: desde 2025-T2
@@ -248,6 +251,11 @@ def main():
     if not hay_periodicidad:
         print("AVISO: falta db/migrate_f4d_acumulado.sql -- se cargan las cifras, "
               "pero sin registrar si el flujo es acumulado o del trimestre suelto")
+
+    if not (muestra and "efectivo" in muestra[0]):
+        print("AVISO: falta db/migrate_p1_estados_ampliados.sql -- no se escriben caja, capex, "
+              "gasto financiero, etc.")
+        CAMPOS_NUMERICOS[:] = CAMPOS_NUMERICOS_BASE
 
     previas = {}
     for f in cliente.table("fundamentales_reportados").select("*").execute().data:

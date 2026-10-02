@@ -395,7 +395,20 @@ DEUDA_FINANCIERA_POR_EMISOR = {
 }
 
 
-CAMPOS_EN_PESOS = set(CONCEPTOS) | {"ebitda", "dividendos_decretados"}
+# P1 de la auditoría (01-oct-2026): estados ampliados. Saldos y flujos que el XBRL ya trae
+# etiquetados y antes no se leían. Un cero exacto en la plantilla de flujo de caja es una
+# plantilla sin llenar (GEB, Enka, Cementos Argos radican todo el rubro de inversión en 0),
+# no un capex de cero: se devuelve None para no inventar un FCF.
+CAMPOS_AMPLIADOS = (
+    "efectivo", "interes_minoritario", "goodwill", "capex", "gasto_financiero",
+    "utilidad_bruta", "utilidad_antes_impuestos", "impuesto_renta", "depreciacion_amortizacion",
+)
+CONCEPTOS_CAPEX = [
+    "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+    "PurchaseOfIntangibleAssetsClassifiedAsInvestingActivities",
+]
+
+CAMPOS_EN_PESOS = set(CONCEPTOS) | {"ebitda", "dividendos_decretados"} | set(CAMPOS_AMPLIADOS)
 
 
 def _sin_prefijo(texto: str) -> str:
@@ -760,6 +773,34 @@ def _depreciacion_amortizacion(hechos, contextos, fecha):
     return max(candidatos, key=lambda x: x[0])
 
 
+def _estados_ampliados(hechos, contextos, fecha, fecha_flujo, depreciacion):
+    """{campo: valor en PESOS o None} de `CAMPOS_AMPLIADOS`. Ver el comentario de esa constante."""
+    def uno(conceptos, fch):
+        v, _ = _buscar(hechos, contextos, conceptos, fch)
+        return v or None
+
+    minoritario = uno(["NoncontrollingInterests"], fecha)
+    if minoritario is None:
+        total, _ = _buscar(hechos, contextos, ["Equity"], fecha)
+        controladora, _ = _buscar(hechos, contextos, ["EquityAttributableToOwnersOfParent"], fecha)
+        if total is not None and controladora is not None:
+            minoritario = total - controladora
+    capex_partes = [uno([c], fecha_flujo) for c in CONCEPTOS_CAPEX]
+    capex = sum(abs(v) for v in capex_partes if v) or None
+    gasto = uno(["FinanceCosts"], fecha_flujo)
+    return {
+        "efectivo": uno(["CashAndCashEquivalents"], fecha),
+        "interes_minoritario": minoritario,
+        "goodwill": uno(["Goodwill"], fecha),
+        "capex": capex,
+        "gasto_financiero": abs(gasto) if gasto else None,
+        "utilidad_bruta": uno(["GrossProfit"], fecha_flujo),
+        "utilidad_antes_impuestos": uno(["ProfitLossBeforeTax"], fecha_flujo),
+        "impuesto_renta": uno(["IncomeTaxExpenseContinuingOperations", "IncomeTaxExpense"], fecha_flujo),
+        "depreciacion_amortizacion": depreciacion,
+    }
+
+
 def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1,
          escala_conocida=None, emisor: str = None) -> dict:
     """Mismo shape que `extractor_generico.extraer`.
@@ -914,6 +955,13 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1,
         }
     else:
         campos["ebitda"] = {"valor": None, "pagina": None, "tabla": None}
+
+    for campo, valor in _estados_ampliados(hechos, contextos, fecha, fecha_flujo, depreciacion).items():
+        campos[campo] = {
+            "valor": round(valor / divisor, 6) if valor is not None else None,
+            "pagina": None,
+            "tabla": "xbrl: estados ampliados (P1)" if valor is not None else None,
+        }
 
     # Chequeo contable, igual que en el canal de PDF. Ojo: `patrimonio` puede
     # ser el atribuible a la controladora, que NO cuadra con activos - pasivos

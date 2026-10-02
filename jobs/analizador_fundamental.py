@@ -46,7 +46,9 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
 TRIMESTRES = ["T1", "T2", "T3", "T4"]
 # Campos de FLUJO (se acumulan en el año). Los demás son de SALDO (foto a una fecha).
-CAMPOS_FLUJO = ("ingresos", "utilidad_operacional", "utilidad_neta", "ebitda", "flujo_caja_operativo")
+CAMPOS_FLUJO = ("ingresos", "utilidad_operacional", "utilidad_neta", "ebitda", "flujo_caja_operativo",
+                "capex", "gasto_financiero", "utilidad_bruta", "utilidad_antes_impuestos", "impuesto_renta",
+                "depreciacion_amortizacion")
 CAMPOS_SALDO = ("activos_totales", "pasivos_totales", "patrimonio", "deuda_financiera")
 
 
@@ -360,6 +362,13 @@ def acciones_del_emisor(filas: list[dict]) -> tuple[float | None, str]:
 
 
 SECTORES_FINANCIEROS = {"banca", "holding_financiero"}
+
+# Columnas nuevas de `fundamentales_analisis` (db/migrate_p1_estados_ampliados.sql)
+CAMPOS_AMPLIADOS_SALIDA = (
+    "fcf_ttm_mmm", "fcf_yield_pct", "conversion_fcf_pct", "efectivo_mmm", "interes_minoritario_mmm",
+    "deuda_neta_mmm", "deuda_neta_ebitda", "cobertura_intereses", "margen_bruto", "margen_ebitda",
+    "tasa_efectiva_pct", "capital_invertido_mmm", "roic_ajustado",
+)
 
 # Supuestos macro para el costo de capital. La fuente de verdad es la tabla
 # `supuestos_macro` (cada fila con su fuente y fecha, ver
@@ -728,6 +737,19 @@ def main():
         patrimonio, fecha_pat = ultimo_saldo(filas, "patrimonio")
         activos, _ = ultimo_saldo(filas, "activos_totales")
         deuda, _ = ultimo_saldo(filas, "deuda_financiera")
+        financiero_emisor = em["sector"] in SECTORES_FINANCIEROS
+        # Saldos nuevos de la MISMA fecha del patrimonio (E11): mezclar fechas distorsiona la deuda neta.
+        fila_balance = next((f for f in filas if (f["anio"], f["periodo"]) == tuple(
+            [int(fecha_pat.split("-")[0]), fecha_pat.split("-")[1]])), {}) if fecha_pat else {}
+        efectivo = None if financiero_emisor else fila_balance.get("efectivo")
+        minoritarios = fila_balance.get("interes_minoritario")
+        deuda_balance = fila_balance.get("deuda_financiera")
+        fco, _ = ttm(desac, "flujo_caja_operativo", em["slug"])
+        capex_ttm, _ = ttm(desac, "capex", em["slug"])
+        gasto_fin_ttm, _ = ttm(desac, "gasto_financiero", em["slug"])
+        bruta_ttm, _ = ttm(desac, "utilidad_bruta", em["slug"])
+        uai_ttm, _ = ttm(desac, "utilidad_antes_impuestos", em["slug"])
+        impuesto_ttm, _ = ttm(desac, "impuesto_renta", em["slug"])
 
         acciones, fecha_acc = acciones_del_emisor(filas)
         if acciones is None and em["slug"] not in ACCIONES_CURADAS_MANUALMENTE:
@@ -778,7 +800,7 @@ def main():
         # `fundamentales_reportados`), así que EV = capitalización + deuda es
         # una aproximación por exceso, no el EV real. Se documenta, no se
         # inventa un valor de caja.
-        ev = round(capitalizacion + (deuda or 0), 3) if capitalizacion is not None else None
+        ev = ev_real(capitalizacion, deuda_balance if efectivo is not None else deuda, efectivo, minoritarios)
         # Con EBITDA <= 0 el múltiplo sale negativo y parece "barato" cuando
         # en realidad el denominador está roto -- verificado real en
         # GRUPO_SURA (ebitda_ttm -1.271,9, la misma limitación de holdings ya
@@ -858,6 +880,10 @@ def main():
                 costo_patrimonio, costo_deuda_dt, wacc = costo_capital(
                     beta, capitalizacion if pesos_mercado else patrimonio, deuda, sup)
                 capital_invertido = (deuda or 0) + (patrimonio or 0)
+                if efectivo is not None and deuda_balance is not None:
+                    # Capital invertido ajustado (P1): patrimonio total + deuda - caja
+                    capital_invertido = (patrimonio or 0) + (minoritarios or 0) + deuda_balance - efectivo
+                    metodo_valor = metodo_valor + " (capital neto de caja)"
                 nopat = operacional * (1 - sup["tasa_renta"])
                 roic = _div(nopat, capital_invertido)
                 if roic is not None:
@@ -865,7 +891,23 @@ def main():
                 if capital_invertido and wacc is not None:
                     eva = round(nopat - wacc * capital_invertido, 1)
 
+        previa = next((f for f in filas if (f["anio"], f["periodo"]) == (int(fecha_pat.split("-")[0]) - 1, fecha_pat.split("-")[1])), {}) if fecha_pat else {}
+        capital_previo = None
+        if (not financiero_emisor and previa.get("patrimonio") is not None
+                and previa.get("deuda_financiera") is not None and previa.get("efectivo") is not None):
+            capital_previo = previa["patrimonio"] + (previa.get("interes_minoritario") or 0) + previa["deuda_financiera"] - previa["efectivo"]
+        ampliadas = metricas_ampliadas(
+            fco=fco, capex=capex_ttm, utilidad=utilidad, ebitda=ebitda, operacional=operacional,
+            ingresos=ingresos, bruta=bruta_ttm, gasto_fin=gasto_fin_ttm, uai=uai_ttm,
+            impuesto=impuesto_ttm, efectivo=efectivo, minoritarios=minoritarios,
+            deuda=deuda_balance, patrimonio=patrimonio, capitalizacion=capitalizacion,
+            tasa_nominal=sup["tasa_renta"], capital_previo=capital_previo,
+        ) if not financiero_emisor else {}
         filas_salida.append({
+            **{k: None for k in CAMPOS_AMPLIADOS_SALIDA},
+            **ampliadas,
+            "efectivo_mmm": efectivo,
+            "interes_minoritario_mmm": minoritarios,
             "emisor": em["slug"],
             "nombre": em["nombre"],
             "sector": em["sector"],
@@ -945,11 +987,59 @@ def main():
         fila_db["emisor_id"] = slug_a_id[fila["emisor"]]
         fila_db["slug"] = fila["emisor"]
         filas_supabase.append(fila_db)
+    columnas_db = set(cliente.table("fundamentales_analisis").select("*").limit(1).execute().data[0].keys())
+    faltan = [c for c in CAMPOS_AMPLIADOS_SALIDA if c not in columnas_db]
+    if faltan:
+        print("AVISO: falta aplicar db/migrate_p1_estados_ampliados.sql -- no se guardan en Supabase: "
+              + ", ".join(faltan))
+        filas_supabase = [{k: v for k, v in f.items() if k not in faltan} for f in filas_supabase]
     cliente.table("fundamentales_analisis").upsert(filas_supabase, on_conflict="emisor_id").execute()
 
     _imprimir(filas_salida)
     print(f"\nCSV: {destino.resolve()}")
     print(f"Supabase: {len(filas_supabase)} filas en fundamentales_analisis")
+
+
+def metricas_ampliadas(*, fco, capex, utilidad, ebitda, operacional, ingresos, bruta, gasto_fin,
+                       uai, impuesto, efectivo, minoritarios, deuda, patrimonio, capitalizacion,
+                       tasa_nominal, capital_previo=None):
+    """FCF, deuda neta, cobertura, márgenes, tasa efectiva y ROIC ajustado (P1, auditoría
+    01-oct-2026). Todo en miles de millones. Cada métrica es None si le falta un insumo: nunca
+    se rellena. `capex` positivo = salida de caja. `capital_previo` (capital invertido de hace
+    un año) permite el capital promedio; sin él se usa el de cierre."""
+    fcf = (fco - capex) if fco is not None and capex is not None else None
+    deuda_neta = (deuda - efectivo) if deuda is not None and efectivo is not None else None
+    tasa = None
+    if uai is not None and impuesto is not None and uai > 0:
+        t = impuesto / uai
+        tasa = t if 0 <= t <= 0.6 else None
+    capital = None
+    if patrimonio is not None and deuda is not None and efectivo is not None:
+        capital = patrimonio + (minoritarios or 0) + deuda - efectivo
+    capital_prom = (capital + capital_previo) / 2 if capital is not None and capital_previo else capital
+    nopat = operacional * (1 - tasa_nominal) if operacional is not None else None
+    return {
+        "fcf_ttm_mmm": _r(fcf, 1),
+        "fcf_yield_pct": _pct(_div(fcf, capitalizacion)),
+        "conversion_fcf_pct": _pct(_div(fcf, utilidad)) if utilidad and utilidad > 0 else None,
+        "deuda_neta_mmm": _r(deuda_neta, 1),
+        "deuda_neta_ebitda": _r(_div(deuda_neta, ebitda)) if ebitda is not None and ebitda > 0 else None,
+        "cobertura_intereses": _r(_div(operacional, gasto_fin), 1) if gasto_fin else None,
+        "margen_bruto": _pct(_div(bruta, ingresos)),
+        "margen_ebitda": _pct(_div(ebitda, ingresos)),
+        "tasa_efectiva_pct": _pct(tasa),
+        "capital_invertido_mmm": _r(capital, 1),
+        "roic_ajustado": _pct(_div(nopat, capital_prom)),
+    }
+
+
+def ev_real(capitalizacion, deuda, efectivo, minoritarios):
+    """EV = capitalización + deuda neta de caja + interés minoritario. Sin caja conocida cae a
+    la aproximación anterior (capitalización + deuda bruta)."""
+    if capitalizacion is None:
+        return None
+    deuda_neta = (deuda or 0) - (efectivo or 0) if efectivo is not None else (deuda or 0)
+    return round(capitalizacion + deuda_neta + (minoritarios or 0), 3)
 
 
 def _r(v, dec=2):

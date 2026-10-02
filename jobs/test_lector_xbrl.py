@@ -214,6 +214,19 @@ if isa.is_file():
     revisar("ISA EBITDA usa la D&A del flujo de caja",
             round(r_ebitda["ebitda"]["valor"], 3), round(6841.990225 + 1080.192654, 3))
 
+# P1: estados ampliados, cifras del XBRL de ISA 2025 (miles de millones).
+if isa.is_file():
+    amp = lx.leer(isa, 2025, "ANUAL", emisor="ISA")["campos"]
+    revisar("ISA caja", round(amp["efectivo"]["valor"], 3), 4466.148)
+    revisar("ISA interés minoritario", round(amp["interes_minoritario"]["valor"], 3), 10457.798)
+    revisar("ISA gasto financiero", round(amp["gasto_financiero"]["valor"], 3), 2513.902)
+    revisar("ISA utilidad bruta", round(amp["utilidad_bruta"]["valor"], 3), 8207.317)
+    revisar("ISA capex incluye PP&E (1.337,8) más intangibles", amp["capex"]["valor"] > 1337.778, True)
+geb = CORPUS / "GEB" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+if geb.is_file():
+    revisar("GEB radica el rubro de inversión en cero: capex None, no 0",
+            lx.leer(geb, 2025, "ANUAL", emisor="GEB")["campos"]["capex"]["valor"], None)
+
 print()
 if fallos:
     print(f"{len(fallos)} prueba(s) fallaron: {fallos}")
