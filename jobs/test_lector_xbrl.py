@@ -207,6 +207,13 @@ if isa.is_file():
             lx.leer(isa, 2025, "ANUAL", emisor="ISA")["campos"]["deuda_financiera"]["valor"],
             33790.917489)
 
+# EBITDA: la D&A parcial del estado de resultados (118 MMM en ISA 2025) subestimaba el EBITDA;
+# la del flujo de caja (1.080,193 MMM) es la total. Auditoría 01-oct-2026, E1.
+if isa.is_file():
+    r_ebitda = lx.leer(isa, 2025, "ANUAL", emisor="ISA")["campos"]
+    revisar("ISA EBITDA usa la D&A del flujo de caja",
+            round(r_ebitda["ebitda"]["valor"], 3), round(6841.990225 + 1080.192654, 3))
+
 print()
 if fallos:
     print(f"{len(fallos)} prueba(s) fallaron: {fallos}")

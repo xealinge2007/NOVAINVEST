@@ -287,6 +287,22 @@ ACCIONES_CURADAS_MANUALMENTE: dict[str, tuple[float, str]] = {
     # que con un conteo que se sabe no verificado.
 }
 
+# Acciones PREFERENCIALES por emisor. La capitalización y todo lo "por acción" tienen que
+# cubrir TODAS las clases: la utilidad, el patrimonio y los dividendos son de todas, no solo
+# de la ordinaria. Con solo la ordinaria, Cibest salía con P/E 7,5 y P/VL 1,2 (reales ~13 y
+# ~2,1) -- auditoría 01-oct-2026, E2. Fuente: `NumberOfSharesIssued`/`Outstanding` del eje
+# PreferenceSharesMember en el XBRL 2026-T2 radicado de cada emisor (Cibest: nota de
+# participaciones en `ingesta_participaciones.py`). Cementos Argos (464.508 preferenciales,
+# 0,04 % del capital) se omite por inmaterial. Revisar tras una emisión o recompra.
+ACCIONES_PREFERENCIALES: dict[str, tuple[int, str]] = {
+    "GRUPO_CIBEST_BANCOLOMBIA": (444_271_389, "nota de participaciones de Grupo Sura (PFCIBEST), dic-2025"),
+    "GRUPO_SURA": (161_871_882, "XBRL 2026-T2, PreferenceSharesMember, NumberOfSharesIssued"),
+    "GRUPO_ARGOS": (285_940_511, "XBRL 2026-T2, PreferenceSharesMember, NumberOfSharesOutstanding"),
+    "GRUPO_AVAL": (7_565_150_834, "XBRL 2026-T2, PreferenceSharesMember, NumberOfSharesIssued"),
+    "DAVIVIENDA_GROUP": (169_443_753, "XBRL 2026-T2, PreferenceSharesMember, IssuedAndFullyPaid"),
+    "CORFICOLOMBIANA": (19_227_075, "XBRL 2026-T2, PreferenceSharesMember, IssuedAndFullyPaid"),
+}
+
 UMBRAL_SUPERMAYORIA_ACCIONES = 0.75
 
 
@@ -520,6 +536,49 @@ def revisar_consistencia_ingresos(filas: list[dict]) -> str:
     return " | ".join(avisos)
 
 
+def capitalizacion_total(precio_ord, acciones_ord, precio_pref, acciones_pref) -> float | None:
+    """Capitalización TOTAL en miles de millones: cada clase a su precio; si la preferencial
+    no tiene precio propio se valora a precio de la ordinaria."""
+    if precio_ord is None or not acciones_ord:
+        return None
+    valor_pref = (precio_pref if precio_pref is not None else precio_ord) * (acciones_pref or 0)
+    return round((precio_ord * acciones_ord + valor_pref) / 1_000_000_000, 3)
+
+
+def revisar_periodos_duplicados(filas: list[dict]) -> str:
+    """Aviso cuando dos períodos DISTINTOS del mismo emisor traen exactamente los mismos
+    ingresos y utilidad neta: es la firma de un período que quedó con las cifras de otro
+    (verificado en Promigas: 2025-T2 = 2024-ANUAL y 2026-T2 = 2025-ANUAL al peso). Un año y
+    su T4 pueden coincidir legítimamente, así que ese par se ignora. Se marca y el emisor
+    sale del ranking -- no se adivina cuál de las dos filas es la buena."""
+    vistos: dict[tuple, tuple] = {}
+    avisos = []
+    for f in filas:
+        if not f.get("ingresos") or f.get("utilidad_neta") is None:
+            continue
+        clave = (round(f["ingresos"], 3), round(f["utilidad_neta"], 3))
+        previo = vistos.get(clave)
+        if previo is None:
+            vistos[clave] = (f["anio"], f["periodo"])
+            continue
+        if previo[0] == f["anio"] and "ANUAL" in (previo[1], f["periodo"]) and "T4" in (previo[1], f["periodo"]):
+            continue
+        avisos.append(f"{f['anio']}-{f['periodo']} idéntico a {previo[0]}-{previo[1]} (ingresos y utilidad) — "
+                      "una de las dos filas tiene cifras de otro período")
+    return " | ".join(avisos)
+
+
+def revisar_ingresos_en_cero(filas: list[dict]) -> str:
+    """Aviso cuando un ANUAL declara ingresos 0 teniendo trimestres del mismo año con ingresos
+    (Conconcreto 2024-ANUAL = 0 frente a 513 en 2024-T2)."""
+    con_ingresos = {f["anio"] for f in filas if f["periodo"] != "ANUAL" and f.get("ingresos")}
+    return " | ".join(
+        f"ingresos {f['anio']}-ANUAL = 0 con trimestres del mismo año con ingresos"
+        for f in filas
+        if f["periodo"] == "ANUAL" and f.get("ingresos") == 0 and f["anio"] in con_ingresos
+    )
+
+
 PVL_IMPLAUSIBLE = 8.0
 PER_IMPLAUSIBLE = 60.0
 
@@ -554,24 +613,28 @@ def _div(a, b):
     return a / b
 
 
-def calcular_estrellas(filas_salida: list[dict]) -> None:
-    """Asigna `ranking_estrella` (1 = mejor) EN EL LUGAR a TODOS los
-    emisores con spread de creación de valor calculado -- "Estrellas de la
-    BVC", F4c del plan. Ranking completo, no solo los que crean valor: Alex
-    lo pidió así, y un emisor en el puesto 18 con spread -10pp dice tanto
-    como uno en el 1.
+def calcular_estrellas(filas_salida: list[dict], no_elegibles: frozenset = frozenset()) -> None:
+    """Asigna `ranking_estrella` (1 = mejor) EN EL LUGAR a los emisores con spread de creación
+    de valor calculado y SIN alerta abierta. Es el criterio ANTERIOR (ROIC-WACC / ROE-Ke), que
+    `db/DOCTRINA_VALOR.md` declaró no validado: la PWA lo rotula así hasta que W5 lo reemplace.
 
-    Spread = ROIC - WACC para no financieras, ROE - Ke para bancos, holdings
-    financieros y quien no reporta utilidad operacional (ver `metodo_valor`
-    de cada fila). Ordenado de mayor a menor. "Estrella" (lo decide el
-    frontend) = spread positivo y sin alerta de múltiplos implausibles; los
-    alertados SÍ entran al ranking, marcados, porque esconderlos sería
-    ocultar el dato. Sin ranking (`None`) solo quien no tiene con qué
-    calcular el spread, con el motivo en `motivo_sin_roic`.
+    Excluye del ranking (auditoría 01-oct-2026, E5 -- antes el docstring lo decía y el código
+    no lo hacía): (a) quien tenga `alerta_multiplos` (ingresos inconsistentes, períodos
+    duplicados, múltiplos implausibles) y (b) los emisores en `no_elegibles` (no pasan la
+    puerta de liquidez de `solidez_financiera.py`). Los excluidos quedan con
+    `ranking_estrella = None` y el motivo en `alerta_multiplos`: la lista de descartes es
+    parte del producto, no se esconde.
 
-    Esto NO es una recomendación de inversión ni está respaldado por
-    backtest todavía -- eso es la siguiente pieza del plan (F4c), pendiente."""
-    clasificables = [r for r in filas_salida if r.get("spread_valor") is not None]
+    Spread = ROIC - WACC para no financieras, ROE - Ke para bancos, holdings financieros y
+    quien no reporta utilidad operacional (ver `metodo_valor`). NO es una recomendación de
+    inversión ni está respaldado por backtest."""
+    for r in filas_salida:
+        if r["emisor"] in no_elegibles:
+            r["alerta_multiplos"] = " | ".join(filter(None, [r.get("alerta_multiplos"), "no pasa la puerta de liquidez"]))
+    clasificables = [
+        r for r in filas_salida
+        if r.get("spread_valor") is not None and not r.get("alerta_multiplos")
+    ]
     clasificables.sort(key=lambda r: r["spread_valor"], reverse=True)
     for i, r in enumerate(clasificables, start=1):
         r["ranking_estrella"] = i
@@ -652,7 +715,11 @@ def main():
         else:
             acumulado, evidencia = detectar_acumulado(filas)
         desac = desacumular(filas) if acumulado else filas
-        alerta_consistencia = revisar_consistencia_ingresos(filas)
+        alerta_consistencia = " | ".join(filter(None, [
+            revisar_consistencia_ingresos(filas),
+            revisar_periodos_duplicados(filas),
+            revisar_ingresos_en_cero(filas),
+        ]))
 
         ingresos, fuente_ing = ttm(desac, "ingresos", em["slug"])
         utilidad, fuente_ut = ttm(desac, "utilidad_neta", em["slug"])
@@ -663,6 +730,15 @@ def main():
         deuda, _ = ultimo_saldo(filas, "deuda_financiera")
 
         acciones, fecha_acc = acciones_del_emisor(filas)
+        if acciones is None and em["slug"] not in ACCIONES_CURADAS_MANUALMENTE:
+            # Respaldo: una emisión histórica (Corficolombiana pasó de 195 M a 346 M entre 2018
+            # y 2022) rompe la supermayoría de TODA la serie aunque los últimos años sean
+            # estables. Se reintenta con los 8 períodos más recientes.
+            recientes = sorted((f for f in filas if f.get("acciones_en_circulacion")),
+                               key=lambda f: _orden(f["anio"], f["periodo"]))[-8:]
+            acciones, fecha_acc = acciones_del_emisor(recientes)
+            if acciones is not None:
+                fecha_acc = f"últimos {len(recientes)} períodos: {fecha_acc}"
         if acciones is None and em["slug"] in ACCIONES_CURADAS_MANUALMENTE:
             acciones, fuente_manual = ACCIONES_CURADAS_MANUALMENTE[em["slug"]]
             fecha_acc = f"curado a mano: {fuente_manual}"
@@ -676,16 +752,27 @@ def main():
         ordinarias = [i for i in propios if not i["ticker"].startswith("PF")]
         elegido = (ordinarias or propios)
         precio, ticker, clase_precio = None, "", ""
+        precio_pref = None
         if elegido:
             ticker = elegido[0]["ticker"]
             clase_precio = "ordinaria" if ordinarias else "preferencial (aprox.)"
             p = ultimo_precio.get(elegido[0]["activo_id"])
             precio = p["cierre"] if p else None
+        preferenciales = [i for i in propios if i["ticker"].startswith("PF")]
+        if preferenciales:
+            pp = ultimo_precio.get(preferenciales[0]["activo_id"])
+            precio_pref = pp["cierre"] if pp else None
 
-        # capitalización en miles de millones (las cifras contables ya están ahí)
-        capitalizacion = None
-        if precio is not None and acciones:
-            capitalizacion = round(precio * acciones / 1_000_000_000, 3)
+        # Capitalización TOTAL (todas las clases). Cada clase a su propio precio; si una
+        # clase no cotiza en la BVC (Aval, Davivienda: solo cotiza la preferencial), se
+        # valora a precio de la que sí cotiza y se deja dicho en `clase_precio`.
+        acciones_pref, _fuente_pref = ACCIONES_PREFERENCIALES.get(em["slug"], (0, ""))
+        acciones_total = (acciones + acciones_pref) if acciones else None
+        capitalizacion = capitalizacion_total(precio, acciones, precio_pref, acciones_pref)
+        if capitalizacion is not None:
+            if acciones_pref:
+                clase_precio = ("ordinaria + preferencial" if ordinarias and precio_pref is not None
+                                else "preferencial aplicada a ambas clases (aprox.)")
 
         # EV sin netear caja: no se extrae efectivo del XBRL/PDF (no está en
         # `fundamentales_reportados`), así que EV = capitalización + deuda es
@@ -715,8 +802,8 @@ def main():
         )
         dividendo_reciente = con_dividendo[-1]["dividendos_decretados"] if con_dividendo else None
         payout = _pct(_div(dividendo_reciente, utilidad))
-        dividendo_por_accion = _div(dividendo_reciente * 1_000_000_000 if dividendo_reciente is not None else None, acciones)
-        dividend_yield = _pct(_div(dividendo_por_accion, precio))
+        dividendo_por_accion = _div(dividendo_reciente * 1_000_000_000 if dividendo_reciente is not None else None, acciones_total)
+        dividend_yield = _pct(_div(dividendo_por_accion, precio_pref if (precio_pref is not None and not ordinarias) else precio))
 
         # Creación de valor. No financieras: ROIC vs. WACC. Bancos y holdings
         # financieros: ROE vs. Ke -- su "deuda" son depósitos de clientes,
@@ -797,7 +884,7 @@ def main():
             "margen_operacional": _pct(_div(operacional, ingresos)),
             "roe": _pct(_div(utilidad, patrimonio)),
             "deuda_patrimonio": _r(_div(deuda, patrimonio)),
-            "eps_cop": _r(_div(utilidad * 1_000_000_000 if utilidad is not None else None, acciones), 2),
+            "eps_cop": _r(_div(utilidad * 1_000_000_000 if utilidad is not None else None, acciones_total), 2),
             "per": _r(_div(capitalizacion, utilidad)),
             "precio_valor_libro": _r(_div(capitalizacion, patrimonio)),
             "alerta_multiplos": " | ".join(filter(None, [
@@ -831,7 +918,16 @@ def main():
             "periodos_con_cifras": len(filas),
         })
 
-    calcular_estrellas(filas_salida)
+    try:
+        no_elegibles = frozenset(
+            emisores[f["emisor_id"]]["slug"]
+            for f in cliente.table("score_valor").select("emisor_id,elegible").execute().data
+            if f.get("elegible") is False and f["emisor_id"] in emisores
+        )
+    except Exception as e:
+        print(f"AVISO: no se pudo leer `score_valor` ({type(e).__name__}) -- el ranking no filtra por liquidez.")
+        no_elegibles = frozenset()
+    calcular_estrellas(filas_salida, no_elegibles)
     filas_salida.sort(key=lambda r: (r["per"] is None, r["per"] if r["per"] is not None else 0))
 
     destino = Path(args.csv)

@@ -88,7 +88,17 @@ CONCEPTOS = {
 # fecha distinta para cada grupo.
 CAMPOS_FLUJO = {"ingresos", "utilidad_operacional", "utilidad_neta", "flujo_caja_operativo"}
 
-CONCEPTO_DEPRECIACION = ["DepreciationAndAmortisationExpense"]
+# D&A: cada preparador etiqueta una parte distinta. `DepreciationAndAmortisationExpense`
+# (estado de resultados) suele ser PARCIAL -- ISA 2025: 118 MMM contra 1.080 en la D&A del
+# flujo de caja --, y varios emisores solo traen el desglose depreciación + amortización.
+# Se calculan todas las alternativas y se toma la MAYOR: las parciales nunca superan al total.
+# Auditoría 01-oct-2026 (E1), db/AUDITORIA_MOTOR_VALOR_2026-10-01.md.
+CONCEPTO_DEPRECIACION = ["AdjustmentsForDepreciationAndAmortisationExpense", "DepreciationAndAmortisationExpense"]
+CONCEPTOS_DEPRECIACION_SUMA = [
+    ["DepreciationExpense", "AmortisationExpense"],
+    ["DepreciationPropertyPlantAndEquipment", "AmortisationIntangibleAssetsOtherThanGoodwill",
+     "DepreciationInvestmentProperty"],
+]
 CONCEPTO_ACCIONES = ["NumberOfSharesOutstanding", "NumberOfSharesIssued"]
 CONCEPTO_DIVIDENDOS = ["DividendsPaid", "DividendsRecognisedAsDistributionsToOwners"]
 CONCEPTO_UTILIDAD_POR_ACCION = ["BasicEarningsLossPerShare"]
@@ -732,6 +742,24 @@ def _vacio(motivos, evidencia_escala=None) -> dict:
                      "punto_entrada": None, "conceptos": {}}}
 
 
+def _depreciacion_amortizacion(hechos, contextos, fecha):
+    """(D&A en pesos, concepto usado): la mayor entre las alternativas -- ver
+    `CONCEPTO_DEPRECIACION`. (None, None) si el emisor no etiqueta ninguna."""
+    candidatos = []
+    for concepto in CONCEPTO_DEPRECIACION:
+        v, _ = _buscar(hechos, contextos, [concepto], fecha)
+        if v:
+            candidatos.append((v, concepto))
+    for grupo in CONCEPTOS_DEPRECIACION_SUMA:
+        partes = [(_buscar(hechos, contextos, [c], fecha)[0], c) for c in grupo]
+        validas = [(v, c) for v, c in partes if v]
+        if validas:
+            candidatos.append((sum(v for v, _ in validas), " + ".join(c for _, c in validas)))
+    if not candidatos:
+        return None, None
+    return max(candidatos, key=lambda x: x[0])
+
+
 def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1,
          escala_conocida=None, emisor: str = None) -> dict:
     """Mismo shape que `extractor_generico.extraer`.
@@ -876,13 +904,13 @@ def leer(ruta_xbrl, anio: int, periodo: str, indice_periodo: int = 1,
     }
 
     # EBITDA sigue siendo derivado -- no es una línea NIIF, es métrica no-NIIF.
-    depreciacion, _ = _buscar(hechos, contextos, CONCEPTO_DEPRECIACION, fecha_flujo)
+    depreciacion, concepto_da = _depreciacion_amortizacion(hechos, contextos, fecha_flujo)
     operacional = campos["utilidad_operacional"]["valor"]
     if operacional is not None and depreciacion is not None:
         campos["ebitda"] = {
             "valor": round(operacional + depreciacion / divisor, 6),
             "pagina": None,
-            "tabla": "derivado: ProfitLossFromOperatingActivities + DepreciationAndAmortisationExpense",
+            "tabla": f"derivado: ProfitLossFromOperatingActivities + {concepto_da}",
         }
     else:
         campos["ebitda"] = {"valor": None, "pagina": None, "tabla": None}

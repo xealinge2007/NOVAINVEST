@@ -123,6 +123,45 @@ CAMPOS_NO_APLICABLES_FINANCIEROS = ("ingresos", "utilidad_operacional", "ebitda"
 EMISORES_SERIE_PARALELA_REEMPLAZA = {"GRUPO_CIBEST_BANCOLOMBIA"}
 
 
+# Cifras que el propio XBRL radicado trae mal y que se verificaron contra el informe
+# auditado. El XBRL pisa lo manual en la fusión, así que se reaplican al final de cada carga.
+# (slug, año, período, campo) -> (valor en miles de millones, fuente)
+CORRECCIONES_VERIFICADAS = {
+    ("CELSIA", 2025, "ANUAL", "ingresos"): (
+        5395.120, "informe 2025-ANUAL pág. 50 (KPMG); el XBRL declara 2.097,753 -- DOCTRINA_VALOR.md §11"),
+}
+
+
+def sanear_ingresos_anuales(cliente, emisores_por_id, aplicar=True):
+    """Último paso de la carga (auditoría 01-oct-2026, E4). Un ANUAL con ingresos MENORES que
+    un trimestre acumulado del mismo año es imposible: el XBRL del emisor está mal. Si hay una
+    corrección verificada contra el informe se aplica; si no, el ingreso del ANUAL se deja en
+    None (no se adivina) y el período queda marcado en el reporte."""
+    filas = cliente.table("fundamentales_reportados").select(
+        "id,emisor_id,anio,periodo,ingresos,acumulado").execute().data
+    max_acum = {}
+    for f in filas:
+        if f["periodo"] != "ANUAL" and f.get("acumulado") is True and f.get("ingresos"):
+            k = (f["emisor_id"], f["anio"])
+            max_acum[k] = max(max_acum.get(k, 0), f["ingresos"])
+    cambios = []
+    for f in filas:
+        if f["periodo"] != "ANUAL" or not f.get("ingresos"):
+            continue
+        slug = emisores_por_id.get(f["emisor_id"])
+        corr = CORRECCIONES_VERIFICADAS.get((slug, f["anio"], "ANUAL", "ingresos"))
+        if corr and abs(f["ingresos"] - corr[0]) > 0.001:
+            nuevo, motivo = corr[0], f"corregido a {corr[0]:,.3f}: {corr[1]}"
+        elif f["ingresos"] < max_acum.get((f["emisor_id"], f["anio"]), 0) * 0.999:
+            nuevo, motivo = None, "ingresos ANUAL menores que un trimestre acumulado: se descartan, sin verificar"
+        else:
+            continue
+        cambios.append(f"{slug} {f['anio']}-ANUAL ingresos {f['ingresos']:,.3f} -> {nuevo}  [{motivo}]")
+        if aplicar:
+            cliente.table("fundamentales_reportados").update({"ingresos": nuevo}).eq("id", f["id"]).execute()
+    return cambios
+
+
 def _hash(ruta: Path) -> str:
     h = hashlib.sha256()
     with open(ruta, "rb") as f:
@@ -224,6 +263,7 @@ def main():
 
     resumen = defaultdict(int)
     dobles, discrepancias, avisos, paralelas = [], [], [], []
+    propios_leidos = set()  # (emisor_id, anio, periodo) leídos de SU propio archivo en esta corrida
 
     for carpeta in carpetas:
         slug = carpeta.name
@@ -356,7 +396,36 @@ def main():
                         "xbrl_radicado", "doble_extraccion", "manual")
                     else {}
                 )
-                campos_fusionados = {**campos_previos_xbrl, **campos}
+                # El archivo PROPIO de un período manda sobre su comparativo en el archivo
+                # siguiente: el comparativo solo rellena huecos. Verificado real (auditoría
+                # 01-oct-2026, E3): el XBRL 2026-T2 de PROMIGAS trae como "comparativo 2025-T2"
+                # los ingresos del ANUAL 2024, y al pisar la fila propia (correcta) dejaba dos
+                # períodos distintos con las mismas cifras.
+                clave_periodo = (emisor_id, anio, periodo)
+                es_comparativo = anio != anio_informe
+                if es_comparativo and clave_periodo in propios_leidos:
+                    campos_fusionados = {**campos, **{c: v for c, v in campos_previos_xbrl.items() if v is not None}}
+                else:
+                    campos_fusionados = {**campos_previos_xbrl, **campos}
+                    if not es_comparativo:
+                        propios_leidos.add(clave_periodo)
+
+                # Guarda anti-duplicado: un trimestre con exactamente los mismos ingresos y
+                # utilidad neta que el ANUAL de OTRO año es la firma de un defecto de la propia
+                # radicación del emisor (Promigas 2026-T2 declara como acumulado a junio los
+                # ingresos de todo 2025). No se adivina la cifra buena: se descartan los flujos
+                # de ese trimestre y el período queda con solo los saldos.
+                if periodo != "ANUAL" and campos_fusionados.get("ingresos") and campos_fusionados.get("utilidad_neta") is not None:
+                    huella = (round(campos_fusionados["ingresos"], 3), round(campos_fusionados["utilidad_neta"], 3))
+                    for (e_id, a_prev, p_prev), fila_prev in previas.items():
+                        if (e_id == emisor_id and p_prev == "ANUAL" and a_prev != anio
+                                and fila_prev.get("ingresos") and fila_prev.get("utilidad_neta") is not None
+                                and (round(fila_prev["ingresos"], 3), round(fila_prev["utilidad_neta"], 3)) == huella):
+                            for c in ("ingresos", "utilidad_operacional", "utilidad_neta", "ebitda", "flujo_caja_operativo"):
+                                campos_fusionados[c] = None
+                            nota = f"flujos descartados: idénticos al ANUAL {a_prev} (defecto del emisor)"
+                            resumen["flujos_descartados_por_duplicado"] += 1
+                            break
                 if len(campos) < sum(1 for v in campos_previos_xbrl.values() if v is not None):
                     resumen["comparativo_mas_pobre_fusionado"] += 1
 
