@@ -207,7 +207,7 @@ def main():
 
     print(f"{'EMISOR':26s}{'RUTA':14s}{'BAJO':>10s}{'CENTRAL':>10s}{'ALTO':>10s}{'PRECIO':>10s}{'MARGEN':>9s}  DIAGNÓSTICO / NOTA")
     for em in emisores:
-        arq = em.get("arquetipo")
+        arq = v.ARQUETIPO_VALORACION.get(em["slug"], em.get("arquetipo"))
         a = analisis.get(em["slug"])
         if arq == "infraestructura_mercado":
             res = no_determinable("BVC: el balance incluye saldos de liquidación y márgenes de terceros que no son "

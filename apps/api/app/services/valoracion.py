@@ -33,6 +33,12 @@ UMBRAL_DESTRUCCION = 0.90
 # múltiplos de pares (pendiente) el rango queda declarado como de confianza baja.
 FACTOR_NO_COTIZADAS = (0.50, 0.75, 1.00)
 
+# Emisores cuyo arquetipo contable es "holding" pero que se valoran como operativa. GEB consolida
+# su negocio de transmisión y gas (EBIT consolidado de 2,6 billones): una suma de partes de sus 3
+# participaciones minoritarias ignora ese negocio y lo subvalora (NAV central 1.563 por acción contra
+# 3.035 de precio). Su arquetipo en `emisores` no se toca; solo la ruta de valoración.
+ARQUETIPO_VALORACION = {"GEB": "real"}
+
 # Seguridad (Pilar 1, Whitman). Por tipo de negocio, no un 4x único.
 SECTORES_REGULADOS = {"energia_utilities", "energia_infraestructura"}
 LIMITE_DEUDA_NETA_EBITDA_REGULADO = 5.0   # ingresos contractuales/regulados

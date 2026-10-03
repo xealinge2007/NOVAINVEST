@@ -474,6 +474,11 @@ def main():
         print(f"\n{len(avisos)} aviso(s) de escala:")
         for a in avisos:
             print(f"   {a}")
+    cambios = sanear_ingresos_anuales(cliente, {v: k for k, v in emisores.items()}, aplicar=not args.dry_run)
+    if cambios:
+        print(f"\n{len(cambios)} ingreso(s) ANUAL saneados (E4):")
+        for x in cambios:
+            print(f"   {x}")
     if args.dry_run:
         print("\n(dry-run: no se escribió nada)")
 

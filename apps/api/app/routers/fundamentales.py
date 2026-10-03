@@ -18,6 +18,19 @@ async def listar_fundamentales(usuario: UsuarioActual = Depends(get_current_usua
     return resp.data
 
 
+@router.get("/ranking-valor")
+async def ranking_valor(usuario: UsuarioActual = Depends(get_current_usuario)):
+    """Ranking por puertas (liquidez, datos, seguridad, valor) calculado por `jobs/ranking_valor.py`.
+    Los emisores excluidos vienen con `excluido=true` y su motivo: la lista de descartes es parte del
+    producto. Vacío mientras el job no haya corrido (o falte db/migrate_p3_ranking_y_ventajas.sql)."""
+    cliente = cliente_supabase_de(usuario)
+    try:
+        filas = cliente.table("ranking_valor").select("*").execute().data
+    except Exception:
+        return []
+    return sorted(filas, key=lambda f: (f["posicion"] is None, f["posicion"] or 0, (f.get("detalle") or {}).get("slug", "")))
+
+
 @router.get("/macro/supuestos")
 async def supuestos_macro(usuario: UsuarioActual = Depends(get_current_usuario)):
     cliente = cliente_supabase_de(usuario)
