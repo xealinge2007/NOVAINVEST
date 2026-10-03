@@ -283,7 +283,7 @@ ACCIONES_CURADAS_MANUALMENTE: dict[str, tuple[float, str]] = {
     "PROMIGAS": (1_134_848_043, "Promigas, Composición Accionaria (promigas.com/Documents/Inversionistas/Acciones-Promigas-202601.pdf)"),
     "MINEROS": (292_793_666, "Mineros S.A., tras 1er tramo de recompra de acciones, cierre 26-may-2026"),
     "ETB": (3_550_553_412, "Presentación corporativa ETB 2020-2021 — no se encontró una cifra más reciente; ETB no ha reportado splits ni recompras desde entonces"),
-    "PEI": (49_953_917, "derivado del flujo de caja distribuible: 4T-2025 $100.007 M / $2.002 por titulo = 49,95 M, 1T-2026 ~$61.000 M / $1.220 = 50,0 M y 2T-2026 $65.040 M / $1.302 = 49,95 M (Pei Asset Management, via La Republica y Valora Analitik); incluye la 12a emision colocada en sep-2025. Antes 43.142.200 (base tras el desdoblamiento de 2022, sin la emision)"),
+    "PEI": (49_953_606, "Informe trimestral del Representante Legal de Inversionistas (Fiducoldex), 1T-2026: 49.953.606 titulos en circulacion al 31-mar-2026 (incluye la 12a emision de sep-2025). Verificado ademas por el flujo de caja distribuible: 2T-2026 $65.040 M / $1.302 = 49,95 M"),
     # BVC: sin cifra confiable — la búsqueda solo encontró una cifra de
     # tercero (27,38M) sin corroborar contra fuente oficial. Mejor sin P/E
     # que con un conteo que se sabe no verificado.

@@ -180,16 +180,17 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
                   "alto": _r(patrimonio * f_alto * 1e9 / acciones_total)}
     return {
         "determinable": True, "p25": patrimonio * f_bajo, "central": patrimonio * f_central, "p75": patrimonio * f_alto,
-        "tasa": None, "confianza": "baja",
+        "tasa": None, "confianza": "media",
         "detalle": {
             "metodo": "NAV por título = patrimonio contable (inmuebles a valor razonable, NIC 40)",
             "por_accion": por_accion, "precio": precio,
             "margen_seguridad_pct": _r(v.margen_seguridad(por_accion["central"], precio)),
             "acciones_total": acciones_total,
-            "avisos": ["conteo de títulos derivado del flujo de caja distribuible (49,95 M; tres trimestres coinciden): "
-                       "no es la cifra del reporte oficial de títulos en circulación",
+            "avisos": ["títulos en circulación: 49.953.606 al 31-mar-2026 (informe del Representante Legal, Fiducoldex)",
+                       "NAV = patrimonio a valor razonable: el informe 1T-2026 reporta NAV de COP 144.620 por título contra "
+                       "COP 66.000 de precio (descuento 54,4 %) y ventas recientes cerca del libro (Plaza Central 51 % al 96 % del libro)",
                        "el rango bajo/central/alto es un supuesto (0,90/1,00/1,00 del libro), no una valoración "
-                       "independiente de los inmuebles; pendiente: tasa de capitalización y ocupación"],
+                       "independiente de los inmuebles"],
         },
     }
 

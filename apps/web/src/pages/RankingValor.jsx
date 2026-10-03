@@ -154,7 +154,15 @@ export default function RankingValor() {
                 <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
                   {PUERTA[f.puerta_fallida] || f.puerta_fallida}
                 </span>
-                <span className="flex-1 text-xs text-slate-500">{f.motivo_exclusion}</span>
+                <span className="flex-1 text-xs text-slate-500">
+                  {f.motivo_exclusion}
+                  {f.valor_central !== null && f.valor_central !== undefined && (
+                    <span className="mt-0.5 block text-slate-600">
+                      Valor de referencia (no rankeado): {fmt(f.valor_bajo, 0)} · <strong>{fmt(f.valor_central, 0)}</strong> · {fmt(f.valor_alto, 0)} contra un precio de {fmt(f.precio, 0)}
+                      {f.margen_seguridad_pct !== null && f.margen_seguridad_pct !== undefined ? ` (margen ${fmt(f.margen_seguridad_pct, 0)}%)` : ""}.
+                    </span>
+                  )}
+                </span>
               </div>
             ))}
           </div>
