@@ -20,6 +20,7 @@ from datetime import date, timedelta
 
 VENTANA_VIGENCIA_DIAS = 548  # ~18 meses: el plan pide el catalizador de los proximos 12
 ESTADOS_VIVOS = ("anunciado", "en_curso")
+TIPOS_DEBILES = ("recompra",)
 
 
 def _fecha(valor):
@@ -51,6 +52,13 @@ def evaluar_catalizadores(eventos: list[dict], hoy: date | None = None) -> dict:
                 "eventos_vivos": []}
 
     ids = [v[0] for v in vivos]
+    # Una recompra autorizada (típicamente 2-3 % de la capitalización) no cierra por sí sola un
+    # descuento de 30-60 %: en conversión de recursos la puerta la abren OPAs, escisiones, ventas de
+    # activos o cambios de control. Si los eventos vivos son solo recompras, el nivel es "debil".
+    if all(e.get("tipo_evento") in TIPOS_DEBILES for _, e in vivos):
+        return {"tiene_catalizador_vivo": True, "nivel": "debil",
+                "motivo": f"{len(vivos)} recompra(s) vivas; efecto acotado, no es una conversión de recursos",
+                "eventos_vivos": ids}
     if any(e.get("favorece_minoritario") is not False for _, e in vivos):
         return {"tiene_catalizador_vivo": True, "nivel": "fuerte",
                 "motivo": f"{len(vivos)} evento(s) vivo(s)", "eventos_vivos": ids}

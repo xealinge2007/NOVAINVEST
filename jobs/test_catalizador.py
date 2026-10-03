@@ -42,6 +42,12 @@ revisar("controlante desfavorable -> vivo pero debil", (r["tiene_catalizador_viv
 r = evaluar_catalizadores([ev(favorece_minoritario=False), ev(favorece_minoritario=True)], HOY)
 revisar("basta un evento favorable para ser fuerte", r["nivel"], "fuerte")
 
+print("--- recompras: vivas pero debiles ---")
+r = evaluar_catalizadores([ev(tipo_evento="recompra")], HOY)
+revisar("solo recompra viva -> debil", (r["tiene_catalizador_vivo"], r["nivel"]), (True, "debil"))
+r = evaluar_catalizadores([ev(tipo_evento="recompra"), ev(tipo_evento="opa")], HOY)
+revisar("recompra mas una OPA viva -> fuerte", r["nivel"], "fuerte")
+
 print("--- validacion del CSV ---")
 OK = {"emisor_slug": "GRUPO_SURA", "tipo_evento": "opa", "estado": "anunciado",
       "fecha_anuncio": "2026-06-01", "descripcion": "x", "fuente": "Superfinanciera"}

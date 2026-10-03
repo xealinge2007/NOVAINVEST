@@ -41,7 +41,7 @@ visible en "Fundamentales", rotulado "no validado".
 6. **Rúbrica de ventajas competitivas**: pesos 40/20/20/20, umbrales 65/35 y la clasificación de
    la *fuente* de la ventaja (`FUENTE_VENTAJA`) son juicio de la casa, no medidos.
 7. **Ranking por puertas** (`ranking_valor.py`): umbral de "barata" 20 %, renta = rendimiento >= 6 % con
-   payout <= 100 %, tamaño relativo. Los catalizadores cargados son 4 eventos ya completados (ninguno vivo).
+   payout <= 100 %, tamaño relativo. Catalizadores (`db/semillas/catalizadores.csv`, 10 eventos con fuente y URL, obtenidos de prensa y avisos de las emisoras; no del repositorio oficial de información relevante de la Superfinanciera): 3 recompras vivas (Sura, Cibest, Enka) que cuentan como catalizador DÉBIL por criterio de la casa; el resto son eventos completados. No se verificó cuánto se ha ejecutado de cada recompra.
 8. **Criterios de seguridad** (`db/CRITERIOS_VALORACION.md`): los límites 3x / 5x / 1,5x / 35 % son
    criterio documentado, no medido.
 
@@ -61,7 +61,7 @@ Esto sugiere que **quedan errores sin detectar**: la auditoría debe buscarlos, 
 - Sin CET1, cartera vencida ni costo del riesgo para bancos.
 - Sin D&A de Terpel (su XBRL no la trae): sin EBITDA ni FCF fiables.
 - Capex vacío en GEB, Cementos Argos y Enka: sin FCF.
-- Precio de Nutresa (321.500) probablemente corrupto; excluida por liquidez.
+- Nutresa: el precio cargado (321.500) coincide con la oferta de recompra de $300.000 por acción del 3-jul-2026 (Forbes Colombia), así que NO está corrupto; pero implica P/E 175 y P/VL 14,7. La alerta de múltiplos "fuera de rango" es un criterio de plausibilidad (P/VL > 8), no una prueba de error. Excluida por liquidez. Verificar el conteo de ~456 M acciones. (Se había anotado como "probablemente corrupto": era una suposición sin verificar.)
 - Conteo de títulos de PEI desactualizado (hay una emisión posterior).
 - EBIT histórico en pesos nominales sin ajustar por inflación (subvalora el normalizado).
 - ISA: el EBIT contable difiere cerca de 6-7 % del que reporta la empresa (no hay EEFF auditados en el corpus).
