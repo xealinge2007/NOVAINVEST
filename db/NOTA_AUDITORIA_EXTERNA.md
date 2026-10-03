@@ -52,17 +52,18 @@ visible en "Fundamentales", rotulado "no validado".
   acciones preferenciales en Grupo Argos**, detectado revisando resultados (corregido).
 - Un conteo de acciones de Corficolombiana se perdió al recargar datos (corregido con ventana reciente).
 - Un FCF de Cementos Argos mezclaba años distintos (corregido: exige el mismo período base).
+- Varios emisores (GEB, Cementos Argos, Enka) radican en el mismo contexto XBRL la plantilla del flujo de caja en cero **y** la cifra real; el lector se quedaba con el cero (capex de GEB, flujo operativo de Cementos Argos). Corregido el 3-oct-2026: gana el valor distinto de cero.
 - Una auditoría anterior declaró cerrada la cobertura de deuda de GRUPO_SURA y no lo estaba.
 
 Esto sugiere que **quedan errores sin detectar**: la auditoría debe buscarlos, no confirmarlos.
 
 ## 5. Limitaciones conocidas (declaradas, no ocultas)
 
-- Sin CET1, cartera vencida ni costo del riesgo para bancos.
-- Sin D&A de Terpel (su XBRL no la trae): sin EBITDA ni FCF fiables.
-- Capex vacío en GEB, Cementos Argos y Enka: sin FCF.
+- Bancos: los indicadores regulatorios (solvencia, CET1, cartera vencida, costo del riesgo) salen de comunicados y prensa de agosto de 2026, no del reporte regulatorio de la Superfinanciera; mezclan entidades (p. ej. solvencia de Bancolombia consolidado con cartera de Grupo Cibest; CET1 de Banco Davivienda con costo del riesgo de Grupo Davivienda). Davivienda Group: sin cartera vencida verificada y con una serie de ROE de solo 2 observaciones.
+- Terpel: su XBRL no etiqueta la D&A a nivel total; se suma PP&E + intangibles de las notas anuales (solo años con nota; los trimestres quedan sin EBITDA).
+- GEB no se valora (EPV no cubre la deuda neta): su EBIT excluye la participación en resultados de asociadas, que no se extrae todavía.
 - Nutresa: el precio cargado (321.500) coincide con la oferta de recompra de $300.000 por acción del 3-jul-2026 (Forbes Colombia), así que NO está corrupto; pero implica P/E 175 y P/VL 14,7. La alerta de múltiplos "fuera de rango" es un criterio de plausibilidad (P/VL > 8), no una prueba de error. Excluida por liquidez. Verificar el conteo de ~456 M acciones. (Se había anotado como "probablemente corrupto": era una suposición sin verificar.)
-- Conteo de títulos de PEI desactualizado (hay una emisión posterior).
+- Títulos de PEI: 49,95 M derivados de dividir el flujo de caja distribuible por el monto por título (tres trimestres coinciden), no del reporte oficial de títulos en circulación. Su rendimiento por distribución es una anualización del primer semestre de 2026 (el valor del 3T-2025 no se verificó).
 - EBIT histórico en pesos nominales sin ajustar por inflación (subvalora el normalizado).
 - ISA: el EBIT contable difiere cerca de 6-7 % del que reporta la empresa (no hay EEFF auditados en el corpus).
 - GEB se valora como operativa (EPV) y sale "no determinable": su EBIT consolidado excluye la participación

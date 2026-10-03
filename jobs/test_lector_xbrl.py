@@ -222,10 +222,21 @@ if isa.is_file():
     revisar("ISA gasto financiero", round(amp["gasto_financiero"]["valor"], 3), 2513.902)
     revisar("ISA utilidad bruta", round(amp["utilidad_bruta"]["valor"], 3), 8207.317)
     revisar("ISA capex incluye PP&E (1.337,8) más intangibles", amp["capex"]["valor"] > 1337.778, True)
+terpel = CORPUS / "TERPEL" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+if terpel.is_file():
+    # Terpel no etiqueta D&A a nivel total: se suman PP&E (277,474) e intangibles (88,482) de las notas.
+    t = lx.leer(terpel, 2025, "ANUAL", emisor="TERPEL")["campos"]
+    revisar("Terpel D&A desde las notas (PP&E + intangibles)", round(t["depreciacion_amortizacion"]["valor"], 3), round(277.4744 + 88.481944, 3))
+    revisar("Terpel EBITDA = EBIT + D&A", round(t["ebitda"]["valor"], 1), round(1292.769208 + 277.4744 + 88.481944, 1))
 geb = CORPUS / "GEB" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
 if geb.is_file():
-    revisar("GEB radica el rubro de inversión en cero: capex None, no 0",
-            lx.leer(geb, 2025, "ANUAL", emisor="GEB")["campos"]["capex"]["valor"], None)
+    # El mismo contexto trae la plantilla en 0 y la cifra real: gana la real (GEB radica 1.413,952 + 559,387).
+    gc = lx.leer(geb, 2025, "ANUAL", emisor="GEB")["campos"]
+    revisar("GEB capex = PP&E + intangibles (no la plantilla en cero)", round(gc["capex"]["valor"], 3), round(1413.952 + 559.387, 3))
+cemar = CORPUS / "CEMENTOS_ARGOS" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
+if cemar.is_file():
+    revisar("Cementos Argos flujo operativo real (no la plantilla en cero)",
+            round(lx.leer(cemar, 2025, "ANUAL", emisor="CEMENTOS_ARGOS")["campos"]["flujo_caja_operativo"]["valor"], 3), 615.561)
 
 print()
 if fallos:

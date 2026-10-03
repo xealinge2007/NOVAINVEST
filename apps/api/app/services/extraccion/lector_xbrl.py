@@ -566,7 +566,11 @@ def _buscar(hechos, contextos, conceptos, fecha, dims_exigidas=None):
             if valor is not None:
                 candidatos.append((ctx["dias"] if ctx["dias"] is not None else -1, valor))
         if candidatos:
-            elegido = max(candidatos, key=lambda x: x[0])
+            # Desempate por valor distinto de cero: varios emisores (GEB, Cementos Argos, Enka)
+            # radican DOS hechos en el mismo contexto -- la plantilla del flujo de caja en 0 y la
+            # cifra real --, y `max` se quedaba con el primero (el 0). Verificado real: capex de GEB
+            # 2025 = 0 y 1.413.952.000; flujo operativo de Cementos Argos = 0 y 615.560.983.
+            elegido = max(candidatos, key=lambda x: (x[0], x[1] != 0))
             valor = elegido[1]
             _ULTIMA_DURACION["dias"] = elegido[0] if elegido[0] >= 0 else None
             # Un CERO no gana sobre la alternativa. Verificado real y
@@ -769,6 +773,19 @@ def _depreciacion_amortizacion(hechos, contextos, fecha):
         if validas:
             candidatos.append((sum(v for v, _ in validas), " + ".join(c for _, c in validas)))
     if not candidatos:
+        # Último recurso (Terpel): ningún rubro de D&A a nivel total; solo las notas de PP&E e
+        # intangibles, con el miembro "total" del eje de clases. Se suman PP&E + intangibles.
+        eje_carry = "CarryingAmountAccumulatedDepreciationAmortisationAndImpairmentAndGrossCarryingAmountAxis"
+        ppe, _ = _buscar(hechos, contextos, ["DepreciationPropertyPlantAndEquipment"], fecha,
+                         dims_exigidas={eje_carry: "CarryingAmountMember",
+                                        "ClassesOfPropertyPlantAndEquipmentAxis": "PropertyPlantAndEquipmentMember"})
+        intang, _ = _buscar(hechos, contextos, ["AmortisationIntangibleAssetsOtherThanGoodwill"], fecha,
+                            dims_exigidas={eje_carry: "CarryingAmountMember",
+                                           "ClassesOfIntangibleAssetsOtherThanGoodwillAxis": "IntangibleAssetsOtherThanGoodwillMember"})
+        if ppe or intang:
+            partes = [c for v, c in ((ppe, "DepreciationPropertyPlantAndEquipment(total)"),
+                                     (intang, "AmortisationIntangibleAssetsOtherThanGoodwill(total)")) if v]
+            return (ppe or 0) + (intang or 0), " + ".join(partes)
         return None, None
     return max(candidatos, key=lambda x: x[0])
 

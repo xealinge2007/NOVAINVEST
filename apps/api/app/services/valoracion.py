@@ -47,6 +47,14 @@ COBERTURA_MINIMA = 1.5                    # EBIT / gasto financiero
 LIMITE_LTV_HOLDING = 0.35                 # deuda neta del holding / valor bruto de sus participaciones
 LIMITE_DEUDA_PATRIMONIO_INMOBILIARIO = 2.0
 
+# Bancos (indicadores regulatorios de los informes trimestrales, `db/semillas/bancos_regulatorio.csv`).
+# Mínimo regulatorio con colchones: solvencia total 11,5 % (Banco de Bogotá: 14,9 % = 339 pb sobre el
+# mínimo); CET1 7,0 % (Davivienda). Se exige 1 pp de holgura en solvencia y 2 pp en CET1.
+SOLVENCIA_TOTAL_MINIMA_PCT = 12.5
+CET1_MINIMO_PCT = 9.0
+CARTERA_VENCIDA_90_MAXIMA_PCT = 5.0
+COSTO_RIESGO_MAXIMO_PCT = 3.0
+
 
 # ---------------------------------------------------------------------------
 # EBIT normalizado (Greenwald)
@@ -250,3 +258,29 @@ def evaluar_seguridad(arquetipo, sector, *, deuda_ebitda=None, deuda_neta_ebitda
     if not partes:
         return None, "sin EBITDA positivo ni cobertura de intereses para juzgar"
     return True, "; ".join(partes)
+
+
+def evaluar_seguridad_banco(solvencia_total=None, cet1=None, cartera_vencida_90=None, costo_riesgo=None):
+    """(ok, motivo) de un banco con los indicadores regulatorios disponibles (en %). Exige AL MENOS
+    un indicador de capital (solvencia total o CET1); sin ninguno no es evaluable. Cartera vencida a 90
+    días y costo del riesgo se juzgan solo si están. Todos los presentes deben pasar."""
+    if solvencia_total is None and cet1 is None:
+        return None, "sin indicador de capital (solvencia total o CET1)"
+    razones, partes = [], []
+    if solvencia_total is not None:
+        partes.append(f"solvencia total {solvencia_total:.2f}% (mín. {SOLVENCIA_TOTAL_MINIMA_PCT}%)")
+        if solvencia_total < SOLVENCIA_TOTAL_MINIMA_PCT:
+            razones.append(f"solvencia total {solvencia_total:.2f}% < {SOLVENCIA_TOTAL_MINIMA_PCT}%")
+    if cet1 is not None:
+        partes.append(f"CET1 {cet1:.2f}% (mín. {CET1_MINIMO_PCT}%)")
+        if cet1 < CET1_MINIMO_PCT:
+            razones.append(f"CET1 {cet1:.2f}% < {CET1_MINIMO_PCT}%")
+    if cartera_vencida_90 is not None:
+        partes.append(f"cartera vencida 90d {cartera_vencida_90:.2f}% (máx. {CARTERA_VENCIDA_90_MAXIMA_PCT}%)")
+        if cartera_vencida_90 > CARTERA_VENCIDA_90_MAXIMA_PCT:
+            razones.append(f"cartera vencida 90d {cartera_vencida_90:.2f}% > {CARTERA_VENCIDA_90_MAXIMA_PCT}%")
+    if costo_riesgo is not None:
+        partes.append(f"costo del riesgo {costo_riesgo:.2f}% (máx. {COSTO_RIESGO_MAXIMO_PCT}%)")
+        if costo_riesgo > COSTO_RIESGO_MAXIMO_PCT:
+            razones.append(f"costo del riesgo {costo_riesgo:.2f}% > {COSTO_RIESGO_MAXIMO_PCT}%")
+    return (False, "; ".join(razones)) if razones else (True, "; ".join(partes))

@@ -136,8 +136,14 @@ def valorar_banco(cliente, em, a, acciones_total):
     anuales = _anuales(cliente, em["id"], ["utilidad_neta", "patrimonio"])
     roes = [f["utilidad_neta"] / f["patrimonio"] for y, f in sorted(anuales.items())
             if f.get("utilidad_neta") is not None and f.get("patrimonio")][-5:]
-    if len(roes) < 3:
-        return no_determinable(f"solo {len(roes)} ROE anual(es); se exigen 3")
+    avisos_banco = []
+    if len(roes) < 3 and a.get("roe") is not None:
+        # Davivienda Group cotiza desde 2025 (un solo ROE anual): se completa con el ROE de los últimos
+        # 12 meses. Con una serie corta el rango bajo/alto casi solo se mueve por el Ke.
+        roes = roes + [a["roe"] / 100]
+        avisos_banco.append(f"serie corta: {len(roes)} observaciones de ROE (anuales + TTM); el rango casi no refleja variabilidad del ROE")
+    if len(roes) < 2:
+        return no_determinable(f"solo {len(roes)} ROE disponible(s); se exigen al menos 2")
     if not a.get("costo_patrimonio") or not a.get("patrimonio") or not acciones_total:
         return no_determinable("sin Ke, patrimonio o conteo de acciones")
     ke = a["costo_patrimonio"] / 100
@@ -158,8 +164,8 @@ def valorar_banco(cliente, em, a, acciones_total):
             "g_pct": v.CRECIMIENTO_PERPETUO_BANCOS * 100,
             "roe_anuales_pct": [_r(r * 100, 1) for r in roes], "roe_central_pct": _r(esc["roe_central"] * 100, 1),
             "pvl_justificado": {k: _r(esc[k]["pvl"], 2) for k in ("bajo", "central", "alto")},
-            "avisos": ["sin CET1, cartera vencida ni costo del riesgo (no hay fuente cargada): el ROE histórico "
-                       "no descuenta deterioro de cartera futuro"],
+            "avisos": avisos_banco + ["el ROE histórico no descuenta el deterioro futuro de cartera; los indicadores "
+                       "regulatorios (db/semillas/bancos_regulatorio.csv) solo entran como puerta de seguridad"],
         },
     }
 
@@ -180,8 +186,8 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
             "por_accion": por_accion, "precio": precio,
             "margen_seguridad_pct": _r(v.margen_seguridad(por_accion["central"], precio)),
             "acciones_total": acciones_total,
-            "avisos": ["conteo de títulos curado a mano (43,14 M; hay una emisión posterior que puede no estar reflejada): "
-                       "el NAV por título cambia casi 1:1 con ese número",
+            "avisos": ["conteo de títulos derivado del flujo de caja distribuible (49,95 M; tres trimestres coinciden): "
+                       "no es la cifra del reporte oficial de títulos en circulación",
                        "el rango bajo/central/alto es un supuesto (0,90/1,00/1,00 del libro), no una valoración "
                        "independiente de los inmuebles; pendiente: tasa de capitalización y ocupación"],
         },

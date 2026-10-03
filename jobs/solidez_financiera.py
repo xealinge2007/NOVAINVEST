@@ -56,7 +56,7 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 import pandas as pd  # noqa: E402
 
 from app.services.liquidez import volumen_suficiente  # noqa: E402
-from app.services.valoracion import evaluar_seguridad, ltv_holding  # noqa: E402
+from app.services.valoracion import evaluar_seguridad, evaluar_seguridad_banco, ltv_holding  # noqa: E402
 
 # DOCTRINA_VALOR.md §2 -- clasificación ya documentada, se siembra aquí
 # porque F0/W1 dejó `emisores.arquetipo` vacío a propósito ("sembrarla es
@@ -130,6 +130,23 @@ def _seguridad_por_apalancamiento(deuda_ebitda, deuda_patrimonio, ebitda_ttm):
     if razones_reprueba:
         return False, "; ".join(razones_reprueba)
     return True, f"deuda/patrimonio {deuda_patrimonio:.2f}x, deuda/EBITDA {deuda_ebitda if deuda_ebitda is not None else 'n/d'}"
+
+
+def _indicadores_banco(slug):
+    """Indicadores regulatorios del último trimestre cargado en `db/semillas/bancos_regulatorio.csv`
+    (cada fila con su fuente y URL). {} si el banco no está en el CSV."""
+    import csv
+    ruta = RAIZ / "db" / "semillas" / "bancos_regulatorio.csv"
+    if not ruta.is_file():
+        return {}
+    filas = [f for f in csv.DictReader(ruta.open(encoding="utf-8")) if f["emisor_slug"] == slug]
+    if not filas:
+        return {}
+    f = max(filas, key=lambda r: r["periodo"])
+    num = lambda k: float(f[k]) if f.get(k) else None
+    return {"solvencia_total": num("solvencia_total_pct"), "cet1": num("cet1_pct"),
+            "cartera_vencida_90": num("cartera_vencida_90_pct"), "costo_riesgo": num("costo_riesgo_pct"),
+            "periodo": f["periodo"]}
 
 
 def _liquidez_ok(cliente, emisor_id):
@@ -226,10 +243,18 @@ def main():
             veredicto = {"elegible": False, "motivo_no_elegible": f"liquidez insuficiente: {liquidez_detalle}",
                          "pilar1_seguridad_ok": None, "pilar1_motivo": "no evaluado: no pasó Puerta 0"}
         elif arquetipo == "banco":
-            print(f"  {slug:26s} molde=banco                 pilar1=no_evaluable ({MOTIVO_BANCO_NO_EVALUADO[:60]}...)")
-            resumen["banco_no_evaluado"] += 1
+            ind = _indicadores_banco(slug)
+            ok, motivo = evaluar_seguridad_banco(**{k: v for k, v in ind.items() if k != "periodo"}) if ind else (
+                None, "sin indicadores regulatorios cargados")
+            if ok is None:
+                motivo = f"{motivo}. {MOTIVO_BANCO_NO_EVALUADO}"
+                resumen["banco_no_evaluado"] += 1
+            else:
+                motivo = f"{motivo} ({ind['periodo']}, db/semillas/bancos_regulatorio.csv)"
+                resumen["ok" if ok else "no_ok"] += 1
+            print(f"  {slug:26s} molde=banco                 pilar1={'OK' if ok else ('no_ok' if ok is False else 'no_evaluable')} ({motivo[:110]})")
             veredicto = {"elegible": True, "motivo_no_elegible": None,
-                         "pilar1_seguridad_ok": None, "pilar1_motivo": MOTIVO_BANCO_NO_EVALUADO}
+                         "pilar1_seguridad_ok": ok, "pilar1_motivo": motivo}
         else:
             fa = analisis.get(slug, {})
             ltv = _ltv_holding(cliente, em["id"]) if arquetipo == "holding" else None

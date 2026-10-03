@@ -13,7 +13,7 @@ allí y se vuelve a correr `jobs/solidez_financiera.py` y `jobs/valoracion_por_a
 | Ambos | cobertura de intereses (EBIT / gasto financiero) | ≥ 1,5x |
 | Holding no regulado (Sura, Argos, Aval, Corficolombiana) | LTV del propio holding: deuda neta propia / participaciones brutas | ≤ 35 % |
 | Vehículo inmobiliario (PEI) | deuda / patrimonio (proxy provisional de LTV) | ≤ 2,0x |
-| Banco | **no evaluable** (falta CET1, cartera vencida, costo del riesgo) | — |
+| Banco | indicadores regulatorios del último informe trimestral (`db/semillas/bancos_regulatorio.csv`, con fuente y URL): solvencia total ≥ 12,5 % **o** CET1 ≥ 9,0 % (mínimos regulatorios con colchones: 11,5 % y 7,0 %; se exige 1 y 2 pp de holgura), cartera vencida a 90 días ≤ 5 % y costo del riesgo ≤ 3 % cuando están. Sin ningún indicador de capital: no evaluable | ver texto |
 
 Se usa deuda neta cuando hay caja cargada y bruta si no. Un EBITDA ausente o negativo no reprueba
 por múltiplo; queda a cargo de la cobertura. Los límites son criterio documentado, no medido.

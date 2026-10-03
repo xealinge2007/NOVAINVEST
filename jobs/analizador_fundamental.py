@@ -283,7 +283,7 @@ ACCIONES_CURADAS_MANUALMENTE: dict[str, tuple[float, str]] = {
     "PROMIGAS": (1_134_848_043, "Promigas, Composición Accionaria (promigas.com/Documents/Inversionistas/Acciones-Promigas-202601.pdf)"),
     "MINEROS": (292_793_666, "Mineros S.A., tras 1er tramo de recompra de acciones, cierre 26-may-2026"),
     "ETB": (3_550_553_412, "Presentación corporativa ETB 2020-2021 — no se encontró una cifra más reciente; ETB no ha reportado splits ni recompras desde entonces"),
-    "PEI": (43_142_200, "PEI, base tras el desdoblamiento de 2022 (431.422 -> 43.142.200 títulos); hay una 12a emisión en curso desde ago-2025 (~7M títulos adicionales) que puede no estar reflejada aún"),
+    "PEI": (49_953_917, "derivado del flujo de caja distribuible: 4T-2025 $100.007 M / $2.002 por titulo = 49,95 M, 1T-2026 ~$61.000 M / $1.220 = 50,0 M y 2T-2026 $65.040 M / $1.302 = 49,95 M (Pei Asset Management, via La Republica y Valora Analitik); incluye la 12a emision colocada en sep-2025. Antes 43.142.200 (base tras el desdoblamiento de 2022, sin la emision)"),
     # BVC: sin cifra confiable — la búsqueda solo encontró una cifra de
     # tercero (27,38M) sin corroborar contra fuente oficial. Mejor sin P/E
     # que con un conteo que se sabe no verificado.
@@ -311,6 +311,15 @@ ACCIONES_PREFERENCIALES: dict[str, tuple[int, str]] = {
 # Con el derivado, sumar las preferenciales las contaba dos veces (capitalización de 18.994
 # en vez de ~16.700). Se fuerza el conteo curado de la ordinaria. Auditoría 02-oct-2026.
 FORZAR_ACCIONES_CURADAS = {"GRUPO_ARGOS"}
+
+# Distribución anual por título (COP) de vehículos que no decretan "dividendos" en sus EEFF.
+# PEI reparte el flujo de caja distribuible (FCD) cada trimestre. Se anualiza el último semestre
+# conocido (1T-2026 $1.220 + 2T-2026 $1.302 = $2.522, por 2): del 3T-2025 no se verificó el valor y el
+# 4T-2025 ($2.002) incluye 14,7 % de restitución de capital. El 1T-2026 incluye recursos de una
+# desinversión. Es un rendimiento aproximado, no un TTM.
+DISTRIBUCION_ANUAL_CURADA: dict[str, tuple[float, str]] = {
+    "PEI": (5_044.0, "FCD 1T-2026 $1.220 + 2T-2026 $1.302 por titulo, anualizado (Valora Analitik 6-ago-2026; La Republica)"),
+}
 
 UMBRAL_SUPERMAYORIA_ACCIONES = 0.75
 
@@ -850,6 +859,8 @@ def main():
         payout = _pct(_div(dividendo_reciente, utilidad))
         dividendo_por_accion = _div(dividendo_reciente * 1_000_000_000 if dividendo_reciente is not None else None, acciones_total)
         dividend_yield = _pct(_div(dividendo_por_accion, precio_pref if (precio_pref is not None and not ordinarias) else precio))
+        if dividend_yield is None and em["slug"] in DISTRIBUCION_ANUAL_CURADA:
+            dividend_yield = _pct(_div(DISTRIBUCION_ANUAL_CURADA[em["slug"]][0], precio))
 
         # Creación de valor. No financieras: ROIC vs. WACC. Bancos y holdings
         # financieros: ROE vs. Ke -- su "deuda" son depósitos de clientes,
