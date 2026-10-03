@@ -15,8 +15,11 @@ idealmente, ajeno a los supuestos de la casa (Greenwald, Whitman, Damodaran).
 Identificar el valor de cada empresa de la BVC (24 emisores) desde estados financieros, ROIC,
 márgenes, FCF, deuda, valoración, múltiplos y ventajas competitivas.
 
-**Fuera de alcance de esta entrega:** rúbrica de ventajas competitivas (P3), ranking nuevo por
-puertas (W5) e interfaz (W7). Hoy la PWA muestra el ranking ROIC−WACC viejo, rotulado "no validado".
+**Incluido (02-oct-2026):** rúbrica de ventajas competitivas (`apps/api/app/services/ventaja_competitiva.py`),
+ranking por puertas liquidez -> datos -> seguridad -> valor (`ranking_valor.py`, `jobs/ranking_valor.py`,
+tablas `ranking_valor` y `ventaja_competitiva`) y su página en la PWA. El ranking ROIC−WACC anterior sigue
+visible en "Fundamentales", rotulado "no validado".
+**Fuera de alcance:** crecimiento del NAV/EPV como desempate (Pilar 4), renta en USD (Bazin/Barsi), backtest.
 
 ## 3. Qué verificar, en orden de riesgo
 
@@ -35,7 +38,11 @@ puertas (W5) e interfaz (W7). Hoy la PWA muestra el ranking ROIC−WACC viejo, r
 5. **Holdings** (`jobs/ingesta_participaciones.py`, `participaciones_holding`, `ajustes_nav`): las
    cifras de las notas de EEFF separados se leyeron a mano (con IA) de los PDF. Verificar que no haya
    doble conteo entre holdings (Aval, Corficolombiana y Banco de Bogotá; Argos y Sura).
-6. **Criterios de seguridad** (`db/CRITERIOS_VALORACION.md`): los límites 3x / 5x / 1,5x / 35 % son
+6. **Rúbrica de ventajas competitivas**: pesos 40/20/20/20, umbrales 65/35 y la clasificación de
+   la *fuente* de la ventaja (`FUENTE_VENTAJA`) son juicio de la casa, no medidos.
+7. **Ranking por puertas** (`ranking_valor.py`): umbral de "barata" 20 %, renta = rendimiento >= 6 % con
+   payout <= 100 %, tamaño relativo. Los catalizadores cargados son 4 eventos ya completados (ninguno vivo).
+8. **Criterios de seguridad** (`db/CRITERIOS_VALORACION.md`): los límites 3x / 5x / 1,5x / 35 % son
    criterio documentado, no medido.
 
 ## 4. Errores propios ya encontrados (para calibrar la confianza en el resto)
@@ -58,6 +65,8 @@ Esto sugiere que **quedan errores sin detectar**: la auditoría debe buscarlos, 
 - Conteo de títulos de PEI desactualizado (hay una emisión posterior).
 - EBIT histórico en pesos nominales sin ajustar por inflación (subvalora el normalizado).
 - ISA: el EBIT contable difiere cerca de 6-7 % del que reporta la empresa (no hay EEFF auditados en el corpus).
+- GEB se valora como operativa (EPV) y sale "no determinable": su EBIT consolidado excluye la participación
+  en resultados de asociadas y probablemente subvalora. Clasificación en `ARQUETIPO_VALORACION`.
 - Los WACC de regulados (ISA, GEB) salen altos con beta CAPM; por eso el modelo los ve "caros".
 
 ## 6. Cómo reproducir (con Supabase accesible)
@@ -68,6 +77,7 @@ Esto sugiere que **quedan errores sin detectar**: la auditoría debe buscarlos, 
     python jobs/solidez_financiera.py                 # Pilar 1 -> score_valor
     python jobs/valoracion_por_accion.py              # valor por acción -> valor_estimado
     python jobs/valor_engine.py --emisor GRUPO_SURA   # holdings, uno por uno
+    python jobs/ranking_valor.py                      # ranking + ventajas -> ranking_valor, CSV
 
 El corpus de XBRL/PDF vive en `C:\Proyectos\BVC\` (fuera del repo; **sin respaldo**). Informe previo:
 `db/AUDITORIA_MOTOR_VALOR_2026-10-01.md`. `DOCTRINA_VALOR.md` y `ESTADO_PROYECTO.md` son bitácoras
