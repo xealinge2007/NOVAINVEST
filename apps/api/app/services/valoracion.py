@@ -39,6 +39,16 @@ FACTOR_NO_COTIZADAS = (0.50, 0.75, 1.00)
 # 3.035 de precio). Su arquetipo en `emisores` no se toca; solo la ruta de valoración.
 ARQUETIPO_VALORACION = {"GEB": "real"}
 
+# Emisores donde el método elegido no es aplicable aunque dé un número. GEB: su EBIT consolidado excluye
+# la participación en resultados de asociadas (dividendos recibidos de 2,3 billones en 2025 según su flujo
+# de caja), así que el EPV da un patrimonio de ~1,9 billones frente a 27,9 de capitalización: un artefacto
+# del método, no una señal. La suma de partes tampoco aplica (ignora su negocio operativo). Hasta extraer
+# el resultado de asociadas queda no determinable, con el motivo a la vista.
+NO_DETERMINABLE_POR_METODO = {
+    "GEB": "ni la suma de partes (ignora su negocio operativo) ni el EPV (su EBIT excluye el resultado de "
+           "asociadas: dividendos recibidos de 2,3 billones en 2025) son aplicables; falta extraer ese rubro",
+}
+
 # Seguridad (Pilar 1, Whitman). Por tipo de negocio, no un 4x único.
 SECTORES_REGULADOS = {"energia_utilities", "energia_infraestructura"}
 LIMITE_DEUDA_NETA_EBITDA_REGULADO = 5.0   # ingresos contractuales/regulados

@@ -228,6 +228,13 @@ if terpel.is_file():
     t = lx.leer(terpel, 2025, "ANUAL", emisor="TERPEL")["campos"]
     revisar("Terpel D&A desde las notas (PP&E + intangibles)", round(t["depreciacion_amortizacion"]["valor"], 3), round(277.4744 + 88.481944, 3))
     revisar("Terpel EBITDA = EBIT + D&A", round(t["ebitda"]["valor"], 1), round(1292.769208 + 277.4744 + 88.481944, 1))
+conc = CORPUS / "CONSTRUCTORA_CONCONCRETO"
+if (conc / "2025-T3_EEFF-Consolidados-XBRL.xbrl").is_file():
+    # Dos bloques bajo el mismo contexto: trimestre suelto y acumulado. Gana el acumulado.
+    t3 = lx.leer(conc / "2025-T3_EEFF-Consolidados-XBRL.xbrl", 2025, "T3", emisor="CONSTRUCTORA_CONCONCRETO")["campos"]
+    revisar("Conconcreto 2025-T3 ingresos acumulados (146,3 + 148,2 + 128,4)", round(t3["ingresos"]["valor"], 1), 422.9)
+    t2 = lx.leer(conc / "2026-T2_EEFF-Consolidados-XBRL.xbrl", 2026, "T2", emisor="CONSTRUCTORA_CONCONCRETO")["campos"]
+    revisar("Conconcreto 2026-T2 ingresos acumulados (123,2 + 178,6)", round(t2["ingresos"]["valor"], 1), 301.8)
 geb = CORPUS / "GEB" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
 if geb.is_file():
     # El mismo contexto trae la plantilla en 0 y la cifra real: gana la real (GEB radica 1.413,952 + 559,387).

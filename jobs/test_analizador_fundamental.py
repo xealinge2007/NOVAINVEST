@@ -45,6 +45,15 @@ revisar("sin spread no entra", rk["E"], None)
 revisar("el resto se ordena por spread", (rk["A"], rk["D"]), (1, 2))
 revisar("el descarte por liquidez queda dicho", "liquidez" in filas[2]["alerta_multiplos"], True)
 
+print("--- acumulados monotonos ---")
+g = lambda anio, per, ing: {"anio": anio, "periodo": per, "ingresos": ing, "acumulado": True}
+revisar("T3 acumulado menor que T2 en el ano reciente se marca",
+        bool(a.revisar_acumulados_monotonos([g(2025, "T1", 146.0), g(2025, "T2", 294.5), g(2025, "T3", 128.4)])), True)
+revisar("serie acumulada coherente no alerta",
+        a.revisar_acumulados_monotonos([g(2025, "T1", 146.0), g(2025, "T2", 294.5), g(2025, "T3", 422.9)]), "")
+revisar("un hueco historico no alerta",
+        a.revisar_acumulados_monotonos([g(2018, "T2", 265.0), g(2018, "T3", 242.0), g(2025, "T1", 1.0)]), "")
+
 print("--- métricas ampliadas P1 ---")
 m = a.metricas_ampliadas(
     fco=2552.3, capex=1706.3, utilidad=2420.3, ebitda=7922.2, operacional=6842.0, ingresos=15918.0,

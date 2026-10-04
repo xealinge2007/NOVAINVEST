@@ -564,13 +564,19 @@ def _buscar(hechos, contextos, conceptos, fecha, dims_exigidas=None):
                 continue
             valor = _a_numero(h["valor"])
             if valor is not None:
-                candidatos.append((ctx["dias"] if ctx["dias"] is not None else -1, valor))
+                candidatos.append((ctx["dias"] if ctx["dias"] is not None else -1, valor, len(candidatos)))
         if candidatos:
             # Desempate por valor distinto de cero: varios emisores (GEB, Cementos Argos, Enka)
             # radican DOS hechos en el mismo contexto -- la plantilla del flujo de caja en 0 y la
             # cifra real --, y `max` se quedaba con el primero (el 0). Verificado real: capex de GEB
             # 2025 = 0 y 1.413.952.000; flujo operativo de Cementos Argos = 0 y 615.560.983.
-            elegido = max(candidatos, key=lambda x: (x[0], x[1] != 0))
+            # Y un segundo desempate: a igual duración y ambos distintos de cero, gana el ÚLTIMO en
+            # el documento. Conconcreto radica en T2 y T3 DOS bloques bajo el mismo contexto: primero
+            # el trimestre suelto y después el acumulado del año (2026-T2: ingresos 178,6 y luego
+            # 301,8 = 123,2 + 178,6). Con `max` se quedaba con el primero (el trimestre) y marcaba
+            # esa cifra como acumulada; 2025-T3 daba 128,4 en vez de 422,9. Verificado por suma:
+            # 146,3 (T1) + 148,2 (T2) + 128,4 (T3) = 422,9.
+            elegido = max(candidatos, key=lambda x: (x[0], x[1] != 0, x[2]))
             valor = elegido[1]
             _ULTIMA_DURACION["dias"] = elegido[0] if elegido[0] >= 0 else None
             # Un CERO no gana sobre la alternativa. Verificado real y

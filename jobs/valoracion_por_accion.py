@@ -65,6 +65,8 @@ def no_determinable(motivo):
 
 
 def valorar_real(cliente, em, a, acciones_total):
+    if em["slug"] in v.NO_DETERMINABLE_POR_METODO:
+        return no_determinable(v.NO_DETERMINABLE_POR_METODO[em["slug"]])
     anuales = _anuales(cliente, em["id"], ["utilidad_operacional"])
     ebit = {y: f["utilidad_operacional"] for y, f in anuales.items() if f.get("utilidad_operacional") is not None}
     ebit = {y: x for y, x in ebit.items() if y >= max(ebit, default=0) - 6}

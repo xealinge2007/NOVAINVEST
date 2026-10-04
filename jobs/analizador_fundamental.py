@@ -570,6 +570,25 @@ def capitalizacion_total(precio_ord, acciones_ord, precio_pref, acciones_pref) -
     return round((precio_ord * acciones_ord + valor_pref) / 1_000_000_000, 3)
 
 
+def revisar_acumulados_monotonos(filas: list[dict]) -> str:
+    """Aviso cuando, dentro de un año reciente, los ingresos ACUMULADOS bajan de un trimestre al
+    siguiente (T2 < T1 o T3 < T2): matemáticamente imposible. Es la firma de un trimestre suelto
+    marcado como acumulado (Conconcreto 2025-T3: 128,4 contra 294,5 del T2). Solo se miran el año
+    más reciente y el anterior: los huecos históricos no deben sacar al emisor del ranking."""
+    if not filas:
+        return ""
+    ultimo = max(f["anio"] for f in filas)
+    por = {(f["anio"], f["periodo"]): f for f in filas if f.get("ingresos") and f.get("acumulado") is not False}
+    avisos = []
+    for anio in (ultimo - 1, ultimo):
+        for previo, actual in (("T1", "T2"), ("T2", "T3")):
+            a, b = por.get((anio, previo)), por.get((anio, actual))
+            if a and b and b["ingresos"] < a["ingresos"] * 0.999:
+                avisos.append(f"ingresos acumulados {anio}-{actual} ({b['ingresos']:,.0f}) menores que {anio}-{previo} ({a['ingresos']:,.0f}): "
+                              "un trimestre suelto marcado como acumulado")
+    return " | ".join(avisos)
+
+
 def revisar_periodos_duplicados(filas: list[dict]) -> str:
     """Aviso cuando dos períodos DISTINTOS del mismo emisor traen exactamente los mismos
     ingresos y utilidad neta: es la firma de un período que quedó con las cifras de otro
@@ -744,6 +763,7 @@ def main():
             revisar_consistencia_ingresos(filas),
             revisar_periodos_duplicados(filas),
             revisar_ingresos_en_cero(filas),
+            revisar_acumulados_monotonos(filas),
         ]))
 
         ingresos, fuente_ing = ttm(desac, "ingresos", em["slug"])

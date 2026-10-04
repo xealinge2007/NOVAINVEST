@@ -95,4 +95,7 @@ revisar("cartera vencida por encima de 5 % no pasa", ok, False)
 ok, _ = v.evaluar_seguridad_banco(cartera_vencida_90=2.0, costo_riesgo=1.0)
 revisar("sin indicador de capital no es evaluable", ok, None)
 
+print("--- metodos no aplicables ---")
+revisar("GEB queda no determinable con motivo (el EPV da un artefacto)", "asociadas" in v.NO_DETERMINABLE_POR_METODO.get("GEB", ""), True)
+
 reportar_y_salir()
