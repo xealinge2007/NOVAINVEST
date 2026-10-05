@@ -37,7 +37,20 @@ from analizador_fundamental import ACCIONES_PREFERENCIALES  # noqa: E402
 ORDEN = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "ANUAL": 5}
 FIN_PERIODO = {"T1": "03-31", "T2": "06-30", "T3": "09-30", "T4": "12-31", "ANUAL": "12-31"}
 RUTA_DB = {"real": "activos_epv", "banco": "banco", "vehiculo_inmobiliario": "inmobiliario"}
-FACTOR_NAV_INMOBILIARIO = (0.90, 1.00, 1.00)  # el libro ya es valor razonable: sin potencial por encima
+FACTOR_NAV_INMOBILIARIO = (0.90, 1.00, 1.00)
+
+# Datos operativos de vehículos inmobiliarios para la sensibilidad del NAV (curados, con fuente). PEI,
+# 2T-2026: NOI e ingresos del trimestre (se anualizan x4: el 2T ya refleja la venta del 51 % de Plaza
+# Central), vacancia económica de la teleconferencia. Los inmuebles (propiedad de inversión) se estiman con
+# la participación que tuvieron en el activo total en el 1T-2026 (10.090,865 / 10.307,115 = 97,9 %).
+DATOS_OPERATIVOS = {
+    "PEI": {
+        "noi_trimestre": 172.844, "ingresos_trimestre": 205.778, "vacancia_economica_pct": 7.25,
+        "vacancia_fisica_pct": 6.72, "participacion_inmuebles_en_activos": 10090.865 / 10307.115,
+        "fuente": "Informe 2T-2026 del Representante Legal (Fiducoldex) y Valora Analitik 6-ago-2026; "
+                  "propiedad de inversión y activo total del 1T-2026 (informe del Representante Legal)",
+    },
+}  # el libro ya es valor razonable: sin potencial por encima
 
 
 def _r(x, d=1):
@@ -180,6 +193,17 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
     precio = a.get("precio")
     por_accion = {"bajo": _r(patrimonio * f_bajo * 1e9 / acciones_total), "central": _r(patrimonio * f_central * 1e9 / acciones_total),
                   "alto": _r(patrimonio * f_alto * 1e9 / acciones_total)}
+    sens = None
+    op = DATOS_OPERATIVOS.get(em["slug"])
+    if op and a.get("activos") and precio:
+        sens = v.sensibilidad_nav_inmobiliario(
+            noi_anual=op["noi_trimestre"] * 4, valor_inmuebles=a["activos"] * op["participacion_inmuebles_en_activos"],
+            nav_total=patrimonio, titulos=acciones_total, precio=precio,
+            ingresos_anuales=op["ingresos_trimestre"] * 4, vacancia_economica_pct=op["vacancia_economica_pct"])
+        sens["fuente"] = op["fuente"]
+        sens["vacancia_fisica_pct"] = op["vacancia_fisica_pct"]
+        sens["advertencia"] = ("sensibilidad del NAV declarado, no una valoración independiente de inmuebles: "
+                               "NOI anualizado del último trimestre y valor de inmuebles estimado")
     return {
         "determinable": True, "p25": patrimonio * f_bajo, "central": patrimonio * f_central, "p75": patrimonio * f_alto,
         "tasa": None, "confianza": "media",
@@ -187,7 +211,7 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
             "metodo": "NAV por título = patrimonio contable (inmuebles a valor razonable, NIC 40)",
             "por_accion": por_accion, "precio": precio,
             "margen_seguridad_pct": _r(v.margen_seguridad(por_accion["central"], precio)),
-            "acciones_total": acciones_total,
+            "acciones_total": acciones_total, "sensibilidad_nav": sens,
             "avisos": ["títulos en circulación: 49.953.606 al 31-mar-2026 (informe del Representante Legal, Fiducoldex)",
                        "NAV = patrimonio a valor razonable: el informe 1T-2026 reporta NAV de COP 144.620 por título contra "
                        "COP 66.000 de precio (descuento 54,4 %) y ventas recientes cerca del libro (Plaza Central 51 % al 96 % del libro)",

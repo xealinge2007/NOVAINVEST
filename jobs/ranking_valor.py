@@ -162,6 +162,7 @@ def main():
             "catalizador_nivel": cat["nivel"],
             "detalle": {
                 "metodo": det.get("metodo"), "avisos": det.get("avisos") or [],
+                "sensibilidad_nav": det.get("sensibilidad_nav"),
                 "crecimiento_real_implicito_pct": det.get("crecimiento_real_implicito_pct"),
                 "percentil_propio": {"per": percentiles.get(em["id"], {}).get("per"),
                                      "pvl": percentiles.get(em["id"], {}).get("precio_valor_libro")},

@@ -98,4 +98,22 @@ revisar("sin indicador de capital no es evaluable", ok, None)
 print("--- metodos no aplicables ---")
 revisar("GEB queda no determinable con motivo (el EPV da un artefacto)", "asociadas" in v.NO_DETERMINABLE_POR_METODO.get("GEB", ""), True)
 
+print("--- vehiculo inmobiliario: sensibilidad del NAV ---")
+# Inmuebles 1.000, NOI 70 (cap 7 %), deuda 300 => NAV 700 con 10 M de titulos (70.000 por titulo).
+sn = v.sensibilidad_nav_inmobiliario(noi_anual=70.0, valor_inmuebles=1000.0, nav_total=700.0, titulos=10_000_000,
+                                     precio=35_000.0, ingresos_anuales=95.0, vacancia_economica_pct=5.0)
+revisar("cap rate de los libros = NOI / inmuebles", sn["cap_rate_libros_pct"], 7.0)
+revisar("NAV base por titulo", sn["nav_por_titulo_base"], 70000.0)
+# +100 pb: cap 8 % => V = 70 / 0,08 = 875 => NAV = 700 - 125 = 575 => 57.500 por titulo
+f100 = [f for f in sn["matriz"] if f["delta_bps"] == 100][0]
+revisar("+100 pb de cap rate: NAV 57.500 por titulo", f100["vacancia_mas_0pp"], 57500.0)
+# +3 pp de vacancia: ingresos potenciales 100 => NOI 67 => V = 67/0,07 = 957,14 => NAV 657,14
+f0 = [f for f in sn["matriz"] if f["delta_bps"] == 0][0]
+revisar("+3 pp de vacancia al mismo cap rate: NAV 65.714 por titulo", f0["vacancia_mas_3pp"], 65714.0)
+# precio 35.000 x 10 M = 350 => V* = 1000 - (700 - 350) = 650 => cap implicito 70/650 = 10,77 %
+revisar("cap rate implicito en el precio", sn["cap_rate_implicito_en_precio_pct"], 10.77)
+revisar("brecha en pb frente al libro", sn["brecha_bps"], 377)
+revisar("un cap rate mayor siempre baja el NAV",
+        sn["matriz"][0]["vacancia_mas_0pp"] > sn["matriz"][-1]["vacancia_mas_0pp"], True)
+
 reportar_y_salir()

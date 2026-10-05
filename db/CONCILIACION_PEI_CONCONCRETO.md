@@ -25,8 +25,27 @@ inversión (prensa, ago-2026). 1T-2026: Codex reporta $7 utilidad + $1.213 resti
 **Resultado actual:** puesto 3, "trampa de descuento" (antes puesto 1, "segura y barata"). Margen de
 seguridad 54,6 %, subida al NAV +120 %. Es un descuento frente al NAV contable, no un retorno esperado.
 
-**Pendiente (Codex H5.3):** cap rate, ocupación (vacancia física 6,7 %), concentración, vencimientos de
-deuda e impuestos latentes como sensibilidad del NAV.
+### Sensibilidad del NAV a cap rate y vacancia (04-oct-2026)
+
+Insumos (2T-2026): NOI del trimestre 172,8 (anualizado 691,4), ingresos 205,8 (anualizado 823,1), vacancia
+económica 7,25 % (física 6,72 %), inmuebles estimados en 9.935,6 (97,9 % del activo, proporción de la
+propiedad de inversión en el 1T-2026), NAV 7.344,2, 49.953.606 títulos, precio 66.760.
+
+- **Cap rate de los libros: 6,96 %**, que concuerda con el 6,90-7,01 % que publica el informe del 1T-2026.
+- **Cap rate que iguala el NAV al precio: 11,66 %** (+471 pb frente a los libros; el informe del 1T-2026
+  reporta 11,23 % y +422 pb con su precio y NAV de entonces). Es lo que el precio descuenta.
+- Matriz (NAV por título; base 147.021): con el cap rate +100 pb → 122.025; +200 pb → 102.609; con
+  vacancia +6 pp y +200 pb → 90.710. **Ni siquiera el peor escenario de la matriz baja de 66.760**: el
+  precio exige un cap rate muy por encima de lo plausible para unos libros con ventas recientes al 96-105 %
+  del valor en libros.
+- Lectura honesta: el descuento de 55 % es un hecho; que sea una oportunidad o un castigo legítimo (liquidez,
+  concentración en oficinas y centros comerciales, tasas largas en 12,5 %) no lo resuelve este modelo. El
+  mercado está valorando los inmuebles con una tasa cercana a la del TES a 10 años (12,46 % en `supuestos_macro`).
+- Supuestos: deuda, otros activos y pasivos fijos; costos del NOI fijos; cap rate y vacancia uniformes. Es
+  sensibilidad del NAV declarado, no una valoración independiente.
+
+**Pendiente (Codex H5.3):** concentración por activo y arrendatario, vencimientos de deuda, capex e impuestos
+latentes.
 
 ## Conconcreto (ruta EPV)
 

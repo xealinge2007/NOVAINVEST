@@ -294,3 +294,46 @@ def evaluar_seguridad_banco(solvencia_total=None, cet1=None, cartera_vencida_90=
         if costo_riesgo > COSTO_RIESGO_MAXIMO_PCT:
             razones.append(f"costo del riesgo {costo_riesgo:.2f}% > {COSTO_RIESGO_MAXIMO_PCT}%")
     return (False, "; ".join(razones)) if razones else (True, "; ".join(partes))
+
+
+# ---------------------------------------------------------------------------
+# Vehículos inmobiliarios: sensibilidad del NAV a cap rate y vacancia (P1 de Codex, H5.3)
+# ---------------------------------------------------------------------------
+def sensibilidad_nav_inmobiliario(*, noi_anual, valor_inmuebles, nav_total, titulos, precio,
+                                  ingresos_anuales, vacancia_economica_pct,
+                                  cap_bps=(-50, 0, 50, 100, 150, 200), vacancia_pp=(0, 3, 6)):
+    """NAV por título al mover el cap rate y la vacancia, dejando FIJO todo lo demás (deuda, otros activos
+    y pasivos). V' = NOI' / cap' ; NAV' = NAV + (V' - V). El NOI cae con la vacancia en lo que se deja
+    de facturar (los costos del NOI se suponen fijos): ΔNOI = -pp x ingresos potenciales, con ingresos
+    potenciales = ingresos / (1 - vacancia económica). No es una valoración de inmuebles: es cuánto se
+    mueve el NAV declarado si cambian esos dos supuestos.
+
+    Devuelve el cap rate implícito en los libros, el cap rate que hace que el NAV iguale al precio (lo
+    que el mercado está exigiendo) y la matriz cap rate x vacancia."""
+    cap_libros = noi_anual / valor_inmuebles
+    potenciales = ingresos_anuales / (1 - vacancia_economica_pct / 100)
+
+    def nav_por_titulo(cap, vac_pp):
+        noi = noi_anual - vac_pp / 100 * potenciales
+        valor = noi / cap
+        return (nav_total + valor - valor_inmuebles) * 1e9 / titulos
+
+    matriz = []
+    for bps in cap_bps:
+        cap = cap_libros + bps / 10_000
+        fila = {"cap_rate_pct": round(cap * 100, 2), "delta_bps": bps}
+        for pp in vacancia_pp:
+            fila[f"vacancia_mas_{pp}pp"] = round(nav_por_titulo(cap, pp), 0)
+        matriz.append(fila)
+
+    # cap rate que lleva el NAV al precio de mercado: V* = V - (NAV - precio x títulos)
+    valor_mercado = valor_inmuebles - (nav_total - precio * titulos / 1e9)
+    cap_implicito = noi_anual / valor_mercado if valor_mercado > 0 else None
+    return {
+        "cap_rate_libros_pct": round(cap_libros * 100, 2),
+        "cap_rate_implicito_en_precio_pct": None if cap_implicito is None else round(cap_implicito * 100, 2),
+        "brecha_bps": None if cap_implicito is None else round((cap_implicito - cap_libros) * 10_000),
+        "nav_por_titulo_base": round(nav_por_titulo(cap_libros, 0), 0),
+        "matriz": matriz,
+        "supuestos": "deuda, otros activos y pasivos fijos; costos del NOI fijos; cap rate y vacancia uniformes en todo el portafolio",
+    }

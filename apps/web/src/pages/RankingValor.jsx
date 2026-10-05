@@ -71,6 +71,38 @@ function Detalle({ f }) {
           Dividendo: {fmt(d.renta?.yield_pct)}% sobre el precio, payout {fmt(d.renta?.payout_pct, 0)}%.
         </p>
       </div>
+      {d.sensibilidad_nav && (
+        <div className="sm:col-span-2">
+          <p className="font-semibold text-slate-700">Sensibilidad del NAV por título al cap rate y a la vacancia</p>
+          <p>
+            Cap rate de los libros {fmt(d.sensibilidad_nav.cap_rate_libros_pct, 2)}%. Para que el NAV igualara el precio haría falta un cap rate de{" "}
+            {fmt(d.sensibilidad_nav.cap_rate_implicito_en_precio_pct, 2)}% (+{fmt(d.sensibilidad_nav.brecha_bps, 0)} pb): eso es lo que el precio descuenta.
+          </p>
+          <div className="mt-1 overflow-x-auto">
+            <table className="text-right">
+              <thead>
+                <tr className="text-slate-500">
+                  <th className="pr-3 text-left font-medium">Cap rate</th>
+                  <th className="px-2 font-medium">Vacancia +0 pp</th>
+                  <th className="px-2 font-medium">+3 pp</th>
+                  <th className="px-2 font-medium">+6 pp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.sensibilidad_nav.matriz.map((m) => (
+                  <tr key={m.delta_bps} className={m.delta_bps === 0 ? "font-semibold text-slate-800" : ""}>
+                    <td className="pr-3 text-left">{fmt(m.cap_rate_pct, 2)}% ({m.delta_bps >= 0 ? "+" : ""}{m.delta_bps} pb)</td>
+                    <td className="cifra px-2">{fmt(m.vacancia_mas_0pp, 0)}</td>
+                    <td className="cifra px-2">{fmt(m.vacancia_mas_3pp, 0)}</td>
+                    <td className="cifra px-2">{fmt(m.vacancia_mas_6pp, 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-1 text-slate-500">{d.sensibilidad_nav.advertencia}. {d.sensibilidad_nav.supuestos}.</p>
+        </div>
+      )}
       {avisos.length > 0 && (
         <div className="sm:col-span-2">
           <p className="font-semibold text-amber-700">Avisos sobre los datos</p>
