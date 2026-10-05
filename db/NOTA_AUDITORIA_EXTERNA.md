@@ -1,6 +1,6 @@
 # Nota para la auditoría externa independiente
 
-**Pendiente de enviar** (decisión de Alex, 02-oct-2026). Esta nota resume qué se construyó, qué debe
+**Versión del 04-oct-2026** (actualizada con los cambios del 3 y 4 de octubre; commit `e28c51a` en `main`). Pendiente de enviar. Esta nota resume qué se construyó, qué debe
 verificar un tercero sin sesgos y dónde es más probable que haya errores.
 
 ## 1. Por qué hace falta una auditoría externa
@@ -20,6 +20,12 @@ ranking por puertas liquidez -> datos -> seguridad -> valor (`ranking_valor.py`,
 tablas `ranking_valor` y `ventaja_competitiva`) y su página en la PWA. El ranking ROIC−WACC anterior sigue
 visible en "Fundamentales", rotulado "no validado".
 **Fuera de alcance:** crecimiento del NAV/EPV como desempate (Pilar 4), renta en USD (Bazin/Barsi), backtest.
+
+## 2b. Criterios que el auditor debe juzgar y que se fijaron por decisión de Alex
+
+- **Liquidez** (`db/CRITERIOS_VALORACION.md`): mediana de 20 sesiones >= 150 M COP/día y >= 18 de 20 sesiones. Es una decisión de riesgo sin respaldo empírico propio.
+- **Seguridad por tipo de negocio:** límites 3x / 5x / 1,5x / 35 % de LTV (criterio, no medido).
+- **Crecimiento g = 3 %** en el EPV y 4 % en bancos; rango 50/75/100 % del libro para participadas no cotizadas.
 
 ## 3. Qué verificar, en orden de riesgo
 
@@ -53,6 +59,7 @@ visible en "Fundamentales", rotulado "no validado".
 - Un conteo de acciones de Corficolombiana se perdió al recargar datos (corregido con ventana reciente).
 - Un FCF de Cementos Argos mezclaba años distintos (corregido: exige el mismo período base).
 - Varios emisores (GEB, Cementos Argos, Enka) radican en el mismo contexto XBRL la plantilla del flujo de caja en cero **y** la cifra real; el lector se quedaba con el cero (capex de GEB, flujo operativo de Cementos Argos). Corregido el 3-oct-2026: gana el valor distinto de cero.
+- Varios emisores (Conconcreto, y otros con el mismo preparador) radican en el mismo contexto XBRL dos bloques de cifras: el trimestre suelto y el acumulado. El lector se quedaba con el primero y marcaba como acumulado un trimestre suelto: el TTM de Conconcreto salió mal (ingresos 501,6 en vez de 624,8) y los EBIT de 2020-2021 de GEB estaban en 509 y 490 en vez de 1.810 y 1.796. Corregido el 4-oct-2026 (gana el último bloque en el documento) y verificado por suma de trimestres; **la regla se validó con Conconcreto y con la coherencia de acumulados de todo el universo (4 violaciones pasaron a 2, ambas históricas), pero "gana el último bloque" no está demostrado como regla general de todos los preparadores**.
 - Una auditoría anterior declaró cerrada la cobertura de deuda de GRUPO_SURA y no lo estaba.
 
 Esto sugiere que **quedan errores sin detectar**: la auditoría debe buscarlos, no confirmarlos.
