@@ -75,13 +75,12 @@ Esto sugiere que **quedan errores sin detectar**: la auditoría debe buscarlos, 
 
 - Bancos: los indicadores regulatorios (solvencia, CET1, cartera vencida, costo del riesgo) salen de comunicados y prensa de agosto de 2026, no del reporte regulatorio de la Superfinanciera; mezclan entidades (p. ej. solvencia de Bancolombia consolidado con cartera de Grupo Cibest; CET1 de Banco Davivienda con costo del riesgo de Grupo Davivienda). Davivienda Group: sin cartera vencida verificada y con una serie de ROE de solo 2 observaciones.
 - Terpel: su XBRL no etiqueta la D&A a nivel total; se suma PP&E + intangibles de las notas anuales (solo años con nota; los trimestres quedan sin EBITDA).
-- GEB no se valora (EPV no cubre la deuda neta): su EBIT excluye la participación en resultados de asociadas, que no se extrae todavía.
+- GEB (5-oct-2026): ya se valora. Su EBIT consolidado excluye la participación en el resultado de asociadas (2.184 en 2025), que ahora se extrae del XBRL (`ShareOfProfitLossOf...EquityMethod`) y entra al EPV como EBIT equivalente (EBIT + asociadas / (1 - 35 %)), sin gravarla dos veces. Resultado: 1.644 / 2.576 / 3.139 por acción contra 3.035 (margen -18 %). Limitaciones: la deuda neta (17.235) es la consolidada y el interés minoritario (454) está a valor en libros, probablemente por debajo de su valor de mercado (Cálidda, TGI), lo que sobrestima el patrimonio; el escenario alto no usa TTM.
 - Nutresa: el precio cargado (321.500) coincide con la oferta de recompra de $300.000 por acción del 3-jul-2026 (Forbes Colombia), así que NO está corrupto; pero implica P/E 175 y P/VL 14,7. La alerta de múltiplos "fuera de rango" es un criterio de plausibilidad (P/VL > 8), no una prueba de error. Excluida por liquidez. Verificar el conteo de ~456 M acciones. (Se había anotado como "probablemente corrupto": era una suposición sin verificar.)
 - PEI: títulos en circulación 49.953.606 (informe del Representante Legal, Fiducoldex, 1T-2026; coincide con el derivado del flujo de caja distribuible). NAV = patrimonio a valor razonable (el informe reporta NAV COP 144.620 por título y descuento de 54,4 %). El rango 0,90/1,00/1,00 del libro es un supuesto. Su rendimiento por distribución anualiza el primer semestre de 2026.
 - EBIT histórico en pesos nominales sin ajustar por inflación (subvalora el normalizado).
 - ISA: el EBIT contable difiere cerca de 6-7 % del que reporta la empresa (no hay EEFF auditados en el corpus).
-- GEB se valora como operativa (EPV) y sale "no determinable": su EBIT consolidado excluye la participación
-  en resultados de asociadas y probablemente subvalora. Clasificación en `ARQUETIPO_VALORACION`.
+- GEB se valora como operativa (EPV) con el resultado de asociadas incluido (ver arriba). Clasificación en `ARQUETIPO_VALORACION`.
 - Los WACC de regulados (ISA, GEB) salen altos con beta CAPM; por eso el modelo los ve "caros".
 
 ## 6. Cómo reproducir (con Supabase accesible)
