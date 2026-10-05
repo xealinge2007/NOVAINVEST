@@ -50,6 +50,11 @@ NO_DETERMINABLE_POR_METODO: dict = {}
 # EPV (EBIT × (1 - tasa)) queda igual a NOPAT operativo + resultado de asociadas, sin gravarla dos veces.
 EMISORES_CON_ASOCIADAS = {"GEB"}
 
+# Emisores cuyo interés minoritario se valora a mercado. El libro subestima al minoritario cuando la filial
+# rinde mucho sobre su patrimonio (GEB: 175 de utilidad anual de minoritarios contra 454 en libros, ROE ~38 %).
+EMISORES_MINORITARIO_A_MERCADO = {"GEB"}
+ANIOS_UTILIDAD_MINORITARIOS = 3
+
 # Seguridad (Pilar 1, Whitman). Por tipo de negocio, no un 4x único.
 SECTORES_REGULADOS = {"energia_utilities", "energia_infraestructura"}
 LIMITE_DEUDA_NETA_EBITDA_REGULADO = 5.0   # ingresos contractuales/regulados
@@ -103,6 +108,20 @@ def normalizar_ebit(ebit_por_anio: dict, slug: str | None = None):
 def ebit_equivalente(ebit: float, resultado_asociadas: float, tasa: float = TASA_NOMINAL) -> float:
     """EBIT que, tras el impuesto del EPV, rinde NOPAT operativo + resultado de asociadas ya neto de impuesto."""
     return ebit + resultado_asociadas / (1 - tasa)
+
+
+def minoritario_a_mercado(utilidades_por_anio: dict, ke: float, g: float = CRECIMIENTO_INFLACION):
+    """(valor, utilidad normalizada) del interés minoritario: promedio de la utilidad que le corresponde en los
+    últimos `ANIOS_UTILIDAD_MINORITARIOS` años, capitalizada como perpetuidad creciente a (Ke - g). Es utilidad
+    de capital (después de intereses e impuestos), por eso se descuenta al costo del patrimonio y no al WACC.
+    (None, None) si no hay utilidad positiva o el spread Ke - g es menor al mínimo."""
+    ultimos = [utilidades_por_anio[a] for a in sorted(utilidades_por_anio)][-ANIOS_UTILIDAD_MINORITARIOS:]
+    if not ultimos or ke is None or ke - g < SPREAD_MINIMO_WACC_G:
+        return None, None
+    utilidad = sum(ultimos) / len(ultimos)
+    if utilidad <= 0:
+        return None, None
+    return utilidad / (ke - g), utilidad
 
 
 def valor_epv(ebit: float, wacc: float, deuda_neta: float, minoritarios: float,

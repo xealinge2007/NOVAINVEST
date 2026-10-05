@@ -105,6 +105,15 @@ revisar("su NOPAT es el operativo mas las asociadas, sin gravarlas otra vez", ro
 revisar("sin asociadas el EBIT no cambia", v.ebit_equivalente(100.0, 0.0), 100.0)
 revisar("una perdida de asociadas lo reduce", round(v.ebit_equivalente(100.0, -32.5), 6), 50.0)
 
+print("--- minoritario a mercado ---")
+# Ultimos 3 anios: (60 + 100 + 140) / 3 = 100; Ke 13 %, g 3 % => 100 / 0,10 = 1.000. El 2022 (900) no entra.
+vm, un = v.minoritario_a_mercado({2022: 900.0, 2023: 60.0, 2024: 100.0, 2025: 140.0}, 0.13)
+revisar("valor = utilidad promedio de 3 anios / (Ke - g)", (round(vm, 6), round(un, 6)), (1000.0, 100.0))
+revisar("utilidad no positiva => sin valor", v.minoritario_a_mercado({2024: -10.0, 2025: 5.0}, 0.13), (None, None))
+revisar("sin utilidades => sin valor", v.minoritario_a_mercado({}, 0.13), (None, None))
+revisar("spread Ke - g demasiado chico => sin valor", v.minoritario_a_mercado({2025: 100.0}, 0.031), (None, None))
+revisar("GEB marcado para minoritario a mercado", "GEB" in v.EMISORES_MINORITARIO_A_MERCADO, True)
+
 print("--- vehiculo inmobiliario: sensibilidad del NAV ---")
 # Inmuebles 1.000, NOI 70 (cap 7 %), deuda 300 => NAV 700 con 10 M de titulos (70.000 por titulo).
 sn = v.sensibilidad_nav_inmobiliario(noi_anual=70.0, valor_inmuebles=1000.0, nav_total=700.0, titulos=10_000_000,

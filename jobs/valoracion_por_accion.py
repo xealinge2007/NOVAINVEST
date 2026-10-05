@@ -81,11 +81,13 @@ def valorar_real(cliente, em, a, acciones_total):
     if em["slug"] in v.NO_DETERMINABLE_POR_METODO:
         return no_determinable(v.NO_DETERMINABLE_POR_METODO[em["slug"]])
     con_asociadas = em["slug"] in v.EMISORES_CON_ASOCIADAS
+    minoritario_mercado = em["slug"] in v.EMISORES_MINORITARIO_A_MERCADO
     try:
-        anuales = _anuales(cliente, em["id"], ["utilidad_operacional"] + (["resultado_asociadas"] if con_asociadas else []))
-    except Exception:  # columna sin migrar (db/migrate_p4_resultado_asociadas.sql)
-        return no_determinable("falta aplicar db/migrate_p4_resultado_asociadas.sql y recargar el XBRL: "
-                               "el EPV de este emisor necesita el resultado de asociadas")
+        anuales = _anuales(cliente, em["id"], ["utilidad_operacional"] + (["resultado_asociadas"] if con_asociadas else [])
+                           + (["utilidad_minoritarios"] if minoritario_mercado else []))
+    except Exception:  # columna sin migrar (db/migrate_p4_resultado_asociadas.sql, migrate_p5_utilidad_minoritarios.sql)
+        return no_determinable("falta aplicar db/migrate_p4_resultado_asociadas.sql o db/migrate_p5_utilidad_minoritarios.sql "
+                               "y recargar el XBRL: el EPV de este emisor necesita esos rubros")
     ebit = {y: f["utilidad_operacional"] for y, f in anuales.items() if f.get("utilidad_operacional") is not None}
     asociadas = {}
     if con_asociadas:
@@ -107,7 +109,20 @@ def valorar_real(cliente, em, a, acciones_total):
     caja_conocida = a.get("deuda_neta_mmm") is not None
     deuda_neta = a["deuda_neta_mmm"] if caja_conocida else (a.get("deuda_financiera") or 0)
     minoritarios = a.get("interes_minoritario_mmm") or 0
-    esc = v.escenarios_epv(plano, ult3, ebit_norm, wacc, deuda_neta, minoritarios, acciones_total,
+    minoritario_libros = minoritarios
+    aviso_minoritario = None
+    if minoritario_mercado:
+        ke = (a.get("costo_patrimonio") or 0) / 100 or None
+        util_min = {y: f["utilidad_minoritarios"] for y, f in anuales.items() if f.get("utilidad_minoritarios") is not None}
+        valor_min, util_norm = v.minoritario_a_mercado(util_min, ke)
+        if valor_min is None:
+            aviso_minoritario = "minoritario a libros: sin utilidad de minoritarios cargada o Ke no válido"
+        else:
+            minoritarios = valor_min
+            aviso_minoritario = (f"minoritario a mercado {valor_min:,.0f} (utilidad normalizada {util_norm:,.0f} / "
+                                 f"(Ke {ke:.1%} - g {v.CRECIMIENTO_INFLACION:.0%})) en vez de {minoritario_libros:,.0f} en libros; "
+                                 "igual en los tres escenarios")
+    esc =v.escenarios_epv(plano, ult3, ebit_norm, wacc, deuda_neta, minoritarios, acciones_total,
                            ebit_ttm=None if con_asociadas else a.get("utilidad_operacional_ttm"))
     central = esc["central"]
     if central["patrimonio"] is None or central["patrimonio"] <= 0:
@@ -127,6 +142,8 @@ def valorar_real(cliente, em, a, acciones_total):
         avisos.append("sin interés minoritario cargado")
     if len(ebit) < 5:
         avisos.append(f"solo {len(ebit)} años de EBIT")
+    if aviso_minoritario:
+        avisos.append(aviso_minoritario)
     if con_asociadas:
         avisos.append("EBIT incluye el resultado de asociadas (método de participación, neto de impuesto) "
                       f"de {len(asociadas)} años; el escenario alto no usa el TTM porque no hay TTM de asociadas")

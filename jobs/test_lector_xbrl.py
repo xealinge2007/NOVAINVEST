@@ -244,6 +244,8 @@ if geb.is_file():
     revisar("GEB resultado de asociadas 2025 (anual, no el 4T)", round(gc["resultado_asociadas"]["valor"], 3), 2184.356)
     g2 = lx.leer(geb.parent / "2026-T2_EEFF-Consolidados-XBRL.xbrl", 2026, "T2", emisor="GEB")["campos"]
     revisar("GEB resultado de asociadas 1S-2026 acumulado", round(g2["resultado_asociadas"]["valor"], 3), 1220.580)
+    revisar("GEB utilidad de minoritarios 2025 (anual)", round(gc["utilidad_minoritarios"]["valor"], 3), 175.159)
+    revisar("GEB utilidad de minoritarios 1S-2026 acumulada (no la dimensional)", round(g2["utilidad_minoritarios"]["valor"], 3), 75.269)
 cemar = CORPUS / "CEMENTOS_ARGOS" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
 if cemar.is_file():
     revisar("Cementos Argos flujo operativo real (no la plantilla en cero)",
