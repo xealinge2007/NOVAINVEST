@@ -16,6 +16,9 @@ UMBRAL_BARATA_PCT = 20.0     # margen de seguridad central mínimo para llamarla
 RENTA_YIELD_MINIMO_PCT = 6.0
 RENTA_PAYOUT_MAXIMO_PCT = 100.0
 ALERTA_LIQUIDEZ = "no pasa la puerta de liquidez"
+# Resultados más viejos que el balance por más de esto (en trimestres) = datos desfasados (Codex H7).
+DESFASE_MAXIMO_TRIMESTRES = 4
+RUTAS_QUE_DEPENDEN_DE_RESULTADOS = ("activos_epv", "banco")
 
 ORDEN_CUADRANTE = {"safe_cheap": 0, "seguridad_no_evaluada": 1, "trampa_descuento": 2, "safe_cara": 3}
 
@@ -40,26 +43,44 @@ def evaluar(e: dict) -> dict:
     if not valor.get("determinable"):
         return _excluido("valor", valor.get("motivo") or "sin valor por acción determinable")
 
+    # Integridad temporal (Codex H7): si los resultados son mucho más viejos que el balance, una
+    # valoración que depende de resultados no se rankea; en las demás rutas la renta queda no evaluable.
+    desfase = e.get("desfase_resultados_trimestres")
+    desfasado = desfase is not None and desfase > DESFASE_MAXIMO_TRIMESTRES
+    if desfasado and e.get("ruta_valor") in RUTAS_QUE_DEPENDEN_DE_RESULTADOS:
+        return _excluido("datos", f"resultados {desfase} trimestres más viejos que el balance")
+
     margen = valor.get("margen_seguridad_pct")
     barata = margen is not None and margen >= UMBRAL_BARATA_PCT
     yld, payout = e.get("dividend_yield_pct"), e.get("payout_pct")
-    renta = yld is not None and yld >= RENTA_YIELD_MINIMO_PCT and (payout is None or payout <= RENTA_PAYOUT_MAXIMO_PCT)
+    # Renta sostenible exige payout conocido (Codex H4): sin él, la renta es no evaluable, nunca favorable.
+    renta = (not desfasado and yld is not None and payout is not None
+             and yld >= RENTA_YIELD_MINIMO_PCT and payout <= RENTA_PAYOUT_MAXIMO_PCT)
     vivo = e.get("catalizador_nivel") in ("fuerte", "debil")
 
     if e.get("pilar1") is not True:
+        # Sin seguridad evaluada no hay cuadrante favorable (Codex H4).
         cuadrante = "seguridad_no_evaluada"
-        tamano = "minima" if barata else "ninguna"
     elif not barata:
-        cuadrante, tamano = "safe_cara", "ninguna"
+        cuadrante = "safe_cara"
     elif vivo or renta:
         cuadrante = "safe_cheap"
-        tamano = "normal" if e.get("catalizador_nivel") == "fuerte" else "minima"
     else:
-        cuadrante, tamano = "trampa_descuento", "ninguna"
+        cuadrante = "trampa_descuento"
 
+    # Sin tamaño de posición ligado al cuadrante (Codex P2.5): sin perfil ni cartera del usuario sería una
+    # recomendación personal. Lo único que se muestra es el límite de liquidez del mercado.
     return {"excluido": False, "puerta_fallida": None, "motivo_exclusion": None, "cuadrante": cuadrante,
-            "tamano_relativo": tamano, "renta_sostenible": renta, "barata": barata,
+            "tamano_relativo": None, "renta_sostenible": renta, "barata": barata,
             "nivel_evidencia": "provisional" if valor.get("confianza") == "baja" else "estructura"}
+
+
+def subida_al_valor(valor_central, precio):
+    """Subida hasta el valor estimado, (valor / precio) - 1, en %. NO es retorno esperado: no tiene
+    horizonte ni trayectoria (Codex H1). Distinta del margen de seguridad (valor - precio) / valor."""
+    if valor_central is None or not precio or valor_central <= 0:
+        return None
+    return (valor_central / precio - 1) * 100
 
 
 def ordenar(resultados: list[dict]) -> list[dict]:

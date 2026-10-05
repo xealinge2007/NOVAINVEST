@@ -55,6 +55,18 @@ function Detalle({ f }) {
             sesiones). Tamaño máximo sugerido de una posición: ~{fmt(d.liquidez.tamano_maximo_cop / 1e6, 0)} millones (unas 5 sesiones al 10% del volumen).
           </p>
         )}
+        {d.fechas && (
+          <p className="mt-1">
+            Balance a {d.fechas.balance || "—"}; resultados: {d.fechas.resultados || "—"}
+            {d.fechas.desfase_trimestres > 0 ? ` (${d.fechas.desfase_trimestres} trimestre(s) más viejos que el balance)` : ""}.
+          </p>
+        )}
+        {d.renta?.distribucion && (
+          <p className="mt-1 text-amber-700">
+            Distribución anualizada: {fmt(d.renta.distribucion.por_titulo_anual, 0)} por título ({fmt(d.renta.distribucion.rendimiento_pct)}% sobre el
+            precio). No se cuenta como renta: buena parte fue restitución de capital, no utilidad.
+          </p>
+        )}
         <p className="mt-1">
           Dividendo: {fmt(d.renta?.yield_pct)}% sobre el precio, payout {fmt(d.renta?.payout_pct, 0)}%.
         </p>
@@ -102,8 +114,10 @@ export default function RankingValor() {
         <h1 className="mt-1 font-serif text-2xl font-semibold text-slate-900">Ranking de valor — BVC</h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-500">
           Cada emisor pasa cuatro puertas en orden — liquidez, integridad de los datos, seguridad financiera y valor por
-          acción determinable — y solo entonces se ordena por el margen de seguridad de su valor central frente al precio.
-          El valor es un rango (bajo / central / alto) de escenarios, no una predicción.{" "}
+          acción determinable — y solo entonces se ordena por el margen de seguridad de su valor base frente al precio.
+          El valor es un rango de escenarios (bajo / base / alto) que cambia supuestos de utilidad y costo de capital:
+          no son percentiles ni probabilidades. El margen de seguridad y la subida al valor base no son un retorno
+          esperado, porque no tienen horizonte.{" "}
           <strong className="text-amber-700">
             No es una recomendación de compra ni tiene backtest: es un punto de partida para investigar. La evidencia de
             cada fila dice qué tan firme es el dato (aún ninguna está “verificada”: falta la auditoría externa).
@@ -130,9 +144,10 @@ export default function RankingValor() {
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Emisor</th>
                 <th className="px-3 py-2">Cuadrante</th>
-                <th className="px-3 py-2 text-right">Valor por acción (bajo · central · alto)</th>
+                <th className="px-3 py-2 text-right" title="Escenarios de supuestos, no percentiles ni probabilidades">Escenarios por acción (bajo · base · alto)</th>
                 <th className="px-3 py-2 text-right">Precio</th>
-                <th className="px-3 py-2 text-right">Margen</th>
+                <th className="px-3 py-2 text-right" title="(valor base − precio) / valor base">Margen de seguridad</th>
+                <th className="px-3 py-2 text-right" title="valor base / precio − 1. No es un retorno esperado: no tiene horizonte">Subida al valor base</th>
                 <th className="px-3 py-2">Ventaja</th>
                 <th className="px-3 py-2">Evidencia</th>
               </tr>
@@ -193,12 +208,15 @@ function FilaRanking({ f, nombre, abierta, alternar }) {
         <td className={`cifra px-3 py-2 text-right font-semibold ${margen === null || margen === undefined ? "text-slate-400" : margen >= 0 ? "text-emerald-700" : "text-red-700"}`}>
           {margen === null || margen === undefined ? "—" : `${margen >= 0 ? "+" : ""}${fmt(margen, 0)}%`}
         </td>
+        <td className="cifra px-3 py-2 text-right text-slate-600">
+          {f.detalle?.subida_pct === null || f.detalle?.subida_pct === undefined ? "—" : `${f.detalle.subida_pct >= 0 ? "+" : ""}${fmt(f.detalle.subida_pct, 0)}%`}
+        </td>
         <td className="px-3 py-2 text-xs text-slate-600">{VENTAJA[f.ventaja_nivel] || "—"}</td>
         <td className="px-3 py-2"><Etiqueta def={EVIDENCIA} valor={f.nivel_evidencia} /></td>
       </tr>
       {abierta && (
         <tr>
-          <td colSpan={8} className="p-0"><Detalle f={f} /></td>
+          <td colSpan={9} className="p-0"><Detalle f={f} /></td>
         </tr>
       )}
     </>

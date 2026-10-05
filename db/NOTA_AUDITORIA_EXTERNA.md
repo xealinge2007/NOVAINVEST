@@ -3,6 +3,13 @@
 **Versión del 04-oct-2026** (actualizada con los cambios del 3 y 4 de octubre; commit `e28c51a` en `main`). Pendiente de enviar. Esta nota resume qué se construyó, qué debe
 verificar un tercero sin sesgos y dónde es más probable que haya errores.
 
+## 0. Revisión previa de Codex (04-oct-2026)
+
+Antes de esta nota, otra IA (Codex) revisó el proyecto: `CODEX INFORME_AUDITORIA_NOVAINVEST_Y_PLAN.md`.
+Lo que se aplicó y lo que se dejó, en `db/CRITERIOS_VALORACION.md` (sección del 04-oct) y
+`db/CONCILIACION_PEI_CONCONCRETO.md`. Esa revisión **no** es la auditoría humana independiente que pide
+esta nota: comparte con Claude la condición de modelo de IA.
+
 ## 1. Por qué hace falta una auditoría externa
 
 Todo el trabajo y todas las revisiones previas salieron de la **misma familia de modelos de IA**

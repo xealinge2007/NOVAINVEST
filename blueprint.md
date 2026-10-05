@@ -1,28 +1,27 @@
 # Blueprint — novainvest
-<!-- Actualizado: 2026-10-02 09:00 -->
+<!-- Actualizado: 2026-10-04 18:30 -->
 
 ## 1. Qué quiero lograr
 Identificar el valor de cada empresa de la BVC a partir de sus estados financieros, ROIC, márgenes,
-FCF, deuda, valoración, múltiplos y ventajas competitivas. Auditar lo implementado, el plan y las
-fuentes, corregir errores y potenciar el motor.
+FCF, deuda, valoración, múltiplos y ventajas competitivas, con datos trazables y etiquetas que no
+induzcan a error. Auditoría independiente pendiente.
 
 ## 2. En qué punto está
-Auditoría hecha y escrita (18 errores, plan y fuentes, acciones P0–P3); no se cambió código ni datos.
-Hoy no se entrega el valor de ninguna empresa: la PWA muestra el ranking ROIC−WACC viejo y EPV/NAV
-viven como constantes en el código. Falta que Alex apruebe arrancar P0 (EBITDA, acciones por clase,
-validaciones, retirar el ranking viejo). Pruebas: 8/8 OK, pero ninguna cubre la valoración.
+P0-P3 de la auditoría propia hechos y en producción (ranking por puertas en /fundamentales/ranking).
+Aplicada la revisión de Codex del 04-oct: renta exige payout, seguridad no evaluada nunca favorable,
+desfase de resultados bloquea, sin tamaño de posición, endpoint con error visible, escenarios rotulados.
+PEI pasó de "segura y barata" a "trampa de descuento". Falta push de esta tanda y la auditoría humana.
 
 ## 3. Archivos en juego
-- db/AUDITORIA_MOTOR_VALOR_2026-10-01.md — informe completo (errores E1–E18, acciones A1–A12)
-- apps/api/app/services/extraccion/lector_xbrl.py — CONCEPTOS y D&A (E1); ampliar a caja, capex, minoritarios
-- jobs/analizador_fundamental.py — capitalización por clase (E2), calcular_estrellas, TTM, ROIC
-- jobs/epv_engine.py — EPV con constantes a mano; debe leer de la base y valorar por acción
-- jobs/valor_engine.py y jobs/ingesta_participaciones.py — NAV de holdings con precios fijos del 14-sep
-- jobs/solidez_financiera.py — vetos por deuda/EBITDA afectados por E1
+- apps/api/app/services/ranking_valor.py — reglas de cuadrantes y puertas
+- jobs/ranking_valor.py — arma el ranking (fechas, desfase, subida, distribución)
+- jobs/analizador_fundamental.py — TTM (T4 acumulado como anual), distribución de PEI fuera del dividendo
+- apps/web/src/pages/RankingValor.jsx — escenarios, margen y subida por separado
+- db/CONCILIACION_PEI_CONCONCRETO.md — insumos y fuentes de ambas valoraciones
+- db/NOTA_AUDITORIA_EXTERNA.md — nota para el auditor humano (pendiente de enviar)
 
 ## 4. Cambios hechos
-- Nuevo (sin commit): db/AUDITORIA_MOTOR_VALOR_2026-10-01.md, docs/blueprint-archivo.md.
-- Cambia el objetivo: ya no se persigue el 18 % restante de deuda_financiera (queda archivado).
+- Tanda Codex del 04-oct-2026: ver commit siguiente a e28c51a; sin push.
 
 ## 5. Intentos fallidos — no repetir
 - [2026-09-25] Probé navegar SIMEV (BVC tipo 082/entidad 000004) con el navegador automatizado →
@@ -30,10 +29,12 @@ validaciones, retirar el ranking viejo). Pruebas: 8/8 OK, pero ninguna cubre la 
   No repetir con navegador automatizado.
 - [2026-09-25] Probé buscar estados financieros de BVC en bvc.com.co → falló porque solo hay
   presentaciones corporativas, no estados financieros. No repetir.
+- [2026-10-04] Probé leer PDF de pei.com.co con WebFetch → falló (404 o binario); funciona descargar y
+  extraer con pdfplumber, o usar los informes de Fiducoldex. No repetir WebFetch directo sobre PDF.
 
 ## 6. Siguientes pasos
-- Confirmar con Alex arrancar P0 y retirar o etiquetar el ranking viejo (jobs/analizador_fundamental.py).
-- Corregir la D&A usando AdjustmentsForDepreciationAndAmortisationExpense (lector_xbrl.py) y recorrer solidez_financiera.py.
-- Capitalización por todas las clases de acción (jobs/analizador_fundamental.py).
-- Corregir duplicados e ingresos erróneos de Promigas, Enka, Ecopetrol, Celsia, Conconcreto y GEB.
-- Ampliar CONCEPTOS del XBRL con caja, capex, gasto financiero y minoritarios (lector_xbrl.py).
+- Publicar esta tanda (git push origin main) con el OK de Alex.
+- PEI: sensibilidad del NAV a cap rate y ocupación (db/CONCILIACION_PEI_CONCONCRETO.md).
+- Conconcreto: conciliar EBITDA 1T-2026 (18.607 oficial vs 16.578 nuestro).
+- GEB: extraer el resultado de asociadas (apps/api/app/services/extraccion/lector_xbrl.py, migración nueva).
+- Enviar db/NOTA_AUDITORIA_EXTERNA.md a un auditor humano (falta destinatario).

@@ -55,3 +55,18 @@ precio, con un EV/EBIT de 5,2x frente a 7,3x del mercado. Con g = 3 % queda a 2.
 
 No son una recomendación de compra ni están respaldados por un backtest. Con n ≈ 24 emisores y 3
 eventos de control, un backtest sirve para descartar, no para probar (plan zesty-kettle §2.5).
+
+## Ajustes del 04-oct-2026 (auditoría de Codex, `CODEX INFORME_AUDITORIA_NOVAINVEST_Y_PLAN.md`)
+
+- **Renta sostenible** exige payout conocido (rendimiento >= 6 % y payout <= 100 %). Sin payout, la renta
+  es no evaluable. Las distribuciones de vehículos (PEI) se muestran aparte y no cuentan como renta,
+  porque pueden ser restitución de capital.
+- **Seguridad no evaluada** nunca da cuadrante favorable.
+- **Integridad temporal:** si los resultados son más de 4 trimestres más viejos que el balance, una
+  valoración por EPV o banco se excluye (puerta de datos); en NAV y holdings, la renta queda no evaluable.
+- **Sin tamaño de posición** ligado al cuadrante: sin perfil ni cartera del usuario sería una
+  recomendación personal. Se conserva solo el límite de liquidez del mercado (0,5 x mediana).
+- **Escenarios:** bajo / base / alto (en la base de datos siguen los nombres `valor_p25_mmm`,
+  `valor_central_mmm`, `valor_p75_mmm` por compatibilidad: **no son percentiles**).
+- **Margen de seguridad** = (valor − precio) / valor y **subida al valor base** = valor / precio − 1 se
+  muestran por separado. Ninguno es un retorno esperado: no tienen horizonte.

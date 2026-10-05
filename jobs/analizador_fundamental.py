@@ -118,6 +118,17 @@ def descartar_escala_atipica(filas: list[dict]) -> tuple[list[dict], list[str]]:
     return descartadas, avisos
 
 
+def completar_anual_desde_t4(filas: list[dict]) -> list[dict]:
+    """En una serie ACUMULADA, un T4 es el año completo. Si el año no tiene fila ANUAL, se agrega una
+    copia del T4 marcada como `anual_desde_t4`, para que el TTM no se quede en un anual viejo.
+    Verificado real (auditoría Codex, 04-oct-2026, H7): PEI tiene 2025 cargado como T4 (ingresos 887,97,
+    utilidad 517,31) y sin ANUAL, así que su TTM seguía en el anual 2024 con balance de 2026-T2."""
+    anuales = {f["anio"] for f in filas if f["periodo"] == "ANUAL"}
+    extra = [{**f, "periodo": "ANUAL", "anual_desde_t4": True} for f in filas
+             if f["periodo"] == "T4" and f["anio"] not in anuales and f.get("acumulado") is not False]
+    return filas + extra
+
+
 def desacumular(filas: list[dict]) -> list[dict]:
     """Convierte los campos de flujo de acumulado-en-el-año a trimestre suelto.
 
@@ -318,7 +329,10 @@ FORZAR_ACCIONES_CURADAS = {"GRUPO_ARGOS"}
 # 4T-2025 ($2.002) incluye 14,7 % de restitución de capital. El 1T-2026 incluye recursos de una
 # desinversión. Es un rendimiento aproximado, no un TTM.
 DISTRIBUCION_ANUAL_CURADA: dict[str, tuple[float, str]] = {
-    "PEI": (5_044.0, "FCD 1T-2026 $1.220 + 2T-2026 $1.302 por titulo, anualizado (Valora Analitik 6-ago-2026; La Republica)"),
+    "PEI": (5_044.0, "FCD 1T-2026 $1.220 + 2T-2026 $1.302 por titulo, anualizado. NO es dividendo recurrente: "
+                     "el 4T-2025 fue $1.802 utilidad + $192 restitucion (de $2.002; informe del Representante Legal 1T-2026); "
+                     "el 2T-2026 se clasifico como restitucion parcial de la inversion (Valora Analitik/Yahoo, ago-2026); "
+                     "Codex reporta 1T-2026 = $7 utilidad + $1.213 restitucion (fuente no verificada, enlace 404)"),
 }
 
 UMBRAL_SUPERMAYORIA_ACCIONES = 0.75
@@ -758,6 +772,8 @@ def main():
                          f"({'acumulado' if acumulado else 'trimestre suelto'})")
         else:
             acumulado, evidencia = detectar_acumulado(filas)
+        if acumulado:
+            filas = completar_anual_desde_t4(filas)
         desac = desacumular(filas) if acumulado else filas
         alerta_consistencia = " | ".join(filter(None, [
             revisar_consistencia_ingresos(filas),
@@ -879,8 +895,8 @@ def main():
         payout = _pct(_div(dividendo_reciente, utilidad))
         dividendo_por_accion = _div(dividendo_reciente * 1_000_000_000 if dividendo_reciente is not None else None, acciones_total)
         dividend_yield = _pct(_div(dividendo_por_accion, precio_pref if (precio_pref is not None and not ordinarias) else precio))
-        if dividend_yield is None and em["slug"] in DISTRIBUCION_ANUAL_CURADA:
-            dividend_yield = _pct(_div(DISTRIBUCION_ANUAL_CURADA[em["slug"]][0], precio))
+        # La distribución curada (PEI) NO se cuenta como dividendo: en 2026 fue sobre todo restitución de
+        # capital (auditoría Codex H5). Se expone aparte en el ranking, no alimenta la renta sostenible.
 
         # Creación de valor. No financieras: ROIC vs. WACC. Bancos y holdings
         # financieros: ROE vs. Ke -- su "deuda" son depósitos de clientes,

@@ -28,23 +28,35 @@ revisar("sin valor determinable", (r["excluido"], r["motivo_exclusion"]), (True,
 
 print("--- cuadrantes ---")
 r = rk.evaluar(e(catalizador_nivel="fuerte"))
-revisar("segura, barata y con catalizador fuerte = safe_cheap, tamano normal",
-        (r["cuadrante"], r["tamano_relativo"]), ("safe_cheap", "normal"))
+revisar("segura, barata y con catalizador = safe_cheap", r["cuadrante"], "safe_cheap")
+revisar("no se sugiere tamano de posicion", r["tamano_relativo"], None)
 r = rk.evaluar(e(dividend_yield_pct=7.0, payout_pct=60.0))
-revisar("segura, barata, solo renta = safe_cheap, tamano minimo",
-        (r["cuadrante"], r["tamano_relativo"]), ("safe_cheap", "minima"))
+revisar("segura, barata, solo renta con payout = safe_cheap", r["cuadrante"], "safe_cheap")
+r = rk.evaluar(e(dividend_yield_pct=7.6, payout_pct=None))
+revisar("rendimiento alto SIN payout no es renta (caso PEI)", (r["cuadrante"], r["renta_sostenible"]), ("trampa_descuento", False))
 r = rk.evaluar(e())
-revisar("barata sin catalizador ni renta = trampa de descuento",
-        (r["cuadrante"], r["tamano_relativo"]), ("trampa_descuento", "ninguna"))
+revisar("barata sin catalizador ni renta = trampa de descuento", r["cuadrante"], "trampa_descuento")
 r = rk.evaluar(e(dividend_yield_pct=8.0, payout_pct=120.0))
 revisar("dividendo por encima de la utilidad no es renta sostenible", r["cuadrante"], "trampa_descuento")
 r = rk.evaluar(e(valor={"determinable": True, "margen_seguridad_pct": 5.0, "confianza": "media"}))
-revisar("margen menor al umbral = safe_cara", (r["cuadrante"], r["tamano_relativo"]), ("safe_cara", "ninguna"))
-r = rk.evaluar(e(pilar1=None))
-revisar("seguridad no evaluable (bancos) no se llama safe", r["cuadrante"], "seguridad_no_evaluada")
+revisar("margen menor al umbral = safe_cara", r["cuadrante"], "safe_cara")
+r = rk.evaluar(e(pilar1=None, catalizador_nivel="fuerte"))
+revisar("seguridad no evaluada nunca es favorable", (r["cuadrante"], r["tamano_relativo"]), ("seguridad_no_evaluada", None))
 r = rk.evaluar(e(valor={"determinable": True, "margen_seguridad_pct": 30.0, "confianza": "baja"}))
 revisar("confianza baja = evidencia provisional", r["nivel_evidencia"], "provisional")
 revisar("la evidencia verificada no se asigna sin auditoria externa", r["nivel_evidencia"] != "verificado", True)
+
+print("--- integridad temporal ---")
+r = rk.evaluar(e(desfase_resultados_trimestres=6, ruta_valor="activos_epv"))
+revisar("EPV con resultados desfasados se excluye por datos", (r["excluido"], r["puerta_fallida"]), (True, "datos"))
+r = rk.evaluar(e(desfase_resultados_trimestres=6, ruta_valor="inmobiliario", dividend_yield_pct=8.0, payout_pct=50.0))
+revisar("NAV con resultados desfasados sigue, pero sin renta", (r["excluido"], r["renta_sostenible"]), (False, False))
+r = rk.evaluar(e(desfase_resultados_trimestres=0, ruta_valor="activos_epv"))
+revisar("resultados al dia no excluyen", r["excluido"], False)
+
+print("--- subida vs margen ---")
+revisar("subida = valor/precio - 1", round(rk.subida_al_valor(150.0, 100.0), 1), 50.0)
+revisar("sin valor positivo no hay subida", rk.subida_al_valor(-5.0, 100.0), None)
 
 print("--- orden ---")
 lista = [

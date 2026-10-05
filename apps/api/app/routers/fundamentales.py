@@ -22,12 +22,13 @@ async def listar_fundamentales(usuario: UsuarioActual = Depends(get_current_usua
 async def ranking_valor(usuario: UsuarioActual = Depends(get_current_usuario)):
     """Ranking por puertas (liquidez, datos, seguridad, valor) calculado por `jobs/ranking_valor.py`.
     Los emisores excluidos vienen con `excluido=true` y su motivo: la lista de descartes es parte del
-    producto. Vacío mientras el job no haya corrido (o falte db/migrate_p3_ranking_y_ventajas.sql)."""
+    producto. Lista vacía = el job `jobs/ranking_valor.py` no ha corrido; un fallo de lectura responde 503."""
     cliente = cliente_supabase_de(usuario)
     try:
         filas = cliente.table("ranking_valor").select("*").execute().data
-    except Exception:
-        return []
+    except Exception as e:  # tabla ausente o fallo de base: NO se disfraza de "sin resultados" (Codex H9)
+        raise HTTPException(503, f"No se pudo leer el ranking de valor ({type(e).__name__}). "
+                                 "Es un fallo técnico, no un ranking vacío.") from e
     return sorted(filas, key=lambda f: (f["posicion"] is None, f["posicion"] or 0, (f.get("detalle") or {}).get("slug", "")))
 
 
