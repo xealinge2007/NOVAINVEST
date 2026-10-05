@@ -39,15 +39,16 @@ FACTOR_NO_COTIZADAS = (0.50, 0.75, 1.00)
 # 3.035 de precio). Su arquetipo en `emisores` no se toca; solo la ruta de valoración.
 ARQUETIPO_VALORACION = {"GEB": "real"}
 
-# Emisores donde el método elegido no es aplicable aunque dé un número. GEB: su EBIT consolidado excluye
-# la participación en resultados de asociadas (dividendos recibidos de 2,3 billones en 2025 según su flujo
-# de caja), así que el EPV da un patrimonio de ~1,9 billones frente a 27,9 de capitalización: un artefacto
-# del método, no una señal. La suma de partes tampoco aplica (ignora su negocio operativo). Hasta extraer
-# el resultado de asociadas queda no determinable, con el motivo a la vista.
-NO_DETERMINABLE_POR_METODO = {
-    "GEB": "ni la suma de partes (ignora su negocio operativo) ni el EPV (su EBIT excluye el resultado de "
-           "asociadas: dividendos recibidos de 2,3 billones en 2025) son aplicables; falta extraer ese rubro",
-}
+# Emisores donde el método elegido no es aplicable aunque dé un número. Hoy ninguno: GEB lo estuvo
+# (04-oct-2026) porque su EBIT consolidado excluye la participación en el resultado de asociadas (2.184 en
+# 2025 contra un EBIT del mismo orden) y el EPV daba un patrimonio de ~1,9 billones frente a 27,9 de
+# capitalización, un artefacto del método. Se resolvió con `EMISORES_CON_ASOCIADAS`.
+NO_DETERMINABLE_POR_METODO: dict = {}
+
+# Emisores cuyo EPV debe incluir el resultado de asociadas (método de participación). Esa utilidad ya viene
+# neta del impuesto de la asociada, así que entra al EBIT "equivalente" dividida por (1 - tasa): el NOPAT del
+# EPV (EBIT × (1 - tasa)) queda igual a NOPAT operativo + resultado de asociadas, sin gravarla dos veces.
+EMISORES_CON_ASOCIADAS = {"GEB"}
 
 # Seguridad (Pilar 1, Whitman). Por tipo de negocio, no un 4x único.
 SECTORES_REGULADOS = {"energia_utilities", "energia_infraestructura"}
@@ -99,6 +100,11 @@ def normalizar_ebit(ebit_por_anio: dict, slug: str | None = None):
 # ---------------------------------------------------------------------------
 # Ruta real: EPV a valor del patrimonio por acción
 # ---------------------------------------------------------------------------
+def ebit_equivalente(ebit: float, resultado_asociadas: float, tasa: float = TASA_NOMINAL) -> float:
+    """EBIT que, tras el impuesto del EPV, rinde NOPAT operativo + resultado de asociadas ya neto de impuesto."""
+    return ebit + resultado_asociadas / (1 - tasa)
+
+
 def valor_epv(ebit: float, wacc: float, deuda_neta: float, minoritarios: float,
               tasa: float = TASA_NOMINAL, g: float = CRECIMIENTO_INFLACION):
     """(EV, valor del patrimonio) del EPV nominal: NOPAT / (WACC - g), menos deuda neta y

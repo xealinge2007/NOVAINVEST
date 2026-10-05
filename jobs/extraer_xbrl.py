@@ -256,6 +256,9 @@ def main():
         print("AVISO: falta db/migrate_p1_estados_ampliados.sql -- no se escriben caja, capex, "
               "gasto financiero, etc.")
         CAMPOS_NUMERICOS[:] = CAMPOS_NUMERICOS_BASE
+    elif "resultado_asociadas" not in muestra[0]:
+        print("AVISO: falta db/migrate_p4_resultado_asociadas.sql -- no se escribe el resultado de asociadas")
+        CAMPOS_NUMERICOS[:] = [c for c in CAMPOS_NUMERICOS if c != "resultado_asociadas"]
 
     previas = {}
     for f in cliente.table("fundamentales_reportados").select("*").execute().data:

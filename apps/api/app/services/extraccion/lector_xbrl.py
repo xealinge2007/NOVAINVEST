@@ -402,7 +402,11 @@ DEUDA_FINANCIERA_POR_EMISOR = {
 CAMPOS_AMPLIADOS = (
     "efectivo", "interes_minoritario", "goodwill", "capex", "gasto_financiero",
     "utilidad_bruta", "utilidad_antes_impuestos", "impuesto_renta", "depreciacion_amortizacion",
+    "resultado_asociadas",
 )
+# Participación en el resultado de asociadas y negocios conjuntos (método de participación). Va DESPUÉS
+# de impuestos y fuera del EBIT: en un holding operativo como GEB es la mitad de lo que gana.
+CONCEPTOS_ASOCIADAS = ["ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod"]
 CONCEPTOS_CAPEX = [
     "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
     "PurchaseOfIntangibleAssetsClassifiedAsInvestingActivities",
@@ -821,6 +825,7 @@ def _estados_ampliados(hechos, contextos, fecha, fecha_flujo, depreciacion):
         "utilidad_antes_impuestos": uno(["ProfitLossBeforeTax"], fecha_flujo),
         "impuesto_renta": uno(["IncomeTaxExpenseContinuingOperations", "IncomeTaxExpense"], fecha_flujo),
         "depreciacion_amortizacion": depreciacion,
+        "resultado_asociadas": uno(CONCEPTOS_ASOCIADAS, fecha_flujo),
     }
 
 

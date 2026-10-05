@@ -80,8 +80,18 @@ def no_determinable(motivo):
 def valorar_real(cliente, em, a, acciones_total):
     if em["slug"] in v.NO_DETERMINABLE_POR_METODO:
         return no_determinable(v.NO_DETERMINABLE_POR_METODO[em["slug"]])
-    anuales = _anuales(cliente, em["id"], ["utilidad_operacional"])
+    con_asociadas = em["slug"] in v.EMISORES_CON_ASOCIADAS
+    try:
+        anuales = _anuales(cliente, em["id"], ["utilidad_operacional"] + (["resultado_asociadas"] if con_asociadas else []))
+    except Exception:  # columna sin migrar (db/migrate_p4_resultado_asociadas.sql)
+        return no_determinable("falta aplicar db/migrate_p4_resultado_asociadas.sql y recargar el XBRL: "
+                               "el EPV de este emisor necesita el resultado de asociadas")
     ebit = {y: f["utilidad_operacional"] for y, f in anuales.items() if f.get("utilidad_operacional") is not None}
+    asociadas = {}
+    if con_asociadas:
+        # Solo años con ambos rubros: mezclar años con y sin asociadas arma una serie incomparable.
+        asociadas = {y: anuales[y]["resultado_asociadas"] for y in ebit if anuales[y].get("resultado_asociadas") is not None}
+        ebit = {y: v.ebit_equivalente(x, asociadas[y]) for y, x in ebit.items() if y in asociadas}
     ebit = {y: x for y, x in ebit.items() if y >= max(ebit, default=0) - 6}
     if len(ebit) < v.ANIOS_MINIMOS_EBIT:
         return no_determinable(f"solo {len(ebit)} año(s) de EBIT anual; se exigen {v.ANIOS_MINIMOS_EBIT}")
@@ -98,7 +108,7 @@ def valorar_real(cliente, em, a, acciones_total):
     deuda_neta = a["deuda_neta_mmm"] if caja_conocida else (a.get("deuda_financiera") or 0)
     minoritarios = a.get("interes_minoritario_mmm") or 0
     esc = v.escenarios_epv(plano, ult3, ebit_norm, wacc, deuda_neta, minoritarios, acciones_total,
-                           ebit_ttm=a.get("utilidad_operacional_ttm"))
+                           ebit_ttm=None if con_asociadas else a.get("utilidad_operacional_ttm"))
     central = esc["central"]
     if central["patrimonio"] is None or central["patrimonio"] <= 0:
         return no_determinable(
@@ -117,6 +127,9 @@ def valorar_real(cliente, em, a, acciones_total):
         avisos.append("sin interés minoritario cargado")
     if len(ebit) < 5:
         avisos.append(f"solo {len(ebit)} años de EBIT")
+    if con_asociadas:
+        avisos.append("EBIT incluye el resultado de asociadas (método de participación, neto de impuesto) "
+                      f"de {len(asociadas)} años; el escenario alto no usa el TTM porque no hay TTM de asociadas")
     if em["slug"] == "ISA":
         avisos.append("EBIT sin verificar contra EEFF auditados (el Reporte Integrado de ISA declara ~6-7% más)")
     return {

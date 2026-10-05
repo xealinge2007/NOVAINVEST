@@ -96,7 +96,14 @@ ok, _ = v.evaluar_seguridad_banco(cartera_vencida_90=2.0, costo_riesgo=1.0)
 revisar("sin indicador de capital no es evaluable", ok, None)
 
 print("--- metodos no aplicables ---")
-revisar("GEB queda no determinable con motivo (el EPV da un artefacto)", "asociadas" in v.NO_DETERMINABLE_POR_METODO.get("GEB", ""), True)
+revisar("GEB ya no esta en la lista de no determinables: su EPV incluye asociadas", "GEB" in v.NO_DETERMINABLE_POR_METODO, False)
+revisar("GEB esta marcado para sumar el resultado de asociadas", "GEB" in v.EMISORES_CON_ASOCIADAS, True)
+# EBIT 100 (NOPAT 65) + asociadas 65 ya netas de impuesto => NOPAT total 130 => EBIT equivalente 200.
+eq = v.ebit_equivalente(100.0, 65.0)
+revisar("EBIT equivalente = EBIT + asociadas / (1 - tasa)", round(eq, 6), 200.0)
+revisar("su NOPAT es el operativo mas las asociadas, sin gravarlas otra vez", round(eq * (1 - v.TASA_NOMINAL), 6), 130.0)
+revisar("sin asociadas el EBIT no cambia", v.ebit_equivalente(100.0, 0.0), 100.0)
+revisar("una perdida de asociadas lo reduce", round(v.ebit_equivalente(100.0, -32.5), 6), 50.0)
 
 print("--- vehiculo inmobiliario: sensibilidad del NAV ---")
 # Inmuebles 1.000, NOI 70 (cap 7 %), deuda 300 => NAV 700 con 10 M de titulos (70.000 por titulo).

@@ -48,7 +48,7 @@ TRIMESTRES = ["T1", "T2", "T3", "T4"]
 # Campos de FLUJO (se acumulan en el año). Los demás son de SALDO (foto a una fecha).
 CAMPOS_FLUJO = ("ingresos", "utilidad_operacional", "utilidad_neta", "ebitda", "flujo_caja_operativo",
                 "capex", "gasto_financiero", "utilidad_bruta", "utilidad_antes_impuestos", "impuesto_renta",
-                "depreciacion_amortizacion")
+                "depreciacion_amortizacion", "resultado_asociadas")
 CAMPOS_SALDO = ("activos_totales", "pasivos_totales", "patrimonio", "deuda_financiera")
 
 

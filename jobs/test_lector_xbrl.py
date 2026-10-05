@@ -240,6 +240,10 @@ if geb.is_file():
     # El mismo contexto trae la plantilla en 0 y la cifra real: gana la real (GEB radica 1.413,952 + 559,387).
     gc = lx.leer(geb, 2025, "ANUAL", emisor="GEB")["campos"]
     revisar("GEB capex = PP&E + intangibles (no la plantilla en cero)", round(gc["capex"]["valor"], 3), round(1413.952 + 559.387, 3))
+    # Resultado de asociadas: el valor del año (ctx 2025-01-01..12-31), no el del 4T suelto (419,2).
+    revisar("GEB resultado de asociadas 2025 (anual, no el 4T)", round(gc["resultado_asociadas"]["valor"], 3), 2184.356)
+    g2 = lx.leer(geb.parent / "2026-T2_EEFF-Consolidados-XBRL.xbrl", 2026, "T2", emisor="GEB")["campos"]
+    revisar("GEB resultado de asociadas 1S-2026 acumulado", round(g2["resultado_asociadas"]["valor"], 3), 1220.580)
 cemar = CORPUS / "CEMENTOS_ARGOS" / "2025-ANUAL_EEFF-Consolidados-XBRL.xbrl"
 if cemar.is_file():
     revisar("Cementos Argos flujo operativo real (no la plantilla en cero)",
