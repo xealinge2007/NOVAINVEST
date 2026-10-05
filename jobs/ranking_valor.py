@@ -28,6 +28,7 @@ from app.services import ranking_valor as rk  # noqa: E402
 from app.services import valoracion as vc_val  # noqa: E402
 from app.services import ventaja_competitiva as vc  # noqa: E402
 from app.services.catalizador import evaluar_catalizadores  # noqa: E402
+from app.services.liquidez import liquidez_valor  # noqa: E402
 
 ORDEN = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "ANUAL": 5}
 RUTA_POR_ARQUETIPO = {"holding": "holding", "banco": "banco", "real": "activos_epv",
@@ -65,6 +66,22 @@ def main():
     for f in cliente.table("fundamentales_reportados").select("emisor_id,anio," + CAMPOS_ANUALES).eq(
             "periodo", "ANUAL").order("anio").execute().data:
         anuales.setdefault(f["emisor_id"], {})[f["anio"]] = f
+
+    import pandas as pd
+    instrumentos = {}
+    for i in cliente.table("instrumentos").select("emisor_id,activo_id").execute().data:
+        instrumentos.setdefault(i["emisor_id"], []).append(i["activo_id"])
+
+    def mejor_liquidez(emisor_id):
+        """El instrumento más líquido del emisor (mayor mediana de monto negociado en 20 sesiones)."""
+        mejor = None
+        for activo in instrumentos.get(emisor_id, []):
+            precios = cliente.table("precios").select("cierre,volumen").eq("activo_id", activo).order(
+                "fecha", desc=True).limit(20).execute().data
+            liq = liquidez_valor(pd.DataFrame(precios))
+            if mejor is None or (liq["mediana_cop"] or 0) > (mejor["mediana_cop"] or 0):
+                mejor = liq
+        return mejor
 
     ventajas, resultados = [], []
     for em in emisores:
@@ -114,6 +131,7 @@ def main():
                 "ventaja": {"nivel": ventaja["nivel"], "puntaje": ventaja["puntaje"], "tendencia": ventaja["tendencia"],
                             "fuente": ventaja["fuente_ventaja"], "avisos": (ventaja.get("evidencia") or {}).get("avisos", [])},
                 "renta": {"yield_pct": a.get("dividend_yield_pct"), "payout_pct": a.get("payout_pct")},
+                "liquidez": mejor_liquidez(em["id"]),
                 "catalizador": cat["motivo"],
                 "pendientes": ["crecimiento del NAV/EPV (Pilar 4) no desempata todavía", "sin backtest",
                                "renta en USD (Bazin/Barsi) no calculada: se usa el rendimiento en COP"],

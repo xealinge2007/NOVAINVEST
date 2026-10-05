@@ -34,3 +34,31 @@ def monto_promedio_negociado(df: pd.DataFrame, dias: int = 20) -> float | None:
 def volumen_suficiente(df: pd.DataFrame, minimo_cop: float = MIN_MONTO_NEGOCIADO_20D_COP, dias: int = 20) -> bool:
     monto = monto_promedio_negociado(df, dias)
     return monto is not None and monto >= minimo_cop
+
+
+# ---------------------------------------------------------------------------
+# Puerta de liquidez del ranking de valor (decisión de Alex, 03-oct-2026). Distinta del gate de
+# señales de arriba (que sigue en media >= 500 M): aquí importa cuánto se puede negociar un día
+# CUALQUIERA, no el promedio que inflan unos pocos bloques (Promigas: media 1.462 M, mediana 311 M).
+# ---------------------------------------------------------------------------
+MIN_MEDIANA_VALOR_COP = 150_000_000
+MIN_SESIONES_CON_NEGOCIACION = 18   # de las últimas 20
+FACTOR_TAMANO_MAXIMO = 0.5          # 5 sesiones al 10 % de la mediana diaria
+
+
+def liquidez_valor(df: pd.DataFrame, dias: int = 20) -> dict:
+    """{ok, mediana_cop, sesiones_con_negociacion, sesiones, tamano_maximo_cop}. `df` con `volumen` y
+    `cierre` de las últimas `dias` sesiones. Pasa si la mediana del monto negociado es >=
+    `MIN_MEDIANA_VALOR_COP` y hubo negociación en al menos `MIN_SESIONES_CON_NEGOCIACION` sesiones.
+    `tamano_maximo_cop` = `FACTOR_TAMANO_MAXIMO` x mediana: lo que se puede deshacer en ~5 sesiones sin
+    pasar del 10 % del volumen diario."""
+    vacio = {"ok": False, "mediana_cop": None, "sesiones_con_negociacion": 0, "sesiones": 0, "tamano_maximo_cop": None}
+    if df is None or df.empty or "volumen" not in df.columns or "cierre" not in df.columns:
+        return vacio
+    ventana = df.head(dias) if len(df) > dias else df
+    montos = (ventana["volumen"].fillna(0) * ventana["cierre"].fillna(0))
+    mediana = float(montos.median())
+    con_neg = int((ventana["volumen"].fillna(0) > 0).sum())
+    ok = mediana >= MIN_MEDIANA_VALOR_COP and con_neg >= MIN_SESIONES_CON_NEGOCIACION
+    return {"ok": ok, "mediana_cop": mediana, "sesiones_con_negociacion": con_neg, "sesiones": len(ventana),
+            "tamano_maximo_cop": mediana * FACTOR_TAMANO_MAXIMO}

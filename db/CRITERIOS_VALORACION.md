@@ -4,6 +4,16 @@ Aprobados por Alex el 02-oct-2026. Código: `apps/api/app/services/valoracion.py
 nombre, una sola fuente) y pruebas `jobs/test_valoracion.py`. Si se cambia un número aquí, se cambia
 allí y se vuelve a correr `jobs/solidez_financiera.py` y `jobs/valoracion_por_accion.py`.
 
+## Puerta 0 — liquidez (decisión de Alex, 03-oct-2026)
+
+Pasa si, en al menos uno de sus instrumentos, la **mediana** del monto negociado de las últimas 20
+sesiones es **>= 150 millones de COP al día** y hubo negociación en **>= 18 de las 20 sesiones**. Se usa la
+mediana y no la media porque la media la inflan unos pocos bloques (Promigas: media 1.462 M, mediana
+311 M). Nunca por debajo de 100 M de mediana: ahí el diferencial y el impacto de la propia orden superan
+cualquier margen de seguridad. El ranking muestra además un **tamaño máximo sugerido de posición** =
+0,5 x la mediana (unas 5 sesiones al 10 % del volumen). El gate de señales de trading (`liquidez.py`,
+media >= 500 M) no se tocó.
+
 ## Pilar 1 — seguridad (Whitman): "safe" va antes que "cheap"
 
 | Tipo | Prueba | Límite |

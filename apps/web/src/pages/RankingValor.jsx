@@ -49,6 +49,12 @@ function Detalle({ f }) {
           {d.ventaja?.tendencia ? `, ${d.ventaja.tendencia}` : ""}. Fuente declarada: {d.ventaja?.fuente || "—"}.
         </p>
         <p className="mt-1">Catalizador: {d.catalizador || "—"}.</p>
+        {d.liquidez?.mediana_cop !== null && d.liquidez?.mediana_cop !== undefined && (
+          <p className="mt-1">
+            Liquidez: mediana de {fmt(d.liquidez.mediana_cop / 1e6, 0)} millones al día ({d.liquidez.sesiones_con_negociacion}/{d.liquidez.sesiones}{" "}
+            sesiones). Tamaño máximo sugerido de una posición: ~{fmt(d.liquidez.tamano_maximo_cop / 1e6, 0)} millones (unas 5 sesiones al 10% del volumen).
+          </p>
+        )}
         <p className="mt-1">
           Dividendo: {fmt(d.renta?.yield_pct)}% sobre el precio, payout {fmt(d.renta?.payout_pct, 0)}%.
         </p>

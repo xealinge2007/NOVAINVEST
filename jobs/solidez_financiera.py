@@ -55,7 +55,7 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 
 import pandas as pd  # noqa: E402
 
-from app.services.liquidez import volumen_suficiente  # noqa: E402
+from app.services.liquidez import liquidez_valor  # noqa: E402
 from app.services.valoracion import evaluar_seguridad, evaluar_seguridad_banco, ltv_holding  # noqa: E402
 
 # DOCTRINA_VALOR.md §2 -- clasificación ya documentada, se siembra aquí
@@ -150,8 +150,9 @@ def _indicadores_banco(slug):
 
 
 def _liquidez_ok(cliente, emisor_id):
-    """(ok, detalle) sobre TODOS los instrumentos del emisor -- pasa si al
-    menos uno supera el piso de `liquidez.py`."""
+    """(ok, detalle) sobre TODOS los instrumentos del emisor -- pasa si al menos uno supera la puerta
+    de liquidez del ranking (`liquidez.liquidez_valor`): mediana del monto negociado >= 150 M COP/día y
+    negociación en >= 18 de 20 sesiones."""
     instrumentos = cliente.table("instrumentos").select("id,ticker,activo_id").eq("emisor_id", emisor_id).execute().data
     if not instrumentos:
         return False, "sin instrumento registrado"
@@ -161,10 +162,11 @@ def _liquidez_ok(cliente, emisor_id):
             cliente.table("precios").select("cierre,volumen")
             .eq("activo_id", inst["activo_id"]).order("fecha", desc=True).limit(20).execute().data
         )
-        df = pd.DataFrame(precios)
-        ok = volumen_suficiente(df)
-        detalles.append(f"{inst['ticker']}: {'OK' if ok else 'insuficiente'}")
-        if ok:
+        liq = liquidez_valor(pd.DataFrame(precios))
+        mediana = (liq["mediana_cop"] or 0) / 1e6
+        detalles.append(f"{inst['ticker']}: mediana {mediana:,.0f} M/día, {liq['sesiones_con_negociacion']}/{liq['sesiones']} sesiones "
+                        f"({'OK' if liq['ok'] else 'insuficiente'})")
+        if liq["ok"]:
             return True, "; ".join(detalles)
     return False, "; ".join(detalles)
 
