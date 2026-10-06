@@ -119,7 +119,10 @@ promedio de todo el período) y agrega un aviso informativo —sin bajar la conf
 **Terpel** (central 37.338; promedio del período 22.673, +20 % sobre el precio de 18.840), **ISA** (10.900 contra 5.067), **Grupo Nutresa**
 (5.194 contra −3.473; excluida por liquidez) y **Enka** (excluida por liquidez). Terpel, primero del ranking, sigue "segura y barata", pero su margen
 es de ~50 % con la regla del modelo y de ~17 % con el promedio del período; el escenario bajo del rango (18.510) equivale al precio.
-**Deuda de Terpel (verificación):** su deuda es la nota 24 ("otros pasivos financieros", 3.651) y el XBRL no etiqueta pasivos por arrendamiento aparte
-(valor presente de pagos mínimos de arrendamientos financieros: 881,2). Es muy probable que estén dentro; si no lo estuvieran el central bajaría
-de 37.338 a 32.480 (margen 42 %). No se pudo confirmar porque el XBRL no trae la composición de esa nota.
+**Deuda de Terpel (verificada con los estados consolidados a marzo de 2026, nota 23, terpel.com):** el total de 3.651,4 al 31-dic-2025 (el que usa el modelo,
+`Other{Current,Noncurrent}FinancialLiabilities` del XBRL) se compone de préstamos con entidades de crédito 893,7, bonos 1.969,1, **pasivos por
+arrendamiento 788,3** (68,6 corrientes + 719,7 no corrientes) y swaps 0,3. Los arrendamientos YA están dentro de la deuda del modelo, así que el
+patrimonio del EPV no los sobrestima (al 31-mar-2026 el total es 3.637,6, con arrendamientos de 777,8). El EBIT es posterior a la depreciación
+de los derechos de uso y el interés del arrendamiento queda debajo del EBIT: tratamiento coherente con restar el pasivo por arrendamiento como deuda.
+La cifra de 881,2 del XBRL (valor presente de pagos mínimos de arrendamientos financieros) mide otra cosa y no se suma.
 
