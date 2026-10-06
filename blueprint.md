@@ -36,5 +36,5 @@ PEI pasó de "segura y barata" a "trampa de descuento". Falta push de esta tanda
 - Publicar esta tanda (git push origin main) con el OK de Alex.
 - PEI: sensibilidad del NAV a cap rate y ocupación (db/CONCILIACION_PEI_CONCONCRETO.md).
 - Conconcreto: conciliar EBITDA 1T-2026 (18.607 oficial vs 16.578 nuestro).
-- GEB: hecho el 5-oct (migrate_p4_resultado_asociadas.sql aplicada; EPV 2.576 por acción, margen -18 %, safe_cara #8). Pendiente: valor de mercado del interés minoritario.
+- GEB: hecho el 5-oct (migrate_p4_resultado_asociadas.sql aplicada; EPV con minoritario a mercado (migrate_p5): 2.454 por acción, margen -24 %, safe_cara #9). Pendiente: ISA tiene el mismo sesgo (minoritario 10.458 a libros).
 - Enviar db/NOTA_AUDITORIA_EXTERNA.md a un auditor humano (falta destinatario).
