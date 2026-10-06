@@ -1,7 +1,23 @@
 # Nota para la auditoría externa independiente
 
-**Versión del 04-oct-2026** (actualizada con los cambios del 3 y 4 de octubre; commit `e28c51a` en `main`). Pendiente de enviar. Esta nota resume qué se construyó, qué debe
+**Para: Auditor externo.**
+**Versión del 06-oct-2026** (commit `6fc6393` en `main`). Lista para enviar. Esta nota resume qué se construyó, qué debe
 verificar un tercero sin sesgos y dónde es más probable que haya errores.
+
+**Cambios desde la versión del 04-oct** (detalle en las secciones 4 y 5 y en `db/CRITERIOS_VALORACION.md`):
+- GEB e ISA se valoran con el resultado de asociadas y el interés minoritario a mercado (antes GEB era "no determinable").
+- Política de reexpresión: rige la versión más reciente de cada cierre anual (con revisión a mano de los saltos de ventas > 10 %).
+- Series recortadas al perímetro vigente (`jobs/diagnostico_perimetro.py`): Conconcreto y Cementos Argos pasan a no determinables.
+- PEI: deuda, vencimientos, capex y composición con fuente primaria (estados al 30-jun-2026); evento pendiente de Terranum.
+- Cada EPV muestra el valor con el promedio de todo el período (`por_accion_promedio_periodo`): el #1, Terpel, pasa de 50 % a ~17 % de margen.
+- Errores míos corregidos en el camino y dichos en su momento: margen de ISA mal rotulado, costo de la deuda de PEI inferido, EBITDA de Conconcreto.
+
+## Qué entregar con esta nota (paquete sugerido)
+
+1. Esta nota. 2. `db/CRITERIOS_VALORACION.md` (criterios vigentes). 3. `db/CONCILIACION_PEI_CONCONCRETO.md` (insumos y fuentes de PEI y Conconcreto).
+4. `db/AUDITORIA_MOTOR_VALOR_2026-10-01.md` (auditoría inicial). 5. `RANKING_VALOR_BVC.csv` (salida; regenerar con `jobs/ranking_valor.py`).
+6. Acceso de solo lectura al repositorio y, si lo pide, a Supabase (los datos viven en la cuenta de Alex). El corpus XBRL/PDF (`C:\Proyectos\BVC\`) no está
+en el repositorio y no tiene respaldo: hay que compartirlo aparte.
 
 ## 0. Revisión previa de Codex (04-oct-2026)
 
