@@ -7,6 +7,7 @@ usuarios, no información personal, pero requiere auth como el resto de la app.
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import UsuarioActual, cliente_supabase_de, get_current_usuario
+from app.services.ranking_valor import CUADRANTE_LEGADO
 
 router = APIRouter(prefix="/fundamentales", tags=["fundamentales"])
 
@@ -29,7 +30,21 @@ async def ranking_valor(usuario: UsuarioActual = Depends(get_current_usuario)):
     except Exception as e:  # tabla ausente o fallo de base: NO se disfraza de "sin resultados" (Codex H9)
         raise HTTPException(503, f"No se pudo leer el ranking de valor ({type(e).__name__}). "
                                  "Es un fallo técnico, no un ranking vacío.") from e
+    for f in filas:  # filas guardadas antes de migrate_p6 traen los nombres viejos del cuadrante
+        f["cuadrante"] = CUADRANTE_LEGADO.get(f.get("cuadrante"), f.get("cuadrante"))
     return sorted(filas, key=lambda f: (f["posicion"] is None, f["posicion"] or 0, (f.get("detalle") or {}).get("slug", "")))
+
+
+@router.get("/ranking-valor/{emisor_id}/historial")
+async def historial_ranking_valor(emisor_id: int, usuario: UsuarioActual = Depends(get_current_usuario)):
+    """Historial del valor de un emisor: valor, precio, estados usados y causa del cambio en cada corrida."""
+    cliente = cliente_supabase_de(usuario)
+    try:
+        return (cliente.table("ranking_valor_historial").select("*").eq("emisor_id", emisor_id)
+                .order("calculado_en", desc=True).limit(60).execute().data)
+    except Exception as e:  # sin migrate_p6 la tabla no existe: error visible, no lista vacia
+        raise HTTPException(503, f"No se pudo leer el historial ({type(e).__name__}). "
+                                 "¿Se aplicó db/migrate_p6_nombres_y_categorias.sql?") from e
 
 
 @router.get("/macro/supuestos")

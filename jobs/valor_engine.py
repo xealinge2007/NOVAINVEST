@@ -36,6 +36,7 @@ from app.services import valoracion as v  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analizador_fundamental import ACCIONES_PREFERENCIALES  # noqa: E402
+from compat_esquema import upsert_valor_estimado  # noqa: E402
 
 
 def calcular_holding(cliente, emisor_id: int, slug: str):
@@ -121,9 +122,9 @@ def calcular_holding(cliente, emisor_id: int, slug: str):
         "motivo_no_determinable": None if determinable else "NAV central <= 0 con el neto propio del holding",
         "nav_mercado_mmm": round(nav_mercado, 3),
         "nav_lookthrough_mmm": round(nav_lookthrough, 3),
-        "valor_p25_mmm": round(rango["bajo"], 3),
+        "valor_bajo_mmm": round(rango["bajo"], 3),
         "valor_central_mmm": round(rango["central"], 3),
-        "valor_p75_mmm": round(rango["alto"], 3),
+        "valor_alto_mmm": round(rango["alto"], 3),
         "precio_mercado_mmm": round(precio_mercado, 3) if precio_mercado is not None else None,
         "descuento_pct": round(descuento_pct, 2) if descuento_pct is not None else None,
         "tasa_descuento_detalle": {
@@ -143,7 +144,7 @@ def calcular_holding(cliente, emisor_id: int, slug: str):
         "confianza": "baja",
         "fecha_corte_eeff": fecha_corte,
     }
-    cliente.table("valor_estimado").upsert(fila, on_conflict="emisor_id,anio,periodo").execute()
+    upsert_valor_estimado(cliente, fila)
 
     print(f"{slug} {anio}-{periodo}: NAV-mercado={nav_mercado:.1f}  NAV-lookthrough={nav_lookthrough:.1f} (snapshot)  |  "
           f"rango vivo {rango['bajo']:.0f}/{rango['central']:.0f}/{rango['alto']:.0f} MMM  precio={precio_mercado}  "

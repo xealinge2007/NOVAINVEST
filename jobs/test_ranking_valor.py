@@ -28,18 +28,18 @@ revisar("sin valor determinable", (r["excluido"], r["motivo_exclusion"]), (True,
 
 print("--- cuadrantes ---")
 r = rk.evaluar(e(catalizador_nivel="fuerte"))
-revisar("segura, barata y con catalizador = safe_cheap", r["cuadrante"], "safe_cheap")
+revisar("segura, barata y con catalizador = descuento_con_soporte", r["cuadrante"], "descuento_con_soporte")
 revisar("no se sugiere tamano de posicion", r["tamano_relativo"], None)
 r = rk.evaluar(e(dividend_yield_pct=7.0, payout_pct=60.0))
-revisar("segura, barata, solo renta con payout = safe_cheap", r["cuadrante"], "safe_cheap")
+revisar("segura, barata, solo renta con payout = descuento_con_soporte", r["cuadrante"], "descuento_con_soporte")
 r = rk.evaluar(e(dividend_yield_pct=7.6, payout_pct=None))
-revisar("rendimiento alto SIN payout no es renta (caso PEI)", (r["cuadrante"], r["renta_sostenible"]), ("trampa_descuento", False))
+revisar("rendimiento alto SIN payout no es renta (caso PEI)", (r["cuadrante"], r["renta_sostenible"]), ("descuento_sin_soporte", False))
 r = rk.evaluar(e())
-revisar("barata sin catalizador ni renta = trampa de descuento", r["cuadrante"], "trampa_descuento")
+revisar("barata sin catalizador ni renta = descuento sin soporte", r["cuadrante"], "descuento_sin_soporte")
 r = rk.evaluar(e(dividend_yield_pct=8.0, payout_pct=120.0))
-revisar("dividendo por encima de la utilidad no es renta sostenible", r["cuadrante"], "trampa_descuento")
+revisar("dividendo por encima de la utilidad no es renta sostenible", r["cuadrante"], "descuento_sin_soporte")
 r = rk.evaluar(e(valor={"determinable": True, "margen_seguridad_pct": 5.0, "confianza": "media"}))
-revisar("margen menor al umbral = safe_cara", r["cuadrante"], "safe_cara")
+revisar("margen menor al umbral = sin_descuento", r["cuadrante"], "sin_descuento")
 r = rk.evaluar(e(pilar1=None, catalizador_nivel="fuerte"))
 revisar("seguridad no evaluada nunca es favorable", (r["cuadrante"], r["tamano_relativo"]), ("seguridad_no_evaluada", None))
 r = rk.evaluar(e(valor={"determinable": True, "margen_seguridad_pct": 30.0, "confianza": "baja"}))
@@ -69,9 +69,47 @@ lista = [
 ]
 rk.ordenar(lista)
 pos = {r["id"]: r["posicion"] for r in lista}
-revisar("safe_cheap con mas margen primero", (pos["B"], pos["A"]), (1, 2))
-revisar("una trampa con 90 % de margen queda detras de las safe_cheap", pos["C"], 3)
+revisar("descuento_con_soporte con mas margen primero", (pos["B"], pos["A"]), (1, 2))
+revisar("una trampa con 90 % de margen queda detras de las descuento_con_soporte", pos["C"], 3)
 revisar("la cara va despues de la trampa", pos["E"], 4)
 revisar("la excluida no tiene posicion", pos["D"], None)
+
+print("--- riesgos que acompanan a la categoria (P2.4) ---")
+r = rk.evaluar(e(valor={"determinable": True, "margen_seguridad_pct": 30.0, "confianza": "baja"}, pilar1=None,
+                 pilar1_motivo="sin EBITDA", liquidez_mediana_cop=300_000_000, desfase_resultados_trimestres=6,
+                 ruta_valor="inmobiliario"))
+tipos = [x["tipo"] for x in r["riesgos"]]
+revisar("riesgos: datos (provisional + desfase), deuda no evaluable y liquidez", sorted(tipos), ["datos", "datos", "deuda", "liquidez"])
+liq = [x["texto"] for x in r["riesgos"] if x["tipo"] == "liquidez"][0]
+revisar("liquidez dice cuantas veces supera la puerta de 150 M", "2.0x" in liq, True)
+r = rk.evaluar(e())
+revisar("sin riesgos de datos no se inventan", [x["tipo"] for x in r["riesgos"]], ["deuda"])
+
+print("--- retorno anualizado ilustrativo (P2.2) ---")
+x = rk.retorno_anualizado_ilustrativo(133.1, 100.0, None, anios=3)
+revisar("converger a 133,1 desde 100 en 3 anios = 10 % anual", x["retorno_pct"], 10.0)
+x = rk.retorno_anualizado_ilustrativo(133.1, 100.0, 5.0, anios=3)
+revisar("suma la renta sostenible", (x["por_precio_pct"], x["por_renta_pct"], x["retorno_pct"]), (10.0, 5.0, 15.0))
+revisar("declara horizonte y supuestos", (x["horizonte_anios"], "no es un pronóstico" in x["supuestos"]), (3, True))
+revisar("valor negativo: sin retorno", rk.retorno_anualizado_ilustrativo(-5.0, 100.0), None)
+revisar("sin precio: sin retorno", rk.retorno_anualizado_ilustrativo(50.0, None), None)
+x = rk.retorno_anualizado_ilustrativo(50.0, 100.0, None)
+revisar("valor menor al precio da retorno negativo, no se oculta", x["retorno_pct"] < 0, True)
+
+print("--- historial: causa del cambio (P2.6) ---")
+ant = {"valor_central": 100.0, "precio": 80.0, "balance": "2026-T1", "resultados": "anual 2025"}
+revisar("sin corrida previa se dice", rk.causa_del_cambio(None, {"valor_central": 100.0, "precio": 80.0})["valor_cambio_pct"], None)
+c = rk.causa_del_cambio(ant, {**ant, "valor_central": 100.2})
+revisar("cambio menor al umbral = sin cambio relevante", c["causas"], ["sin cambio relevante en el valor base"])
+c = rk.causa_del_cambio(ant, {**ant, "balance": "2026-T2", "valor_central": 120.0})
+revisar("estados nuevos se atribuyen a los estados", (c["valor_cambio_pct"], "estados financieros nuevos" in c["causas"][0]), (20.0, True))
+c = rk.causa_del_cambio(ant, {**ant, "valor_central": 90.0, "precio": 85.0})
+revisar("mismos estados: residual declarado, no inventado", "mismos estados financieros" in c["causas"][0], True)
+c = rk.causa_del_cambio(ant, {**ant, "valor_central": 90.0, "precio": 85.0, "ruta": "holding"})
+revisar("holding: precio vivo de cotizadas", any("precio vivo" in x for x in c["causas"]), True)
+
+print("--- nombres vigentes y legado ---")
+revisar("mapa legado", rk.CUADRANTE_LEGADO["safe_cheap"], "descuento_con_soporte")
+revisar("score_valor conserva su esquema", rk.CUADRANTE_A_SCORE_VALOR[rk.SIN_SOPORTE], "trampa_descuento")
 
 reportar_y_salir()

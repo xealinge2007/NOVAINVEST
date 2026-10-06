@@ -76,6 +76,33 @@ def _mas_reciente(filas):
     return max(filas, key=lambda f: (f["anio"], ORDEN.get(f["periodo"], 0))) if filas else None
 
 
+def _leer_previos(cliente):
+    """Fila anterior de ranking_valor por emisor (para atribuir el cambio del valor)."""
+    try:
+        filas = cliente.table("ranking_valor").select("emisor_id,valor_central,precio,detalle").execute().data
+    except Exception:
+        return {}
+    return {f["emisor_id"]: f for f in filas}
+
+
+def _guardar_historial(cliente, resultados):
+    """Una fila por emisor y corrida en ranking_valor_historial (db/migrate_p6_nombres_y_categorias.sql)."""
+    filas = [{
+        "emisor_id": r["emisor_id"], "valor_bajo": r["valor_bajo"], "valor_central": r["valor_central"],
+        "valor_alto": r["valor_alto"], "precio": r["precio"], "margen_seguridad_pct": r["margen_seguridad_pct"],
+        "subida_pct": r["subida_pct"], "cuadrante": r["cuadrante"], "ruta_valor": r["ruta_valor"],
+        "balance_de": r["balance_de"], "fuente_resultados": r["fuente_resultados"], "cambio": r["cambio"],
+    } for r in resultados if r["valor_central"] is not None]
+    try:
+        cliente.table("ranking_valor_historial").insert(filas).execute()
+        cambios = [r for r in resultados if (r["cambio"].get("valor_cambio_pct") or 0) and abs(r["cambio"]["valor_cambio_pct"]) >= rk.UMBRAL_CAMBIO_VALOR_PCT]
+        print(f"Historial: {len(filas)} filas; {len(cambios)} emisor(es) con cambio de valor >= {rk.UMBRAL_CAMBIO_VALOR_PCT} %.")
+        for r in cambios:
+            print(f"  {r['slug']:24s}{r['cambio']['valor_cambio_pct']:+.1f} %  {'; '.join(r['cambio']['causas'])}")
+    except Exception as e:
+        print(f"AVISO: no se guardó el historial ({type(e).__name__}): ¿aplicaste db/migrate_p6_nombres_y_categorias.sql?")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
@@ -138,6 +165,7 @@ def main():
         ventajas.append({"emisor_id": em["id"], **ventaja})
 
         cat = evaluar_catalizadores(catalizadores.get(em["id"], []))
+        liq = mejor_liquidez(em["id"])
         valor = {
             "determinable": bool(ve and ve.get("determinable")),
             "motivo": (ve or {}).get("motivo_no_determinable") or ("sin valor calculado" if not ve else None),
@@ -150,7 +178,7 @@ def main():
             "pilar1_motivo": (sv or {}).get("pilar1_motivo"), "valor": valor,
             "catalizador_nivel": cat["nivel"], "dividend_yield_pct": a.get("dividend_yield_pct"),
             "payout_pct": a.get("payout_pct"),
-            "ruta_valor": ruta,
+            "ruta_valor": ruta, "liquidez_mediana_cop": (liq or {}).get("mediana_cop"),
             "desfase_resultados_trimestres": _desfase_trimestres(a.get("fuente_resultados"), a.get("balance_de")),
         }
         res = rk.evaluar(entrada)
@@ -160,6 +188,10 @@ def main():
             "valor_alto": por_accion.get("alto"), "precio": det.get("precio") or a.get("precio"),
             "margen_seguridad_pct": valor["margen_seguridad_pct"],
             "subida_pct": rk.subida_al_valor(por_accion.get("central"), det.get("precio") or a.get("precio")),
+            "retorno_ilustrativo": rk.retorno_anualizado_ilustrativo(
+                por_accion.get("central"), det.get("precio") or a.get("precio"),
+                a.get("dividend_yield_pct") if res.get("renta_sostenible") else None),
+            "balance_de": a.get("balance_de"), "fuente_resultados": a.get("fuente_resultados"),
             "ruta_valor": ruta, "ventaja_nivel": ventaja["nivel"], "ventaja_puntaje": ventaja["puntaje"],
             "catalizador_nivel": cat["nivel"],
             "detalle": {
@@ -176,8 +208,12 @@ def main():
                 "fechas": {"balance": a.get("balance_de"), "resultados": a.get("fuente_resultados"),
                            "desfase_trimestres": _desfase_trimestres(a.get("fuente_resultados"), a.get("balance_de"))},
                 "subida_pct": rk.subida_al_valor(por_accion.get("central"), det.get("precio") or a.get("precio")),
+                "riesgos": res.get("riesgos") or [],
+                "retorno_ilustrativo": rk.retorno_anualizado_ilustrativo(
+                    por_accion.get("central"), det.get("precio") or a.get("precio"),
+                    a.get("dividend_yield_pct") if res.get("renta_sostenible") else None),
                 "escenarios": "bajo / base / alto son escenarios de supuestos, no percentiles ni probabilidades",
-                "liquidez": mejor_liquidez(em["id"]),
+                "liquidez": liq,
                 "catalizador": cat["motivo"],
                 "pendientes": ["crecimiento del NAV/EPV (Pilar 4) no desempata todavía", "sin backtest",
                                "renta en USD (Bazin/Barsi) no calculada: se usa el rendimiento en COP"],
@@ -199,16 +235,29 @@ def main():
 
     with open(RAIZ / "RANKING_VALOR_BVC.csv", "w", newline="", encoding="utf-8-sig") as fh:
         campos = ["posicion", "slug", "nombre", "cuadrante", "tamano_relativo", "valor_bajo", "valor_central", "valor_alto",
-                  "precio", "margen_seguridad_pct", "nivel_evidencia", "ventaja_nivel", "catalizador_nivel",
-                  "puerta_fallida", "motivo_exclusion"]
+                  "precio", "margen_seguridad_pct", "subida_al_valor_base_pct", "retorno_anual_ilustrativo_pct",
+                  "nivel_evidencia", "ventaja_nivel", "catalizador_nivel", "riesgos", "puerta_fallida", "motivo_exclusion"]
         w = csv.DictWriter(fh, fieldnames=campos, extrasaction="ignore")
         w.writeheader()
-        w.writerows(sorted(resultados, key=lambda r: (r["posicion"] is None, r["posicion"] or 0)))
+        for r in sorted(resultados, key=lambda r: (r["posicion"] is None, r["posicion"] or 0)):
+            w.writerow({**r, "subida_al_valor_base_pct": None if r["subida_pct"] is None else round(r["subida_pct"], 1),
+                        "retorno_anual_ilustrativo_pct": (r["retorno_ilustrativo"] or {}).get("retorno_pct"),
+                        "riesgos": " | ".join(x["texto"] for x in (r.get("riesgos") or []))})
 
     if args.dry_run:
         print("\n(dry-run: no se escribió en Supabase)")
         return
 
+    previos = _leer_previos(cliente)
+    for r in resultados:
+        previo = previos.get(r["emisor_id"])
+        r["cambio"] = rk.causa_del_cambio(
+            {"valor_central": previo["valor_central"], "precio": previo["precio"],
+             "balance": ((previo.get("detalle") or {}).get("fechas") or {}).get("balance"),
+             "resultados": ((previo.get("detalle") or {}).get("fechas") or {}).get("resultados")} if previo else None,
+            {"valor_central": r["valor_central"], "precio": r["precio"], "balance": r["balance_de"],
+             "resultados": r["fuente_resultados"], "ruta": r["ruta_valor"]})
+        r["detalle"]["cambio"] = r["cambio"]
     try:
         cliente.table("ventaja_competitiva").upsert(ventajas, on_conflict="emisor_id").execute()
         filas = [{
@@ -233,10 +282,10 @@ def main():
         sv = _mas_reciente(por_emisor.get(("score_valor", r["emisor_id"]), []))
         if not sv:
             continue
-        cuad = r["cuadrante"] if r["cuadrante"] in ("safe_cheap", "safe_cara", "trampa_descuento") else None
+        cuad = rk.CUADRANTE_A_SCORE_VALOR.get(r["cuadrante"])  # score_valor conserva el esquema del plan
         cliente.table("score_valor").update({
             "cuadrante": cuad, "tamano_posicion_sugerido": None,
-            "trampa_descuento": r["cuadrante"] == "trampa_descuento",
+            "trampa_descuento": r["cuadrante"] == rk.SIN_SOPORTE,
             "renta_sostenible": r.get("renta_sostenible"),
             "valor_determinable": not r["excluido"] or r["puerta_fallida"] != "valor",
         }).eq("id", sv["id"]).execute()

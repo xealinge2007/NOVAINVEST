@@ -107,7 +107,7 @@ for slug, (anio, periodo, esperado_mercado, esperado_lookthrough) in CASOS.items
     # P2 (02-oct-2026): el central ya no es el piso (nav_mercado, no cotizadas en cero) sino un rango
     # con las cotizadas a precio vivo y las no cotizadas a 50/75/100 % del libro.
     revisar(f"{slug}: rango ordenado bajo < central < alto",
-            f["valor_p25_mmm"] < f["valor_central_mmm"] < f["valor_p75_mmm"], True)
+            f.get("valor_bajo_mmm", f.get("valor_p25_mmm")) < f["valor_central_mmm"] < f.get("valor_alto_mmm", f.get("valor_p75_mmm")), True)
     revisar(f"{slug}: el rango declara que es un supuesto de confianza baja",
             (f["confianza"], "avisos" in (f["tasa_descuento_detalle"] or {})), ("baja", True))
     revisar(f"{slug}: determinable", f["determinable"], True)

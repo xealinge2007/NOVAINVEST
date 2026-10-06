@@ -33,6 +33,7 @@ sys.path.insert(0, str(RAIZ / "jobs"))
 
 from app.services import valoracion as v  # noqa: E402
 from analizador_fundamental import ACCIONES_PREFERENCIALES  # noqa: E402
+from compat_esquema import upsert_valor_estimado  # noqa: E402
 
 ORDEN = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "ANUAL": 5}
 FIN_PERIODO = {"T1": "03-31", "T2": "06-30", "T3": "09-30", "T4": "12-31", "ANUAL": "12-31"}
@@ -203,7 +204,7 @@ def valorar_real(cliente, em, a, acciones_total):
         "epv_mmm": _r(central["ev"]),
         "valor_activos_ajustado_mmm": _r(capital),
         "diagnostico_epv_vs_activos": v.diagnostico_greenwald(central["ev"], capital),
-        "p25": esc["bajo"]["patrimonio"], "central": central["patrimonio"], "p75": esc["alto"]["patrimonio"],
+        "bajo": esc["bajo"]["patrimonio"], "central": central["patrimonio"], "alto": esc["alto"]["patrimonio"],
         "tasa": wacc,
         "confianza": "baja" if avisos else "media",
         "detalle": {
@@ -249,7 +250,7 @@ def valorar_banco(cliente, em, a, acciones_total):
     por_accion = {k: _r(esc[k]["por_accion"], 1) for k in ("bajo", "central", "alto")}
     return {
         "determinable": True,
-        "p25": esc["bajo"]["patrimonio"], "central": esc["central"]["patrimonio"], "p75": esc["alto"]["patrimonio"],
+        "bajo": esc["bajo"]["patrimonio"], "central": esc["central"]["patrimonio"], "alto": esc["alto"]["patrimonio"],
         "tasa": ke, "confianza": "baja",
         "detalle": {
             "metodo": "P/VL justificado = (ROE - g) / (Ke - g)",
@@ -285,7 +286,7 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
         sens["advertencia"] = ("sensibilidad del NAV declarado, no una valoración independiente de inmuebles: "
                                "NOI anualizado del último trimestre y valor de inmuebles estimado")
     return {
-        "determinable": True, "p25": patrimonio * f_bajo, "central": patrimonio * f_central, "p75": patrimonio * f_alto,
+        "determinable": True, "bajo": patrimonio * f_bajo, "central": patrimonio * f_central, "alto": patrimonio * f_alto,
         "tasa": None, "confianza": "media",
         "detalle": {
             "metodo": "NAV por título = patrimonio contable (inmuebles a valor razonable, NIC 40)",
@@ -359,7 +360,7 @@ def main():
             "determinable": res["determinable"], "motivo_no_determinable": res.get("motivo_no_determinable"),
             "epv_mmm": res.get("epv_mmm"), "valor_activos_ajustado_mmm": res.get("valor_activos_ajustado_mmm"),
             "diagnostico_epv_vs_activos": res.get("diagnostico_epv_vs_activos"),
-            "valor_p25_mmm": _r(res.get("p25")), "valor_central_mmm": _r(res.get("central")), "valor_p75_mmm": _r(res.get("p75")),
+            "valor_bajo_mmm": _r(res.get("bajo")), "valor_central_mmm": _r(res.get("central")), "valor_alto_mmm": _r(res.get("alto")),
             "precio_mercado_mmm": a.get("capitalizacion_mmm") if a else None,
             "descuento_pct": _r(v.margen_seguridad(res.get("central"), a.get("capitalizacion_mmm")) if a else None, 2),
             "tasa_descuento_pct": _r(res["tasa"] * 100, 2) if res.get("tasa") else None,
@@ -367,7 +368,7 @@ def main():
             "confianza": res["confianza"],
             "fecha_corte_eeff": f"{anio}-{FIN_PERIODO[periodo]}",
         }
-        cliente.table("valor_estimado").upsert(fila, on_conflict="emisor_id,anio,periodo").execute()
+        upsert_valor_estimado(cliente, fila)
 
 
 if __name__ == "__main__":
