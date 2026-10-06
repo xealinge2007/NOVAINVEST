@@ -63,9 +63,30 @@ latentes.
 | Escenarios | −129 / 334 / 386 | bajo: EBIT de los últimos 3 años (−7,0) con WACC +1 pp | El bajo negativo = el patrimonio no vale nada si se repite 2023-2025 |
 | TTM a 2026-T2 | ingresos 624,8; EBIT 45,3; utilidad 34,6; EBITDA 61,8 | anual 2025 + 1S-2026 − 1S-2025 | Corregido el 04-oct (bloque acumulado vs trimestre suelto) |
 
-**Diferencia abierta:** Conconcreto reporta un EBITDA de COP 18.607 millones en 1T-2026 (comunicado
-oficial). El nuestro da 16.578 (EBIT 13.208 + D&A del XBRL). La brecha (2.029, 11 %) es probablemente de
-definición (EBITDA ajustado de la compañía), no verificada. No cambia la valoración: el EPV usa EBIT.
+**EBITDA del 1T-2026: conciliado hasta donde la compañía lo permite (05-oct-2026).** Fuentes: comunicado
+de prensa y presentación "Conference Call 1T2026" (p. 8 y 19) de Conconcreto, contra el XBRL radicado.
+
+| Rubro (COP millones) | Compañía | Nuestro (XBRL) | Estado |
+|---|---:|---:|---|
+| Ganancia operacional (EBIT) | 13.208 | 13.207,6 | **Conciliado** |
+| Puente: bruta 17.012 − gastos op. 15.783 + otros ingresos 5.902 − otros gastos 1.316 + otras ganancias 4.260 + método de participación 3.132 | 13.207 | — | Cuadra |
+| D&A | no publicada | 3.370,1 (flujo de caja) = PP&E 3.227,8 + intangibles 142,3 | Cuadra por dos vías |
+| EBITDA | 18.607 | 16.577,6 (EBIT + D&A) | **Brecha 2.029,4 (11 %) sin explicar** |
+
+- El EBIT y la D&A son correctos; la brecha viene de una definición de EBITDA que la compañía **no publica**
+  (ni el comunicado, ni la presentación, ni el XBRL traen la conciliación). Probada una hipótesis: sumar "otros
+  gastos" (1.316) deja 713 sin explicar; en el 1T-2025 la misma prueba deja 1.113. No hay un rubro único que
+  cierre ambos trimestres, así que no se fuerza una explicación.
+- **Decisión:** se mantiene nuestro EBITDA (EBIT + D&A total del flujo), que es la definición estándar y la más
+  conservadora; la cifra de la compañía queda documentada como "EBITDA reportado, definición no publicada".
+  No cambia el EPV (usa EBIT). Sí afecta deuda neta/EBITDA de la puerta de seguridad: con el EBITDA de la
+  compañía el apalancamiento sería menor, no mayor, así que la regla no se vuelve más laxa por esta brecha.
+- **Hallazgo nuevo, más relevante que la brecha:** el EBIT de la compañía **incluye** el método de participación
+  (3.132) y "otras ganancias" (4.260): 7.392 de los 13.208 (56 %) no son resultado operativo recurrente. Además
+  el 1T-2025 incluye 20.593 de utilidad operacional por la venta de inmuebles y activos en EE. UU. (presentación,
+  p. 8 y 19), que está dentro del EBIT 2025 de 32,0 mil millones que usa el EPV: lo recurrente de 2025 sería ~11,4.
+  El EBIT normalizado de 67,1 (promedio 2019-2025) lleva ~2,9 de ese no recurrente (20,6 / 7 años). Pendiente
+  decidir si se ajusta (ver nota externa).
 
 **Resultado actual:** puesto 11, "segura, sin descuento" (margen −43 %, subida −30 %).
 
