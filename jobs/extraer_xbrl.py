@@ -62,6 +62,11 @@ CAMPOS_NUMERICOS = [
     "deuda_financiera", "acciones_en_circulacion", "dividendos_decretados",
 ]
 CAMPOS_NUMERICOS_BASE = list(CAMPOS_NUMERICOS)
+# No se reexpresan: el conteo de acciones y los dividendos decretados son hechos de la fecha, no del estado.
+CAMPOS_SIN_REEXPRESION = ("acciones_en_circulacion", "dividendos_decretados")
+# Variación de la línea de ventas (utilidad neta en financieros) por encima de la cual una reexpresión se trata
+# como cambio de perímetro y no se aplica sola. Conconcreto 2021 (la corrección que motivó la política) varió 7,7 %.
+UMBRAL_CAMBIO_PERIMETRO = 0.10
 # P1: se leen siempre, pero solo se escriben si ya está aplicado db/migrate_p1_estados_ampliados.sql
 CAMPOS_NUMERICOS += list(lector_xbrl.CAMPOS_AMPLIADOS)
 # Campos que los dos canales extraen y significan LO MISMO. La lista es corta
@@ -133,6 +138,33 @@ CORRECCIONES_VERIFICADAS = {
     ("CELSIA", 2025, "ANUAL", "ingresos"): (
         5395.120, "informe 2025-ANUAL pág. 50 (KPMG); el XBRL declara 2.097,753 -- DOCTRINA_VALOR.md §11"),
 }
+
+
+def decidir_reexpresion(previos: dict, comparativo: dict, financiero: bool = False):
+    """(campos fusionados, estado, detalle) para el comparativo de un cierre ANUAL frente al valor ya leído.
+
+    Política de reexpresión (05-oct-2026): el comparativo del cierre anual SIGUIENTE es la versión más reciente
+    de ese año y manda sobre el original. Conconcreto 2021 se reexpresó de EBIT 74,3 a -250,2 en el XBRL de 2022
+    (contrato oneroso de Vía 40, nota 2.7 de los estados auditados); usar el original sobrevaloraba el EPV 9 veces.
+    Solo para cierres anuales: en trimestres el comparativo trae contextos mal etiquetados (caso Promigas) y el
+    propio sigue mandando.
+
+    Salvaguarda: un salto de más de `UMBRAL_CAMBIO_PERIMETRO` en la línea de ventas (en la utilidad neta, para los
+    financieros, que no tienen ventas) es la firma de un CAMBIO DE PERÍMETRO (operaciones discontinuadas, venta
+    de filiales), no de la corrección de un error: el año reexpresado y los anteriores quedarían en bases
+    distintas. No se aplica solo: se conserva el original (estado "no_aplicada") para revisión a mano.
+
+    estado: "aplicada" (cambió alguna cifra clave), "no_aplicada" (salto de perímetro) o "sin_cambio"."""
+    previos = {c: v for c, v in previos.items() if v is not None}
+    reexpresion = {c: v for c, v in comparativo.items() if c not in CAMPOS_SIN_REEXPRESION}
+    cambios = {c: (previos[c], v) for c, v in reexpresion.items()
+               if c in previos and abs(v - previos[c]) > max(0.02 * abs(previos[c]), 0.05)}
+    clave = [c for c in ("ingresos", "utilidad_operacional", "utilidad_neta") if c in cambios]
+    detalle = "; ".join(f"{c} {cambios[c][0]:,.1f} -> {cambios[c][1]:,.1f}" for c in clave)
+    base = "utilidad_neta" if financiero else "ingresos"
+    if base in cambios and cambios[base][0] and             abs(cambios[base][1] - cambios[base][0]) > UMBRAL_CAMBIO_PERIMETRO * abs(cambios[base][0]):
+        return {**comparativo, **previos}, "no_aplicada", detalle
+    return {**previos, **reexpresion}, ("aplicada" if clave else "sin_cambio"), detalle
 
 
 def sanear_ingresos_anuales(cliente, emisores_por_id, aplicar=True):
@@ -278,6 +310,8 @@ def main():
     resumen = defaultdict(int)
     dobles, discrepancias, avisos, paralelas = [], [], [], []
     propios_leidos = set()  # (emisor_id, anio, periodo) leídos de SU propio archivo en esta corrida
+    reexpresados = []       # cierres anuales cuyo comparativo posterior cambió cifras clave
+    no_aplicados = []       # reexpresiones con salto de perímetro: se conserva el original, a revisión
 
     for carpeta in carpetas:
         slug = carpeta.name
@@ -417,7 +451,18 @@ def main():
                 # períodos distintos con las mismas cifras.
                 clave_periodo = (emisor_id, anio, periodo)
                 es_comparativo = anio != anio_informe
-                if es_comparativo and clave_periodo in propios_leidos:
+                if es_comparativo and clave_periodo in propios_leidos and periodo == "ANUAL":
+                    # Política de reexpresión (05-oct-2026), ver `decidir_reexpresion`.
+                    campos_fusionados, estado, detalle_cambio = decidir_reexpresion(
+                        campos_previos_xbrl, campos, financiero=sectores.get(slug) in SECTORES_FINANCIEROS)
+                    if estado == "no_aplicada":
+                        no_aplicados.append(f"{slug} {anio}: {detalle_cambio} (informe {anio_informe}; posible cambio de perímetro, "
+                                            "se conserva el original)")
+                        resumen["anual_reexpresion_no_aplicada_perimetro"] += 1
+                    elif estado == "aplicada":
+                        reexpresados.append(f"{slug} {anio}: {detalle_cambio} (reexpresado en el informe {anio_informe})")
+                        resumen["anual_reexpresado_por_comparativo"] += 1
+                elif es_comparativo and clave_periodo in propios_leidos:
                     campos_fusionados = {**campos, **{c: v for c, v in campos_previos_xbrl.items() if v is not None}}
                 else:
                     campos_fusionados = {**campos_previos_xbrl, **campos}
@@ -464,6 +509,14 @@ def main():
     print("\n" + "=" * 76)
     for k, v in sorted(resumen.items(), key=lambda x: -x[1]):
         print(f"  {v:4d}  {k}")
+    if reexpresados:
+        print(f"\n{len(reexpresados)} cierre(s) ANUAL reexpresado(s) por el informe del año siguiente (rige la versión nueva):")
+        for d in reexpresados:
+            print(f"   {d}")
+    if no_aplicados:
+        print(f"\n{len(no_aplicados)} reexpresión(es) ANUAL NO aplicadas por posible cambio de perímetro (revisar a mano):")
+        for d in no_aplicados:
+            print(f"   {d}")
     if dobles:
         print(f"\n{len(dobles)} período(s) confirmados por los DOS canales (doble_extraccion):")
         for d in dobles[:15]:

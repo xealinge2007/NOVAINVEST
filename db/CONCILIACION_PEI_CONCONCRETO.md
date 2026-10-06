@@ -106,10 +106,16 @@ cifras de EBITDA para el mismo trimestre sin conciliarlas, y en el 1T-2025 ningu
 
 **2. Reexpresión de años anteriores (hallazgo mayor).** El XBRL de 2022 reexpresa el 2021: EBIT original 74,3 →
 **−250,2** (utilidad bruta 88,4 → −236,1; utilidad neta 49,8 → −198,9); también 2019 (114,4 → 104,3) y 2020
-(49,7 → 55,0). El modelo conserva el valor original de cada año. Con los valores reexpresados el promedio 2019-2025
-del EBIT pasa de 67,1 a ~20,1 y el EPV central cae de 334 a ~38 por acción (cálculo aproximado con promedio
-simple, sin pasar por el pipeline). La causa de la reexpresión no está verificada: hay que leer la nota de los
-estados auditados de 2022. La comparación sobre el XBRL crudo de todos los emisores muestra reexpresiones también
+(49,7 → 55,0). Hasta el 5-oct el modelo conservaba el valor original de cada año; desde la política de reexpresión (ver
+`db/CRITERIOS_VALORACION.md`) usa el reexpresado. Resultado real tras recargar: EBIT normalizado 2019-2025 de 67,1 a ~20,1
+y EPV central de 334 a **38** por acción (rango −129 / 38 / 232; margen de seguridad −1.174 %). **Causa verificada (estados auditados del cierre 2022, nota 2.7, leída por OCR):** (a) reclasificación de
+58.094 de intereses de deuda subordinada de ingresos financieros a ingresos ordinarios (concesiones), y
+(b) reconocimiento del contrato de construcción de Vía 40 como **contrato oneroso**: provisión de pérdidas
+esperadas por 373.646 (al 50 % de Conconcreto) en 2021, porque a esa fecha el sobrecosto (inflación,
+devaluación, tasas, retrasos) ya era determinable. Efecto en 2021: utilidad bruta −382.584, impuesto diferido
+activo +133.904, utilidad neta −248.680, patrimonio −248.680. No es un cambio de perímetro: es una corrección
+contable de ese año. Implicación: la pérdida del contrato quedó concentrada en 2021; el promedio 2019-2025 la
+recoge una sola vez, que es lo correcto para un EPV normalizado, pero el año 2021 solo no es un año típico. La comparación sobre el XBRL crudo de todos los emisores muestra reexpresiones también
 en Mineros 2022 (EBIT 162 → 392), Grupo Sura 2022 (utilidad neta -17,5 %), Enka 2021 (EBIT -23,5 %), El Cóndor 2020
 (+65 %), Terpel 2023-2024 (ingresos ±8 %) y BVC; ver pendiente en el blueprint.
 
@@ -132,7 +138,7 @@ termina en julio de 2026 y su EBITDA del trimestre es −29.357 por provisiones 
 márgenes por proyecto del backlog, y el valor de las participaciones por encima del libro (no hay valoración
 independiente de las concesiones). Con la reexpresión, el EPV por EBIT no es confiable hasta resolver el punto 2.
 
-**Resultado actual:** puesto 11, "segura, sin descuento" (margen −43 %, subida −30 %).
+**Resultado actual (5-oct, tras la política de reexpresión):** puesto 18 de 18, "segura, sin descuento" (central 38 contra precio 479). El valor del grupo por EPV no recoge el valor de las participaciones por encima del libro (361.020 en libros; ver punto 4): es un suelo operativo, no una valoración completa.
 
 **Pendiente (Codex H6.3):** cartera de contratos, márgenes por proyecto, capital de trabajo, garantías y
 contingencias. Nada de eso está en el XBRL que se lee hoy.

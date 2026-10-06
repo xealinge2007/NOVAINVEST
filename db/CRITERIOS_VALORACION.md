@@ -70,3 +70,26 @@ eventos de control, un backtest sirve para descartar, no para probar (plan zesty
   `valor_central_mmm`, `valor_p75_mmm` por compatibilidad: **no son percentiles**).
 - **Margen de seguridad** = (valor − precio) / valor y **subida al valor base** = valor / precio − 1 se
   muestran por separado. Ninguno es un retorno esperado: no tienen horizonte.
+
+## Política de reexpresión de cierres anuales (5-oct-2026)
+
+- **Regla:** para un cierre ANUAL rige la versión más reciente que publica el emisor: el comparativo del informe
+  anual siguiente manda sobre el valor original de ese año (todos los campos que el comparativo trae, salvo el
+  conteo de acciones y los dividendos decretados). En trimestres no aplica: el comparativo trimestral ha traído
+  contextos mal etiquetados (Promigas) y el período propio sigue mandando. Implementación: `decidir_reexpresion`
+  en `jobs/extraer_xbrl.py`, con pruebas en `jobs/test_reexpresion.py`.
+- **Salvaguarda de perímetro:** si la línea de ventas (la utilidad neta, en financieros) cambia más de 10 %, no se
+  aplica sola. Es la firma de operaciones discontinuadas o ventas de filiales, no de la corrección de un error, y
+  el año reexpresado quedaría en una base distinta de los anteriores. Se conserva el original y se lista para revisión
+  humana en la salida del job.
+- **Motivo:** Conconcreto 2021 se reexpresó (nota 2.7 de los estados auditados 2022: contrato oneroso de Vía 40,
+  pérdida provisionada de 373.646; reclasificación de 58.094 de intereses a ingresos). El modelo usaba el original
+  (EBIT +74,3) en vez de −250,2 y sobrevaloraba el EPV 9 veces (334 contra 38 por acción).
+- **Aplicadas (13, primera carga):** Conconcreto 2019-2021, Terpel 2021-2024, BVC 2020-2022, El Cóndor 2020, Grupo Sura 2021,
+  Mineros 2023.
+- **No aplicadas por posible cambio de perímetro, a revisar a mano (8):** BVC 2019, Cementos Argos 2023 y 2024, Enka 2021,
+  Grupo Argos 2023 y 2024, Grupo Cibest 2021, Mineros 2022. Mientras no se revisen, sus series mezclan el perímetro del
+  original; en Cementos Argos y Grupo Argos eso es probable por la venta de operaciones en EE. UU. y otras filiales.
+- **Efecto medido en el ranking:** solo cambiaron Conconcreto (334 → 38 por acción, puesto 11 → 18) y Terpel (38.524 → 37.338, sigue
+  primero).
+
