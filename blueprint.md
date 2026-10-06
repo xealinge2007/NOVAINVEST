@@ -35,6 +35,6 @@ PEI pasó de "segura y barata" a "trampa de descuento". Falta push de esta tanda
 ## 6. Siguientes pasos
 - Publicar esta tanda (git push origin main) con el OK de Alex.
 - PEI: sensibilidad del NAV a cap rate y ocupación (db/CONCILIACION_PEI_CONCONCRETO.md).
-- Conconcreto: EBITDA 1T-2026 conciliado el 5-oct (EBIT y D&A cuadran; brecha de 2.029 sin explicar porque la compañía no publica su definición). Pendiente decidir si el EPV excluye de su EBIT el método de participación, las otras ganancias y los 20.593 no recurrentes de 2025 (db/CONCILIACION_PEI_CONCONCRETO.md).
+- Conconcreto: EEFF 1T-2026 leídos (5-oct). EBITDA: la D&A del XBRL es incompleta en ese trimestre (5.289 en el estado de resultados contra 3.370), brecha restante 110,6. HALLAZGO: el XBRL de 2022 reexpresó 2021 (EBIT 74,3 -> -250,2); el modelo usa el original y su EPV (334/acción) bajaría a ~38. Pendiente: leer la nota de reexpresión en los EEFF auditados 2022 y decidir la política (usar el último valor reexpresado de cada año; afecta también Mineros, Sura, Enka, El Cóndor, Terpel y BVC). Detalle en db/CONCILIACION_PEI_CONCONCRETO.md.
 - GEB: hecho el 5-oct (migrate_p4_resultado_asociadas.sql aplicada; EPV con minoritario a mercado (migrate_p5): 2.454 por acción, margen -24 %, safe_cara #9). ISA igual (minoritario a mercado + asociadas): 10.796 por acción, margen -168 %, #17; depende del WACC CAPM 12,2 %.
 - Enviar db/NOTA_AUDITORIA_EXTERNA.md a un auditor humano (falta destinatario).

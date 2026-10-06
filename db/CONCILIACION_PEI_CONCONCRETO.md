@@ -73,7 +73,7 @@ de prensa y presentación "Conference Call 1T2026" (p. 8 y 19) de Conconcreto, c
 | D&A | no publicada | 3.370,1 (flujo de caja) = PP&E 3.227,8 + intangibles 142,3 | Cuadra por dos vías |
 | EBITDA | 18.607 | 16.577,6 (EBIT + D&A) | **Brecha 2.029,4 (11 %) sin explicar** |
 
-- El EBIT y la D&A son correctos; la brecha viene de una definición de EBITDA que la compañía **no publica**
+- **Corregido más abajo (lectura de los EEFF del 1T-2026):** la D&A del flujo de caja (3.370,1) era incompleta; la del estado de resultados es 5.288,9 y deja la brecha en 110,6. Lo que sigue se escribió antes de leerlos. El EBIT es correcto; la brecha viene de una definición de EBITDA que la compañía **no publica**
   (ni el comunicado, ni la presentación, ni el XBRL traen la conciliación). Probada una hipótesis: sumar "otros
   gastos" (1.316) deja 713 sin explicar; en el 1T-2025 la misma prueba deja 1.113. No hay un rubro único que
   cierre ambos trimestres, así que no se fuerza una explicación.
@@ -87,6 +87,50 @@ de prensa y presentación "Conference Call 1T2026" (p. 8 y 19) de Conconcreto, c
   p. 8 y 19), que está dentro del EBIT 2025 de 32,0 mil millones que usa el EPV: lo recurrente de 2025 sería ~11,4.
   El EBIT normalizado de 67,1 (promedio 2019-2025) lleva ~2,9 de ese no recurrente (20,6 / 7 años). Pendiente
   decidir si se ajusta (ver nota externa).
+
+### Conconcreto: lectura de los estados financieros del 1T-2026 (05-oct-2026)
+
+Fuente: `EEFF.zip` de conconcreto.com (estados consolidados y separados con notas, firmados; 71 pp. los
+consolidados) y la presentación "Conference Call 1T2026". Cifras en COP millones.
+
+**1. EBITDA: la brecha de 2.029 se explica casi toda, y corrige lo anterior.** El estado de resultados registra
+la depreciación en dos lugares (notas 7.18 y 7.20): costo de ventas (PP&E 3.723,5 + intangibles 69,0 + derechos
+de uso 33,6) y gastos de administración (1.462,8) = **5.288,9**. El flujo de caja y el XBRL traen solo 3.370,1.
+EBIT 13.207,6 + 5.288,9 = **18.496,4**, a 110,6 (0,6 %) del 18.607 del comunicado. En el 1T-2025 la D&A del
+estado de resultados (5.608,1) sí iguala a la del flujo de caja, así que la diferencia es del 1T-2026. Nuestro
+EBITDA de 16.578 subestima: la D&A que usamos (flujo de caja) es incompleta en ese trimestre.
+Aún abierto: (a) los 110,6; (b) la nota de segmentos (7.31) trae un EBITDA de **20.207,9** para el 1T-2026 y
+37.983,9 para el 1T-2025, distinto del comunicado (18.607) en 2026 e igual en 2025: la compañía publica dos
+cifras de EBITDA para el mismo trimestre sin conciliarlas, y en el 1T-2025 ninguna definición cierra (brecha de
+8.714,6 sobre EBIT + D&A).
+
+**2. Reexpresión de años anteriores (hallazgo mayor).** El XBRL de 2022 reexpresa el 2021: EBIT original 74,3 →
+**−250,2** (utilidad bruta 88,4 → −236,1; utilidad neta 49,8 → −198,9); también 2019 (114,4 → 104,3) y 2020
+(49,7 → 55,0). El modelo conserva el valor original de cada año. Con los valores reexpresados el promedio 2019-2025
+del EBIT pasa de 67,1 a ~20,1 y el EPV central cae de 334 a ~38 por acción (cálculo aproximado con promedio
+simple, sin pasar por el pipeline). La causa de la reexpresión no está verificada: hay que leer la nota de los
+estados auditados de 2022. La comparación sobre el XBRL crudo de todos los emisores muestra reexpresiones también
+en Mineros 2022 (EBIT 162 → 392), Grupo Sura 2022 (utilidad neta -17,5 %), Enka 2021 (EBIT -23,5 %), El Cóndor 2020
+(+65 %), Terpel 2023-2024 (ingresos ±8 %) y BVC; ver pendiente en el blueprint.
+
+**3. Lo que define a una constructora.** Backlog (presentación p. 11): **2,1 billones** (Colombia 1.610 mil
+millones, 77 %; EE. UU. USD 133 M, 23 %), sin márgenes por proyecto en ningún documento. Anticipos recibidos
+316.048 (221.286 corrientes). Contingencias (nota 7.37): los procesos listados son de probabilidad "Media", ninguno
+"Alta"; el de mayor cuantía (197.032) pretende terminar un contrato de concesión, no es un pago; la provisión
+legal es de ~1.400. Contratos onerosos y pérdidas esperadas provisionadas: 3.905 y 327. Resultado de operaciones
+conjuntas del trimestre: −10.975 (proyectos de inversión −16.785). Impuesto de renta efectivo 41,4 % por el impuesto
+al patrimonio (5.666).
+
+**4. Participaciones (nota 7.10).** Asociadas y negocios conjuntos a valor en libros: **361.020** (asociadas 101.353,
+negocios conjuntos 259.668). Método de participación del trimestre 3.132 (Devimed 2.196, Pactia 1.353, Heroica 782,
+Centrans 414; pérdidas Vía Pacífico −110) contra dividendos recibidos 3.696: el resultado se convirtió en caja.
+Patrimonio del grupo 1.278.213 (P/VL ~0,42 al precio de 479); concesiones ~30 % de ese patrimonio. Devimed (24,08 %)
+termina en julio de 2026 y su EBITDA del trimestre es −29.357 por provisiones de liquidación; Vía 40 (15 %) EBITDA
+25.823; DCO (25 %) en arbitraje. Pactia: participación del 4,46 %.
+
+**Lo que sigue sin poder cerrarse con estos documentos:** la causa de la reexpresión 2021 (estados auditados 2022),
+márgenes por proyecto del backlog, y el valor de las participaciones por encima del libro (no hay valoración
+independiente de las concesiones). Con la reexpresión, el EPV por EBIT no es confiable hasta resolver el punto 2.
 
 **Resultado actual:** puesto 11, "segura, sin descuento" (margen −43 %, subida −30 %).
 
