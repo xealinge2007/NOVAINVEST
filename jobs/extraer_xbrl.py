@@ -67,6 +67,18 @@ CAMPOS_SIN_REEXPRESION = ("acciones_en_circulacion", "dividendos_decretados")
 # Variación de la línea de ventas (utilidad neta en financieros) por encima de la cual una reexpresión se trata
 # como cambio de perímetro y no se aplica sola. Conconcreto 2021 (la corrección que motivó la política) varió 7,7 %.
 UMBRAL_CAMBIO_PERIMETRO = 0.10
+# Reexpresiones con salto de ventas revisadas a mano el 5-oct-2026 (XBRL de ambos años + notas). "aplicar": la cifra
+# nueva es la base vigente del negocio; "conservar": no hay reexpresión real. Ver db/CRITERIOS_VALORACION.md.
+REEXPRESION_REVISADA = {
+    ("MINEROS", 2022): ("aplicar", "operación discontinuada (-238,5); utilidad total idéntica (19,08); la nueva es la base de operaciones continuas"),
+    ("BVC", 2019): ("aplicar", "operación discontinuada (7,07); la nueva es la base de operaciones continuas"),
+    ("GRUPO_ARGOS", 2023): ("aplicar", "operación discontinuada (697,8); utilidad total idéntica (1.460,0)"),
+    ("GRUPO_ARGOS", 2024): ("aplicar", "operación discontinuada (7.486,1); utilidad total idéntica (7.646,8)"),
+    ("CEMENTOS_ARGOS", 2023): ("aplicar", "perímetro sin EE. UU. (ingresos 12.717 -> 3.916); la serie del EPV arranca en 2023 (PERIMETRO_DESDE)"),
+    ("CEMENTOS_ARGOS", 2024): ("aplicar", "segundo cambio de perímetro: 3.968 -> 5.299, base vigente del informe 2025"),
+    ("ENKA", 2021): ("aplicar", "sin operaciones discontinuadas; la utilidad total también cambia (57,7 -> 42,0); causa no verificada"),
+    ("GRUPO_CIBEST_BANCOLOMBIA", 2021): ("conservar", "falso positivo: el comparativo del XBRL 2022 rotula con 2020 los valores de 2021 (4.207,8 = el original)"),
+}
 # P1: se leen siempre, pero solo se escriben si ya está aplicado db/migrate_p1_estados_ampliados.sql
 CAMPOS_NUMERICOS += list(lector_xbrl.CAMPOS_AMPLIADOS)
 # Campos que los dos canales extraen y significan LO MISMO. La lista es corta
@@ -140,7 +152,7 @@ CORRECCIONES_VERIFICADAS = {
 }
 
 
-def decidir_reexpresion(previos: dict, comparativo: dict, financiero: bool = False):
+def decidir_reexpresion(previos: dict, comparativo: dict, financiero: bool = False, revisada: str = None):
     """(campos fusionados, estado, detalle) para el comparativo de un cierre ANUAL frente al valor ya leído.
 
     Política de reexpresión (05-oct-2026): el comparativo del cierre anual SIGUIENTE es la versión más reciente
@@ -154,6 +166,8 @@ def decidir_reexpresion(previos: dict, comparativo: dict, financiero: bool = Fal
     de filiales), no de la corrección de un error: el año reexpresado y los anteriores quedarían en bases
     distintas. No se aplica solo: se conserva el original (estado "no_aplicada") para revisión a mano.
 
+    `revisada`: decisión humana ya tomada para ese (emisor, año) en `REEXPRESION_REVISADA`; salta la salvaguarda.
+
     estado: "aplicada" (cambió alguna cifra clave), "no_aplicada" (salto de perímetro) o "sin_cambio"."""
     previos = {c: v for c, v in previos.items() if v is not None}
     reexpresion = {c: v for c, v in comparativo.items() if c not in CAMPOS_SIN_REEXPRESION}
@@ -161,6 +175,10 @@ def decidir_reexpresion(previos: dict, comparativo: dict, financiero: bool = Fal
                if c in previos and abs(v - previos[c]) > max(0.02 * abs(previos[c]), 0.05)}
     clave = [c for c in ("ingresos", "utilidad_operacional", "utilidad_neta") if c in cambios]
     detalle = "; ".join(f"{c} {cambios[c][0]:,.1f} -> {cambios[c][1]:,.1f}" for c in clave)
+    if revisada == "conservar":
+        return {**comparativo, **previos}, "no_aplicada", detalle
+    if revisada == "aplicar":
+        return {**previos, **reexpresion}, ("aplicada" if clave else "sin_cambio"), detalle
     base = "utilidad_neta" if financiero else "ingresos"
     if base in cambios and cambios[base][0] and             abs(cambios[base][1] - cambios[base][0]) > UMBRAL_CAMBIO_PERIMETRO * abs(cambios[base][0]):
         return {**comparativo, **previos}, "no_aplicada", detalle
@@ -454,7 +472,8 @@ def main():
                 if es_comparativo and clave_periodo in propios_leidos and periodo == "ANUAL":
                     # Política de reexpresión (05-oct-2026), ver `decidir_reexpresion`.
                     campos_fusionados, estado, detalle_cambio = decidir_reexpresion(
-                        campos_previos_xbrl, campos, financiero=sectores.get(slug) in SECTORES_FINANCIEROS)
+                        campos_previos_xbrl, campos, financiero=sectores.get(slug) in SECTORES_FINANCIEROS,
+                        revisada=REEXPRESION_REVISADA.get((slug, anio), (None,))[0])
                     if estado == "no_aplicada":
                         no_aplicados.append(f"{slug} {anio}: {detalle_cambio} (informe {anio_informe}; posible cambio de perímetro, "
                                             "se conserva el original)")

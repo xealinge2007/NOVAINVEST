@@ -50,6 +50,12 @@ NO_DETERMINABLE_POR_METODO: dict = {}
 # EPV (EBIT × (1 - tasa)) queda igual a NOPAT operativo + resultado de asociadas, sin gravarla dos veces.
 EMISORES_CON_ASOCIADAS = {"GEB", "ISA"}
 
+# Primer año del EBIT anual que está en el perímetro vigente del emisor. Cementos Argos vendió sus operaciones en
+# EE. UU. (2024): hasta 2022 el EBIT es del negocio global (700-1.640) y desde 2023 del negocio sin EE. UU. (467-662);
+# promediar ambos valora una empresa que ya no existe (el EPV daba un EBIT normalizado de 955). Con la regla de
+# `ANIOS_MINIMOS_EBIT` queda no determinable hasta contar con el cierre de 2026.
+PERIMETRO_DESDE = {"CEMENTOS_ARGOS": 2023}
+
 # Emisores cuyo interés minoritario se valora a mercado. El libro subestima al minoritario cuando la filial
 # rinde mucho sobre su patrimonio (GEB: 175 de utilidad anual de minoritarios contra 454 en libros, ROE ~38 %).
 EMISORES_MINORITARIO_A_MERCADO = {"GEB", "ISA"}

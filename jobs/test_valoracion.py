@@ -105,6 +105,10 @@ revisar("su NOPAT es el operativo mas las asociadas, sin gravarlas otra vez", ro
 revisar("sin asociadas el EBIT no cambia", v.ebit_equivalente(100.0, 0.0), 100.0)
 revisar("una perdida de asociadas lo reduce", round(v.ebit_equivalente(100.0, -32.5), 6), 50.0)
 
+print("--- perimetro vigente ---")
+revisar("Cementos Argos: el EBIT del EPV arranca en 2023 (sin EE. UU.)", v.PERIMETRO_DESDE.get("CEMENTOS_ARGOS"), 2023)
+revisar("con 3 anios desde 2023 no se alcanza el minimo de 4: no determinable", 3 < v.ANIOS_MINIMOS_EBIT, True)
+
 print("--- minoritario a mercado ---")
 # Ultimos 3 anios: (60 + 100 + 140) / 3 = 100; Ke 13 %, g 3 % => 100 / 0,10 = 1.000. El 2022 (900) no entra.
 vm, un = v.minoritario_a_mercado({2022: 900.0, 2023: 60.0, 2024: 100.0, 2025: 140.0}, 0.13)

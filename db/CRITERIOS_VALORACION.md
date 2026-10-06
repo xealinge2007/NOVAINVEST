@@ -87,9 +87,18 @@ eventos de control, un backtest sirve para descartar, no para probar (plan zesty
   (EBIT +74,3) en vez de −250,2 y sobrevaloraba el EPV 9 veces (334 contra 38 por acción).
 - **Aplicadas (13, primera carga):** Conconcreto 2019-2021, Terpel 2021-2024, BVC 2020-2022, El Cóndor 2020, Grupo Sura 2021,
   Mineros 2023.
-- **No aplicadas por posible cambio de perímetro, a revisar a mano (8):** BVC 2019, Cementos Argos 2023 y 2024, Enka 2021,
-  Grupo Argos 2023 y 2024, Grupo Cibest 2021, Mineros 2022. Mientras no se revisen, sus series mezclan el perímetro del
-  original; en Cementos Argos y Grupo Argos eso es probable por la venta de operaciones en EE. UU. y otras filiales.
-- **Efecto medido en el ranking:** solo cambiaron Conconcreto (334 → 38 por acción, puesto 11 → 18) y Terpel (38.524 → 37.338, sigue
-  primero).
+- **Revisión de los 8 casos retenidos (5-oct-2026):** registrada en `REEXPRESION_REVISADA` (`jobs/extraer_xbrl.py`), con el
+  motivo de cada decisión. Aplicadas: Mineros 2022, BVC 2019, Grupo Argos 2023 y 2024 (operaciones discontinuadas con
+  utilidad total idéntica: la versión nueva es la base de operaciones continuas), Cementos Argos 2023 y 2024 (dos
+  cambios de perímetro seguidos) y Enka 2021 (cambio de resultados sin discontinuadas; causa no verificada). Conservada:
+  Grupo Cibest 2021 (falso positivo: el comparativo del XBRL 2022 rotula con 2020 los valores de 2021, idénticos al original).
+- **Perímetro vigente (`PERIMETRO_DESDE`):** una reexpresión solo corrige el año inmediatamente anterior, así que los años
+  más viejos quedan en la base antigua y la serie mezcla perímetros. Cementos Argos vendió sus operaciones en EE. UU.: su
+  EBIT de 2019-2023 es del negocio global (700-1.640) y el de 2024-2025 del negocio sin EE. UU. (649-662). El EPV promediaba
+  955 de EBIT normalizado y valoraba una empresa que ya no existe. Desde el 5-oct el EBIT arranca en 2023; con el mínimo de
+  4 años (`ANIOS_MINIMOS_EBIT`) queda **no determinable hasta contar con el cierre de 2026**. Mineros conserva sus 7 años, con la
+  advertencia de que antes de 2022 el EBIT incluye una operación hoy discontinuada (sin versión reexpresada disponible).
+- **Efecto medido en el ranking:** Conconcreto (334 → 38 por acción, último), Terpel (38.524 → 37.338, sigue primero), Mineros
+  (8.693 → 9.327; con el EBIT 2022 de operaciones continuas, 391,7 en vez de 162,4) y Cementos Argos (de rankeado a no determinable).
+  Grupo Argos (ruta holding) no cambia; Enka y BVC están excluidas por liquidez.
 

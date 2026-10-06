@@ -95,8 +95,13 @@ def valorar_real(cliente, em, a, acciones_total):
         asociadas = {y: anuales[y]["resultado_asociadas"] for y in ebit if anuales[y].get("resultado_asociadas") is not None}
         ebit = {y: v.ebit_equivalente(x, asociadas[y]) for y, x in ebit.items() if y in asociadas}
     ebit = {y: x for y, x in ebit.items() if y >= max(ebit, default=0) - 6}
+    desde = v.PERIMETRO_DESDE.get(em["slug"])
+    if desde:
+        ebit = {y: x for y, x in ebit.items() if y >= desde}
     if len(ebit) < v.ANIOS_MINIMOS_EBIT:
-        return no_determinable(f"solo {len(ebit)} año(s) de EBIT anual; se exigen {v.ANIOS_MINIMOS_EBIT}")
+        return no_determinable(f"solo {len(ebit)} año(s) de EBIT anual; se exigen {v.ANIOS_MINIMOS_EBIT}"
+                               + (f" (el perímetro vigente del emisor arranca en {desde}: antes incluye negocios que ya no tiene)"
+                                  if desde else ""))
     if not a.get("wacc"):
         return no_determinable("sin WACC (falta beta o capitalización)")
     if not acciones_total:

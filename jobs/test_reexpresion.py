@@ -39,4 +39,17 @@ revisar("el comparativo mas pobre no borra lo que el original traia", (f["utilid
 f, estado, _ = decidir_reexpresion({}, {"ingresos": 100.0})
 revisar("sin original previo toma el comparativo", (f["ingresos"], estado), (100.0, "sin_cambio"))
 
+print("--- decisiones revisadas a mano ---")
+from extraer_xbrl import REEXPRESION_REVISADA  # noqa: E402
+orig = {"ingresos": 2247.7, "utilidad_operacional": 162.4, "utilidad_neta": 19.1}
+nuevo = {"ingresos": 1762.6, "utilidad_operacional": 391.7, "utilidad_neta": -238.5}
+revisar("sin revision, Mineros 2022 (ventas -21,6 %) queda retenida", decidir_reexpresion(orig, nuevo)[1], "no_aplicada")
+f, estado, _ = decidir_reexpresion(orig, nuevo, revisada="aplicar")
+revisar("revisada 'aplicar': se toma la base de operaciones continuas", (estado, f["utilidad_operacional"]), ("aplicada", 391.7))
+f, estado, _ = decidir_reexpresion({"utilidad_neta": 4086.8}, {"utilidad_neta": 1444.7}, financiero=True, revisada="conservar")
+revisar("revisada 'conservar': queda el original (Cibest 2021)", (estado, f["utilidad_neta"]), ("no_aplicada", 4086.8))
+revisar("Mineros 2022 esta marcado para aplicar", REEXPRESION_REVISADA[("MINEROS", 2022)][0], "aplicar")
+revisar("Cibest 2021 esta marcado para conservar", REEXPRESION_REVISADA[("GRUPO_CIBEST_BANCOLOMBIA", 2021)][0], "conservar")
+revisar("toda decision revisada trae su motivo", all(len(v) == 2 and v[1] for v in REEXPRESION_REVISADA.values()), True)
+
 reportar_y_salir()
