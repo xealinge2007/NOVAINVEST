@@ -1,6 +1,6 @@
 # Conciliación PEI y Conconcreto (04-oct-2026)
 
-Respuesta al punto P0.1 del informe de Codex (`CODEX INFORME_AUDITORIA_NOVAINVEST_Y_PLAN.md`): cada
+Respuesta al punto P0.1 del informe de Codex (`db/CODEX_INFORME_AUDITORIA_2026-10-04.md`): cada
 insumo de la valoración, con su fuente, para revisión humana. Cifras en miles de millones de COP salvo
 lo indicado "por título/acción". Datos tomados de Supabase tras la corrida del 04-oct-2026.
 

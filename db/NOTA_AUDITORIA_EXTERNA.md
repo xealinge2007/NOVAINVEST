@@ -21,7 +21,7 @@ en el repositorio y no tiene respaldo: hay que compartirlo aparte.
 
 ## 0. Revisión previa de Codex (04-oct-2026)
 
-Antes de esta nota, otra IA (Codex) revisó el proyecto: `CODEX INFORME_AUDITORIA_NOVAINVEST_Y_PLAN.md`.
+Antes de esta nota, otra IA (Codex) revisó el proyecto: `db/CODEX_INFORME_AUDITORIA_2026-10-04.md`.
 Lo que se aplicó y lo que se dejó, en `db/CRITERIOS_VALORACION.md` (sección del 04-oct) y
 `db/CONCILIACION_PEI_CONCONCRETO.md`. Esa revisión **no** es la auditoría humana independiente que pide
 esta nota: comparte con Claude la condición de modelo de IA.

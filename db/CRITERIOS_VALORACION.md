@@ -56,7 +56,7 @@ precio, con un EV/EBIT de 5,2x frente a 7,3x del mercado. Con g = 3 % queda a 2.
 No son una recomendación de compra ni están respaldados por un backtest. Con n ≈ 24 emisores y 3
 eventos de control, un backtest sirve para descartar, no para probar (plan zesty-kettle §2.5).
 
-## Ajustes del 04-oct-2026 (auditoría de Codex, `CODEX INFORME_AUDITORIA_NOVAINVEST_Y_PLAN.md`)
+## Ajustes del 04-oct-2026 (auditoría de Codex, `db/CODEX_INFORME_AUDITORIA_2026-10-04.md`)
 
 - **Renta sostenible** exige payout conocido (rendimiento >= 6 % y payout <= 100 %). Sin payout, la renta
   es no evaluable. Las distribuciones de vehículos (PEI) se muestran aparte y no cuentan como renta,

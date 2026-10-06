@@ -9,3 +9,6 @@ apps/web/dist/
 apps/api/.uvicorn.log
 /ANALISIS_FUNDAMENTAL_BVC.csv
 /PEDIDOS_DESCARGA.csv
+/RANKING_VALOR_BVC.csv
+.agents/
+.claude/skills/
