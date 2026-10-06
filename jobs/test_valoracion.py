@@ -106,13 +106,15 @@ revisar("sin asociadas el EBIT no cambia", v.ebit_equivalente(100.0, 0.0), 100.0
 revisar("una perdida de asociadas lo reduce", round(v.ebit_equivalente(100.0, -32.5), 6), 50.0)
 
 print("--- perfil de deuda de un vehiculo inmobiliario ---")
-# PEI 2T-2026: deuda 2.680; EBITDA 141,414 y FCD 65,040 del trimestre.
-pd = v.perfil_deuda_vehiculo(2680.0, 141.414, 65.040)
-revisar("deuda / EBITDA anualizado = 2.680 / 565,656", pd["deuda_ebitda_x"], 4.74)
-revisar("salida trimestral = 141,414 - 65,040", pd["salida_trimestral_no_distribuida"], 76.374)
-revisar("costo implicito techo = 76,374 x 4 / 2.680", pd["costo_implicito_techo_pct"], 11.4)
-revisar("cobertura piso = 141,414 / 76,374", pd["cobertura_piso_x"], 1.85)
-revisar("sin deuda no hay perfil", v.perfil_deuda_vehiculo(0, 141.4, 65.0), None)
+# PEI 30-jun-2026, nota 12 de los EEFF (miles de millones): bancaria CP 170,894 al 13,05 %, bancaria LP 1.743,854 al
+# 12,92 %, bonos 761,223 al 9,26 %; EBITDA del 2T 141,414.
+pd = v.perfil_deuda_vehiculo([(170.894306, 13.05), (1743.853844, 12.92), (761.223030, 9.26)], 141.414)
+revisar("capital = suma de tramos", pd["capital"], 2675.971)
+revisar("interes anual = 22,30 + 225,31 + 70,49 (318,097 exacto)", pd["interes_anual"], 318.097)
+revisar("tasa ponderada = 318,10 / 2.675,97", pd["tasa_ponderada_pct"], 11.89)
+revisar("deuda / EBITDA anualizado = 2.675,97 / 565,656", pd["deuda_ebitda_x"], 4.73)
+revisar("cobertura = 565,656 / 318,10", pd["cobertura_x"], 1.78)
+revisar("sin deuda no hay perfil", v.perfil_deuda_vehiculo([], 141.4), None)
 
 print("--- perimetro vigente ---")
 revisar("Cementos Argos: el EBIT del EPV arranca en 2023 (sin EE. UU.)", v.PERIMETRO_DESDE.get("CEMENTOS_ARGOS"), 2023)

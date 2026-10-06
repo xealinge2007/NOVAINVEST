@@ -46,34 +46,52 @@ propiedad de inversión en el 1T-2026), NAV 7.344,2, 49.953.606 títulos, precio
 
 ### PEI: deuda, concentración y evento posterior (06-oct-2026)
 
-Fuentes: informe trimestral 2T-2026 del Representante Legal (Fiducoldex, 29 pp.), reporte de BRC Ratings del 21-may-2026 y prensa
-(Valora Analitik, Portafolio, Pluralidadz) para Terranum. Cifras en COP, miles de millones salvo lo indicado.
+Fuentes primarias, todas en pei.com.co/relevant-information: estados financieros condensados con notas al 30-jun-2026 (59 pp.),
+informe del 2T-2026 de Aval Fiduciaria, comunicado y contrato de Terranum (9-jul-2026), circulares de las asambleas del 15 y el 22
+de septiembre de 2026; además el informe del Representante Legal (Fiducoldex) y el reporte de BRC (21-may-2026). Cifras en COP, miles
+de millones salvo lo indicado.
 
-- **Deuda (informe oficial):** bruta **2.680**, LTV **26,4 %** (3T-25 27,8 %; 4T-25 28,3 %; 1T-26 28,6 %), contra el límite de 35 % del
-  prospecto. Bajó por el prepago de **300,2** de capital el 5-jun-2026 con la venta del 51 % de Plaza Central.
-- **Apalancamiento, con cuentas propias (verificadas por prueba):** deuda bruta / EBITDA anualizado = 2.680 / (141,414 × 4) = **4,74x**.
-  Lo que separa el EBITDA del flujo de caja distribuible (141,414 − 65,040 = 76,374 por trimestre) cubre intereses, impuestos, capex y
-  capital de trabajo: anualizado es 11,4 % de la deuda bruta. Es un **techo** del costo de la deuda (inferencia, no un dato publicado) y
-  deja una cobertura piso de EBITDA / salida = **1,85x**, por encima del 1,5x de la regla de seguridad. La deuda neta/EBITDA de 4,74x
-  queda bajo el 5x de la regla para activos regulados, pero el vehículo no es regulado: es un número a vigilar, no un aprobado holgado.
-- **Composición de la propiedad de inversión (2T-26):** centros comerciales 38,0 %, corporativo 35,4 %, logístico 17,0 %, especializado
-  6,7 %, locales 2,9 %; ~1.495 arrendatarios; GLA 1.115.144 m²; 32 ciudades (BRC, cierre 2025). La duración promedio de los contratos bajó
-  de 5 años (2022) a 4 (2025), sobre todo en corporativo (BRC). Calificación i AAA.
-- **Lo que ninguna fuente publica y sigue abierto:** concentración por **activo** y por **arrendatario** (solo el reparto por segmento y el
-  número de arrendatarios), **vencimientos de la deuda** por año, **capex** e **impuestos latentes**. Ni el informe del Representante Legal
-  ni BRC los traen; sí podrían estar en la presentación de resultados de PEI Asset Management o en las notas de los estados financieros
-  del 2T-2026, que no se leyeron.
-- **Evento posterior, no incluido en el NAV ni en el conteo de títulos (49.953.606):** compra del portafolio de Terranum (contrato del
-  9-jul-2026). Cinco activos corporativos y logísticos, > 375.000 m² (≈ +35 % de GLA), 93,9 % de ocupación, > 100 arrendatarios, NOI esperado
-  > 200 mil millones (Valora Analitik). Según el resumen de Pluralidadz (no verificado en documento oficial; el hecho relevante del
-  10-ago-2026 respondió 403): precio ~**2.181**, 58 % capital (~750 de títulos nuevos + 507 de caja) y 42 % deuda asumida (~917), LTV pro
-  forma 27,4 %, plazo promedio de la deuda 6 años. Los vendedores recibirían los títulos **valorados a valor patrimonial** (NAV, no al
-  precio de mercado que tiene un descuento de 55 %). Los inversionistas renunciaron al derecho de preferencia (70,76 % de los títulos,
-  35.346.876). Pendiente de Superfinanciera y de condiciones del contrato; sin fecha de cierre.
-- **Lectura:** si los ~750 se emiten a NAV, el NAV por título casi no cambia por esa vía, pero el número de títulos sube ~10 % (≈ 5,1 M a
-  147.021) y el vehículo pasa de 26,4 % a ~27-30 % de LTV. El NOI adquirido sobre el precio (≈ 200-210 / 2.181 ≈ 9,6 %) queda muy por encima
-  del cap rate de los libros (6,96 %), así que la compra aportaría rendimiento; pero el NAV por título de 147.021 deja de describir al
-  vehículo que existirá. Cuando cierre hay que recalcular títulos, patrimonio y deuda. En el ranking aparece como aviso en el detalle de PEI.
+**Corrección a la versión anterior de esta sección.** Había inferido un costo de la deuda de 11,4 % ("techo") a partir de EBITDA −
+flujo distribuible. No era un techo: la nota 12 de los estados reporta las tasas reales y el promedio ponderado es **11,89 %**. La
+cobertura "mínima de 1,85x" también cambia a **1,78x**. Ambas cifras ya no se infieren: salen de la nota.
+
+- **Deuda (nota 12):** capital **2.676** (2.709 con intereses; operación directa 2.601 + conjunta 108). Tasas ponderadas: bancaria de corto
+  plazo 13,05 % (vence 2027), bancaria de largo plazo 12,92 % (hasta 2034), bonos 9,26 % (hasta 2044; IPC + 3,79-4,30 % y 7,28 % fija).
+  Interés anual al saldo y tasa actuales: **318,1**. Deuda / EBITDA anualizado: **4,73x**; cobertura EBITDA anualizado / interés: **1,78x**
+  (sobre el 1,5x de la regla de seguridad, con poco colchón). **Sin covenants financieros**: las obligaciones se garantizan con pagarés.
+  LTV 26,4 % (límite del prospecto 35 %), bajó con el prepago de 300,2 de capital (5-jun-2026) por la venta del 51 % de Plaza Central.
+- **Vencimientos contractuales (nota 12):** 203,9 en 1 año; 1.393,7 entre 1 y 5 años; 1.111,3 a más de 5 años. **Observación mía:** esa
+  tabla ubica todo el capital de bonos (761) a más de 5 años, pero la tabla de series de la misma nota muestra C10 (colocada el 28-ago-2018
+  a 10 años, 209,4) y A10 (7-nov-2019 a 10 años, 226,0), que vencen en 2028 y 2029. Leídas así, ~2.033 (75 %) vence en menos de 5 años. No
+  se corrigió la cifra publicada; queda la lectura alternativa a la vista.
+- **Apalancamiento negativo:** la deuda cuesta 11,9 % y el NOI rinde 6,96 % sobre libros: endeudarse resta rendimiento a los libros y solo es
+  neutro al cap rate de 11,66 % que ya descuenta el precio. Por eso el prepago con la venta de Plaza Central es favorable. Pendiente por
+  vigilar: el refinanciamiento de ~204 en 2027 y de ~1.394 entre 2027 y 2031, a tasas de mercado del 12-13 %.
+- **Capex (flujo de caja del 1S-2026):** mejoras de propiedades de inversión 39,2 (21,4 en el 1S-2025), adquisiciones 1,9 y equipo 1,4 =
+  **42,5** (~85 anualizado, ~12 % del NOI anualizado de 691). Venta del 51 % de Plaza Central: 461,6 recibidos, con pérdida de 21,2 frente a
+  libros.
+- **Impuestos latentes:** los estados del vehículo **no registran impuesto de renta ni impuesto diferido** (solo predial como gasto): no hay
+  pasivo latente a nivel de PEI. La tributación del rendimiento recae en el inversionista; ese tratamiento no se verificó en el prospecto.
+- **Rentas contratadas (nota 35):** pagos mínimos futuros por arrendamientos operativos firmados **2.979**: 643,7 en 1 año, 1.293,9 entre 1 y 5
+  y 1.041,7 a más de 5 años (35 %). **Sin contingencias** registradas (nota 34).
+- **Composición (2T-26):** centros comerciales 38,0 %, corporativo 35,4 %, logístico 17,0 %, especializado 6,7 %, locales 2,9 %; ~1.495
+  arrendatarios; GLA 1.115.144 m²; 32 ciudades (BRC). Duración promedio de contratos: 4 años en 2025, desde 5 en 2022 (BRC). i AAA.
+- **Sigue abierto:** concentración por **activo** y por **arrendatario**: ningún documento oficial leído la publica (solo el reparto por
+  segmento y el número de arrendatarios). Podría estar en la presentación de resultados de PEI Asset Management, que no se encontró en
+  la página.
+- **Terranum (comunicado oficial del 9-jul-2026):** precio **COP 2.181.025 millones**, sujeto al ajuste por el valor de los títulos a NAV que
+  se emitan al vendedor como parte del pago. Cinco activos corporativos y logísticos, > 375.000 m² (≈ +35 % de GLA, ≈ +29 % de AUM), 93,9 %
+  de ocupación, > 100 arrendatarios, NOI > 200.000 millones en un año, más lotes para expansión. **Transacción con parte vinculada:** una
+  entidad ligada a los accionistas de la administradora recibiría parte del pago en títulos de PEI a NAV. Cierre sujeto a autoridades de
+  competencia y regulatorias. La **asamblea extraordinaria del 22-sep-2026** (segunda convocatoria, quórum 76,78 %) aprobó el pago en
+  especie de la Emisión XIII Tramo y la renuncia al derecho de preferencia con el 70,76 % de los títulos (35.346.876); la del 15-sep no
+  alcanzó el quórum especial. La prensa (Pluralidadz, no verificada en documento oficial) reporta ~58 % capital (~750 en títulos + ~507
+  de caja) y ~42 % deuda asumida (~917), LTV pro forma 27,4 % y plazo medio de deuda de 6 años.
+- **Lectura:** pagar con títulos a NAV, cuando el mercado los negocia a 45 % del NAV, es favorable para los inversionistas actuales frente a
+  emitir al precio de mercado: el NAV por título casi no cambia y no hay dilución del NAV. Pero el número de títulos sube (~10 % si son ~750 a
+  147.021) y el NAV de 147.021 deja de describir el vehículo que existirá: hay que recalcular títulos, patrimonio y deuda al cierre. El
+  NOI adquirido sobre el precio (≥ 200 / 2.181 ≈ 9,2 %) supera el cap rate de los libros (6,96 %) pero queda por debajo del costo de la deuda.
+  El comprador y una parte del vendedor comparten accionistas con la administradora: es el punto de gobierno que más vale seguir.
 
 ## Conconcreto (ruta EPV)
 

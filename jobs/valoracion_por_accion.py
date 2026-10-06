@@ -49,17 +49,31 @@ DATOS_OPERATIVOS = {
         "vacancia_fisica_pct": 6.72, "participacion_inmuebles_en_activos": 10090.865 / 10307.115,
         "fuente": "Informe 2T-2026 del Representante Legal (Fiducoldex) y Valora Analitik 6-ago-2026; "
                   "propiedad de inversión y activo total del 1T-2026 (informe del Representante Legal)",
-        # Informe 2T-2026 del Representante Legal (Fiducoldex), pp. 8-10: deuda, EBITDA y FCD del trimestre.
-        "deuda_bruta": 2680.0, "ebitda_trimestre": 141.414, "fcd_trimestre": 65.040,
+        # EEFF condensados al 30-jun-2026 (pei.com.co), nota 12: tramos de deuda (capital en miles de millones y tasa
+        # efectiva anual ponderada); EBITDA del 2T del informe del Representante Legal (Fiducoldex), p. 10.
+        "tramos_deuda": [(170.894306, 13.05), (1743.853844, 12.92), (761.223030, 9.26)], "ebitda_trimestre": 141.414,
         "avisos": [
+            "deuda 2.676 de capital (2.709 con intereses), SIN covenants financieros (solo pagarés), tasa promedio ponderada 11,89 % "
+            "(bancaria 12,9-13,1 %; bonos IPC+3,8-4,3 % y 7,28 %); deuda / EBITDA 4,73x y cobertura EBITDA / interés 1,78x. "
+            "Vencimientos contractuales: 203,9 en 1 año, 1.393,7 entre 1 y 5 años y 1.111,3 a más de 5 años (nota 12). Esa tabla ubica "
+            "todo el capital de bonos (761) a más de 5 años, pero las series C10 (28-ago-2028, 209,4) y A10 (7-nov-2029, 226,0) vencen "
+            "en menos de 5: leyéndolas así, ~2.033 (75 %) vence en 5 años",
+            "costo de la deuda 11,9 % contra rendimiento del NOI sobre libros de 6,96 %: el apalancamiento resta a los libros (solo es neutro "
+            "al cap rate de 11,66 % que descuenta el precio)",
+            "compromisos de ingresos por arrendamientos ya firmados: 2.979 (643,7 en 1 año; 1.293,9 entre 1 y 5; 1.041,7 a más de 5 años); "
+            "sin contingencias registradas; capex del 1S-26: mejoras 39,2 + adquisiciones 1,9 + equipo 1,4 = 42,5 (flujo de caja)",
+            "sin impuesto de renta ni impuestos diferidos en los estados del vehículo (solo predial como gasto): no hay impuestos latentes "
+            "registrados a nivel de PEI; la tributación del rendimiento recae en el inversionista (a confirmar con el prospecto)",
             "composición de la propiedad de inversión (2T-2026): 38,0 % centros comerciales, 35,4 % corporativo, 17,0 % logístico, "
             "6,7 % especializado, 2,9 % locales; ~1.495 arrendatarios y GLA 1.115.144 m2. NO se publica concentración por activo "
-            "ni por arrendatario, ni el perfil de vencimientos de la deuda ni el capex (pendientes de una fuente)",
+            "ni por arrendatario en los documentos oficiales leídos",
             "calificación i AAA (BRC, 21-may-2026); duración promedio de contratos bajó a 4 años en 2025 desde 5 en 2022 (BRC)",
             "EVENTO PENDIENTE no incluido en el NAV ni en el conteo de títulos: compra del portafolio de Terranum (contrato del "
-            "9-jul-2026; ~2,18 billones según la prensa: 58 % capital con emisión de títulos recibidos a valor patrimonial, 42 % deuda "
-            "asumida; NOI esperado > 200 mil millones). Los inversionistas renunciaron al derecho de preferencia (70,76 % de los títulos). "
-            "Sujeto a Superfinanciera y a las condiciones del contrato. Cambiará el NAV y el número de títulos",
+            "9-jul-2026, precio COP 2.181.025 millones sujeto al ajuste por el valor de los títulos a NAV que se emitan al vendedor; "
+            "cinco activos corporativos y logísticos, > 375.000 m2, NOI > 200.000 millones). Parte del pago va a una entidad vinculada "
+            "a los accionistas de la administradora (transacción con parte vinculada). La asamblea del 22-sep-2026 aprobó el pago en "
+            "especie y renunciar al derecho de preferencia con 70,76 % de los títulos; sigue sujeta a autoridades de competencia y "
+            "regulatorias. Cambiará el NAV y el número de títulos",
         ],
     },
 }  # el libro ya es valor razonable: sin potencial por encima
@@ -259,8 +273,8 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
             "por_accion": por_accion, "precio": precio,
             "margen_seguridad_pct": _r(v.margen_seguridad(por_accion["central"], precio)),
             "acciones_total": acciones_total, "sensibilidad_nav": sens,
-            "perfil_deuda": (v.perfil_deuda_vehiculo(op["deuda_bruta"], op["ebitda_trimestre"], op["fcd_trimestre"])
-                             if op and op.get("deuda_bruta") else None),
+            "perfil_deuda": (v.perfil_deuda_vehiculo(op["tramos_deuda"], op["ebitda_trimestre"])
+                             if op and op.get("tramos_deuda") else None),
             "avisos": ((op or {}).get("avisos") or []) + [
                        "títulos en circulación: 49.953.606 al 31-mar-2026 (informe del Representante Legal, Fiducoldex)",
                        "NAV = patrimonio a valor razonable: el informe 1T-2026 reporta NAV de COP 144.620 por título contra "

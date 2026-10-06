@@ -330,19 +330,22 @@ def evaluar_seguridad_banco(solvencia_total=None, cet1=None, cartera_vencida_90=
 # ---------------------------------------------------------------------------
 # Vehículos inmobiliarios: sensibilidad del NAV a cap rate y vacancia (P1 de Codex, H5.3)
 # ---------------------------------------------------------------------------
-def perfil_deuda_vehiculo(deuda_bruta: float, ebitda_trimestre: float, fcd_trimestre: float):
-    """Apalancamiento de un vehículo inmobiliario con lo que publica: deuda bruta / EBITDA anualizado y el costo
-    implícito de la deuda. El costo implícito es una INFERENCIA, no un dato reportado: lo que separa el EBITDA del flujo
-    de caja distribuible (intereses, impuestos, capex y capital de trabajo) anualizado, sobre la deuda bruta. Como es un
-    techo del gasto financiero, la cobertura EBITDA / (EBITDA - FCD) es un piso."""
-    if not deuda_bruta or not ebitda_trimestre or fcd_trimestre is None:
+def perfil_deuda_vehiculo(tramos: list, ebitda_trimestre: float):
+    """Apalancamiento de un vehículo inmobiliario con lo que reporta en su nota de obligaciones financieras.
+    `tramos`: [(capital, tasa efectiva anual en %), ...]. Devuelve capital, tasa promedio ponderada, interés anual al
+    saldo y tasa actuales, deuda / EBITDA anualizado y cobertura EBITDA anualizado / interés anual. (Una versión previa
+    inferia el costo de la deuda como lo que separa al EBITDA del flujo distribuible; esa cifra no era un techo y se
+    reemplazó por las tasas reportadas.)"""
+    capital = sum(c for c, _ in tramos)
+    if not capital or not ebitda_trimestre:
         return None
-    salida = ebitda_trimestre - fcd_trimestre
+    interes = sum(c * r / 100 for c, r in tramos)
     return {
-        "deuda_ebitda_x": round(deuda_bruta / (ebitda_trimestre * 4), 2),
-        "salida_trimestral_no_distribuida": round(salida, 3),
-        "costo_implicito_techo_pct": round(salida * 4 / deuda_bruta * 100, 2),
-        "cobertura_piso_x": round(ebitda_trimestre / salida, 2) if salida > 0 else None,
+        "capital": round(capital, 3),
+        "tasa_ponderada_pct": round(interes / capital * 100, 2),
+        "interes_anual": round(interes, 3),
+        "deuda_ebitda_x": round(capital / (ebitda_trimestre * 4), 2),
+        "cobertura_x": round(ebitda_trimestre * 4 / interes, 2) if interes else None,
     }
 
 
