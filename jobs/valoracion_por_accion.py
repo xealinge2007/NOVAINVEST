@@ -185,6 +185,19 @@ def valorar_real(cliente, em, a, acciones_total):
                       f"de {len(asociadas)} años; el escenario alto no usa el TTM porque no hay TTM de asociadas")
     if em["slug"] == "ISA":
         avisos.append("EBIT sin verificar contra EEFF auditados (el Reporte Integrado de ISA declara ~6-7% más)")
+    # Sensibilidad a la regla de normalización (informativa: no baja la confianza). Con R² >= 0,5 el central usa los últimos 3
+    # años; si el promedio de TODO el período da un valor muy distinto, se dice (Terpel: la tendencia viene de la recuperación
+    # del COVID de 2020 y el central usa 1.188 de EBIT contra 857 del promedio).
+    aviso_sensibilidad, por_accion_promedio = None, None
+    if metodo.startswith("tendencia") and acciones_total:
+        _, eq_plano = v.valor_epv(plano, wacc, deuda_neta, minoritarios)
+        if eq_plano is not None and por_accion["central"]:
+            por_accion_promedio = _r(eq_plano * 1e9 / acciones_total, 1)
+            if abs(por_accion_promedio / por_accion["central"] - 1) > 0.25:
+                aviso_sensibilidad = (f"el central usa el EBIT de los últimos 3 años por tendencia (R² {r2:.2f}, {ult3:,.0f}); con el "
+                                      f"promedio de todo el período ({plano:,.0f}) el valor central sería {por_accion_promedio:,.0f} por "
+                                      f"acción ({(por_accion_promedio / por_accion['central'] - 1) * 100:+.0f} %): la tendencia puede venir de una "
+                                      "recuperación y no de un crecimiento estructural")
     return {
         "determinable": True,
         "epv_mmm": _r(central["ev"]),
@@ -208,7 +221,8 @@ def valorar_real(cliente, em, a, acciones_total):
             "supuesto_crecimiento": f"EBIT crece con la inflación ({v.CRECIMIENTO_INFLACION:.0%}), sin crecimiento real",
             "sensibilidad": v.sensibilidad_epv(ebit_norm, wacc, deuda_neta, minoritarios, acciones_total),
             "rango": "escenarios: EBIT (mín de 3 normalizaciones / central / máx incl. TTM) con WACC +1/0/-1 pp",
-            "avisos": avisos,
+            "por_accion_promedio_periodo": por_accion_promedio,
+            "avisos": avisos + ([aviso_sensibilidad] if aviso_sensibilidad else []),
         },
     }
 

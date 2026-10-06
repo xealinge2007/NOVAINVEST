@@ -111,3 +111,15 @@ eventos de control, un backtest sirve para descartar, no para probar (plan zesty
 - **Efecto medido en el ranking (6-oct-2026):** Conconcreto y Cementos Argos salen del ranking como no determinables; Mineros sube de 9.327 a 11.760 por
   acción; Terpel no cambia (37.338, primero). Los demás desplazamientos de centavos vienen de los precios diarios.
 
+## Sensibilidad a la regla de normalización del EBIT (6-oct-2026)
+
+El central del EPV usa el EBIT de los **últimos 3 años** cuando la regresión del EBIT contra el año da R² >= 0,5 ("tendencia real"). Esa regla puede leer
+como tendencia una recuperación (el COVID de 2020 en una serie 2019-2025). Desde el 6-oct el detalle guarda `por_accion_promedio_periodo` (el valor con el
+promedio de todo el período) y agrega un aviso informativo —sin bajar la confianza— cuando difiere más de 25 % del central. Casos con aviso:
+**Terpel** (central 37.338; promedio del período 22.673, +20 % sobre el precio de 18.840), **ISA** (10.900 contra 5.067), **Grupo Nutresa**
+(5.194 contra −3.473; excluida por liquidez) y **Enka** (excluida por liquidez). Terpel, primero del ranking, sigue "segura y barata", pero su margen
+es de ~50 % con la regla del modelo y de ~17 % con el promedio del período; el escenario bajo del rango (18.510) equivale al precio.
+**Deuda de Terpel (verificación):** su deuda es la nota 24 ("otros pasivos financieros", 3.651) y el XBRL no etiqueta pasivos por arrendamiento aparte
+(valor presente de pagos mínimos de arrendamientos financieros: 881,2). Es muy probable que estén dentro; si no lo estuvieran el central bajaría
+de 37.338 a 32.480 (margen 42 %). No se pudo confirmar porque el XBRL no trae la composición de esa nota.
+
