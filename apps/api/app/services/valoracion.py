@@ -330,6 +330,22 @@ def evaluar_seguridad_banco(solvencia_total=None, cet1=None, cartera_vencida_90=
 # ---------------------------------------------------------------------------
 # Vehículos inmobiliarios: sensibilidad del NAV a cap rate y vacancia (P1 de Codex, H5.3)
 # ---------------------------------------------------------------------------
+def perfil_deuda_vehiculo(deuda_bruta: float, ebitda_trimestre: float, fcd_trimestre: float):
+    """Apalancamiento de un vehículo inmobiliario con lo que publica: deuda bruta / EBITDA anualizado y el costo
+    implícito de la deuda. El costo implícito es una INFERENCIA, no un dato reportado: lo que separa el EBITDA del flujo
+    de caja distribuible (intereses, impuestos, capex y capital de trabajo) anualizado, sobre la deuda bruta. Como es un
+    techo del gasto financiero, la cobertura EBITDA / (EBITDA - FCD) es un piso."""
+    if not deuda_bruta or not ebitda_trimestre or fcd_trimestre is None:
+        return None
+    salida = ebitda_trimestre - fcd_trimestre
+    return {
+        "deuda_ebitda_x": round(deuda_bruta / (ebitda_trimestre * 4), 2),
+        "salida_trimestral_no_distribuida": round(salida, 3),
+        "costo_implicito_techo_pct": round(salida * 4 / deuda_bruta * 100, 2),
+        "cobertura_piso_x": round(ebitda_trimestre / salida, 2) if salida > 0 else None,
+    }
+
+
 def sensibilidad_nav_inmobiliario(*, noi_anual, valor_inmuebles, nav_total, titulos, precio,
                                   ingresos_anuales, vacancia_economica_pct,
                                   cap_bps=(-50, 0, 50, 100, 150, 200), vacancia_pp=(0, 3, 6)):

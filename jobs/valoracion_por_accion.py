@@ -49,6 +49,18 @@ DATOS_OPERATIVOS = {
         "vacancia_fisica_pct": 6.72, "participacion_inmuebles_en_activos": 10090.865 / 10307.115,
         "fuente": "Informe 2T-2026 del Representante Legal (Fiducoldex) y Valora Analitik 6-ago-2026; "
                   "propiedad de inversión y activo total del 1T-2026 (informe del Representante Legal)",
+        # Informe 2T-2026 del Representante Legal (Fiducoldex), pp. 8-10: deuda, EBITDA y FCD del trimestre.
+        "deuda_bruta": 2680.0, "ebitda_trimestre": 141.414, "fcd_trimestre": 65.040,
+        "avisos": [
+            "composición de la propiedad de inversión (2T-2026): 38,0 % centros comerciales, 35,4 % corporativo, 17,0 % logístico, "
+            "6,7 % especializado, 2,9 % locales; ~1.495 arrendatarios y GLA 1.115.144 m2. NO se publica concentración por activo "
+            "ni por arrendatario, ni el perfil de vencimientos de la deuda ni el capex (pendientes de una fuente)",
+            "calificación i AAA (BRC, 21-may-2026); duración promedio de contratos bajó a 4 años en 2025 desde 5 en 2022 (BRC)",
+            "EVENTO PENDIENTE no incluido en el NAV ni en el conteo de títulos: compra del portafolio de Terranum (contrato del "
+            "9-jul-2026; ~2,18 billones según la prensa: 58 % capital con emisión de títulos recibidos a valor patrimonial, 42 % deuda "
+            "asumida; NOI esperado > 200 mil millones). Los inversionistas renunciaron al derecho de preferencia (70,76 % de los títulos). "
+            "Sujeto a Superfinanciera y a las condiciones del contrato. Cambiará el NAV y el número de títulos",
+        ],
     },
 }  # el libro ya es valor razonable: sin potencial por encima
 
@@ -247,7 +259,10 @@ def valorar_inmobiliario(cliente, em, a, acciones_total):
             "por_accion": por_accion, "precio": precio,
             "margen_seguridad_pct": _r(v.margen_seguridad(por_accion["central"], precio)),
             "acciones_total": acciones_total, "sensibilidad_nav": sens,
-            "avisos": ["títulos en circulación: 49.953.606 al 31-mar-2026 (informe del Representante Legal, Fiducoldex)",
+            "perfil_deuda": (v.perfil_deuda_vehiculo(op["deuda_bruta"], op["ebitda_trimestre"], op["fcd_trimestre"])
+                             if op and op.get("deuda_bruta") else None),
+            "avisos": ((op or {}).get("avisos") or []) + [
+                       "títulos en circulación: 49.953.606 al 31-mar-2026 (informe del Representante Legal, Fiducoldex)",
                        "NAV = patrimonio a valor razonable: el informe 1T-2026 reporta NAV de COP 144.620 por título contra "
                        "COP 66.000 de precio (descuento 54,4 %) y ventas recientes cerca del libro (Plaza Central 51 % al 96 % del libro)",
                        "el rango bajo/central/alto es un supuesto (0,90/1,00/1,00 del libro), no una valoración "
