@@ -94,6 +94,43 @@ function Detalle({ f }) {
       <div>
         <p className="font-semibold text-slate-700">Cómo se valoró</p>
         <p>{d.metodo || "—"}</p>
+        {d.epv && d.dcf && !d.dcf.no_aplicado && (
+          <table className="mt-1 text-right">
+            <thead>
+              <tr className="text-slate-500">
+                <th className="pr-3 text-left font-medium">Método</th>
+                <th className="px-2 font-medium">Bajo</th>
+                <th className="px-2 font-medium">Base</th>
+                <th className="px-2 font-medium">Alto</th>
+                <th className="px-2 font-medium">Margen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[["EPV", d.epv, "epv"], ["DCF", d.dcf, "dcf"]].map(([nombre, m, clave]) => (
+                <tr key={clave} className={d.metodo_usado === clave ? "font-semibold text-slate-800" : ""}>
+                  <td className="pr-3 text-left">{nombre}{d.metodo_usado === clave ? " (rige)" : ""}</td>
+                  <td className="cifra px-2">{fmt(m.por_accion?.bajo, 0)}</td>
+                  <td className="cifra px-2">{fmt(m.por_accion?.central, 0)}</td>
+                  <td className="cifra px-2">{fmt(m.por_accion?.alto, 0)}</td>
+                  <td className="cifra px-2">{fmt(m.margen_seguridad_pct, 0)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {d.dcf?.supuestos && <p className="mt-1 text-slate-500">DCF: {d.dcf.supuestos}. Peso del valor terminal: {fmt((d.dcf.peso_terminal_central || 0) * 100, 0)}%.</p>}
+        {d.politica_valor_central === "menor_de_epv_y_dcf" && d.dcf && !d.dcf.no_aplicado && (
+          <p className="mt-1 text-slate-500">Con la política vigente rige el menor de los dos centrales: solo es “con descuento” si lo es con ambos métodos.</p>
+        )}
+        {d.escenario_spot_por_accion !== null && d.escenario_spot_por_accion !== undefined && (
+          <p className="mt-1">Escenario spot (EBIT de los últimos 12 meses): {fmt(d.escenario_spot_por_accion, 0)} por acción, contra el base normalizado.</p>
+        )}
+        {d.roe_anuales_pct && (
+          <p className="mt-1">
+            ROE sobre patrimonio promedio ({(d.roe_anios || []).join(", ")}): {d.roe_anuales_pct.map((r) => `${fmt(r, 1)}%`).join(" · ")}
+            {d.crecimiento_sostenible_pct !== null && d.crecimiento_sostenible_pct !== undefined ? `. Crecimiento sostenible con utilidades retenidas: ${fmt(d.crecimiento_sostenible_pct, 1)}%` : ""}.
+          </p>
+        )}
         {d.crecimiento_real_implicito_pct !== null && d.crecimiento_real_implicito_pct !== undefined && (
           <p className="mt-1">
             El precio descuenta un crecimiento real de {fmt(d.crecimiento_real_implicito_pct)}% anual.

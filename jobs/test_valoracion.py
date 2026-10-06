@@ -153,4 +153,73 @@ revisar("brecha en pb frente al libro", sn["brecha_bps"], 377)
 revisar("un cap rate mayor siempre baja el NAV",
         sn["matriz"][0]["vacancia_mas_0pp"] > sn["matriz"][-1]["vacancia_mas_0pp"], True)
 
+print("--- DCF explicito de dos etapas (P1) ---")
+# Ingresos 1.000, margen 10 %, WACC 10 %, ROIC 20 %, g 3 %, tasa 35 %, 5 anios. NOPAT0 = 65; FCFF_k = 65 x 1,03^k x 0,85.
+# VP explicito = 227,78; terminal con ROIC = WACC: NOPAT_6 / WACC = 65 x 1,03^6 / 0,10 = 776,13 -> VP 481,92; EV = 709,70.
+d = v.dcf_dos_etapas(1000.0, 0.10, 0.10, 0.20, 300.0, 100.0, 50_000_000)
+revisar("DCF EV = VP explicito + VP terminal", round(d["ev"], 1), 709.7)
+revisar("DCF patrimonio por accion (409,7 mil millones / 50 M acciones)", round(d["por_accion"], 0), 6194.0)
+revisar("peso del terminal", round(d["peso_terminal"], 3), 0.679)
+revisar("5 flujos explicitos", len(d["flujos"]), 5)
+# ROIC por debajo del WACC se trata como WACC: reinversion g / WACC = 30 % del NOPAT => EV = 669,5
+d2 = v.dcf_dos_etapas(1000.0, 0.10, 0.10, 0.05, 300.0, 100.0, 50_000_000)
+revisar("ROIC < WACC se piso al WACC (crecimiento neutro, no destructor)", round(d2["ev"], 1), 669.5)
+revisar("margen no positivo no se valora", v.dcf_dos_etapas(1000.0, -0.01, 0.10, 0.20, 0.0, 0.0, 1e6)["por_accion"], None)
+revisar("WACC - g terminal demasiado chico no se valora", v.dcf_dos_etapas(1000.0, 0.10, 0.05, 0.20, 0.0, 0.0, 1e6)["ev"], None)
+revisar("sin ROIC no se valora", v.dcf_dos_etapas(1000.0, 0.10, 0.10, None, 0.0, 0.0, 1e6)["ev"], None)
+revisar("el terminal es NOPAT / WACC: sin reinversion explicita el EV sube",
+        v.dcf_dos_etapas(1000.0, 0.10, 0.10, 1e9, 0.0, 0.0, 1e6)["ev"] > d["ev"], True)
+
+print("--- margen EBIT normalizado ---")
+ing = {2019: 1000.0, 2020: 500.0, 2021: 1000.0, 2022: 1000.0, 2023: 1000.0}
+ebt = {2019: 30.0, 2020: 5.0, 2021: 30.0, 2022: 40.0, 2023: 50.0}
+m = v.margenes_ebit(ing, ebt)
+revisar("margenes anuales", [round(m[a], 3) for a in sorted(m)], [0.03, 0.01, 0.03, 0.04, 0.05])
+bajo, central, alto, det = v.margenes_escenarios(m)
+# promedio de todos = 3,2 %; moviles de 3 anios: 2,33 / 2,67 / 4,0 %
+revisar("central = promedio de TODA la ventana, no la tendencia", round(central, 4), 0.032)
+revisar("bajo = peor promedio movil de 3 anios", round(bajo, 4), 0.0233)
+revisar("alto = mejor promedio movil de 3 anios", round(alto, 4), 0.04)
+revisar("menos de 4 anios no se normaliza", v.margenes_escenarios({2022: 0.03, 2023: 0.04, 2024: 0.05})[1], None)
+revisar("anios sin ingresos se omiten", sorted(v.margenes_ebit({2020: 0.0, 2021: 100.0}, {2020: 5.0, 2021: 10.0})), [2021])
+esc, det = v.escenarios_dcf(1000.0, m, 0.10, 0.20, 0.0, 0.0, 50_000_000)
+revisar("escenarios DCF ordenados bajo < central < alto", esc["bajo"]["por_accion"] < esc["central"]["por_accion"] < esc["alto"]["por_accion"], True)
+revisar("sin margen normalizable no hay escenarios", v.escenarios_dcf(1000.0, {2023: 0.03}, 0.10, 0.20, 0.0, 0.0, 1e6)[0], None)
+
+print("--- conciliacion EPV / DCF (menor de los dos) ---")
+epv = {"bajo": 100.0, "central": 200.0, "alto": 400.0}
+dcf = {"bajo": 40.0, "central": 120.0, "alto": 300.0}
+met, pa, av = v.conciliar_epv_dcf(epv, dcf)
+revisar("rige el DCF si su central es menor, con su propio rango", (met, pa["bajo"], pa["central"], pa["alto"]), ("dcf", 40.0, 120.0, 300.0))
+revisar("difieren mas de 25 %: avisa", len(av), 1)
+met, pa, av = v.conciliar_epv_dcf({"bajo": 1.0, "central": 100.0, "alto": 200.0}, {"bajo": 1.0, "central": 110.0, "alto": 200.0})
+revisar("rige el EPV si es menor; diferencia < 25 % no avisa", (met, pa["central"], av), ("epv", 100.0, []))
+met, pa, av = v.conciliar_epv_dcf(epv, None)
+revisar("sin DCF rige el EPV", (met, pa["central"]), ("epv", 200.0))
+revisar("sin EPV no se valora (el DCF no lo sustituye)", v.conciliar_epv_dcf(None, dcf)[0], None)
+met, pa, av = v.conciliar_epv_dcf(epv, {"bajo": -50.0, "central": 120.0, "alto": 300.0})
+revisar("el bajo negativo se lleva a 0 (responsabilidad limitada)", pa["bajo"], 0.0)
+met, pa, av = v.conciliar_epv_dcf(epv, {"bajo": -50.0, "central": -10.0, "alto": 30.0})
+revisar("DCF central <= 0: el valor queda en 0 y se dice", (met, pa["central"], len(av)), ("dcf", 0.0, 1))
+met, pa, av = v.conciliar_epv_dcf(epv, dcf, politica="epv")
+revisar("la politica 'epv' revierte al comportamiento anterior", (met, pa["central"]), ("epv", 200.0))
+
+print("--- ROE de bancos sobre patrimonio promedio y sin rupturas (P1) ---")
+un = {2021: 100.0, 2022: 120.0, 2023: 130.0, 2024: 140.0, 2025: 150.0}
+pat = {2020: 800.0, 2021: 1000.0, 2022: 1100.0, 2023: 1200.0, 2024: 1300.0, 2025: 800.0}
+roes, avisos = v.roes_banco(un, pat)
+# 2025: patrimonio 800 vs 1300 (-38 %) => ruptura, excluido. 2021: 100 / prom(1000, 800) = 11,11 %; 2022: 120 / 1050 = 11,43 %
+revisar("anios validos: 2025 se excluye por ruptura de patrimonio", [a for a, _ in roes], [2021, 2022, 2023, 2024])
+revisar("ROE 2021 sobre patrimonio promedio", round(dict(roes)[2021], 4), 0.1111)
+revisar("ROE 2022 sobre patrimonio promedio", round(dict(roes)[2022], 4), 0.1143)
+revisar("el aviso nombra el anio y el salto", ("2025" in avisos[0], "-38%" in avisos[0]), (True, True))
+roes, _ = v.roes_banco({2024: 100.0, 2025: 110.0}, {2024: 1000.0, 2025: 1000.0})
+revisar("sin patrimonio previo se usa el de cierre", round(dict(roes)[2024], 3), 0.1)
+un2 = {2019: 50.0, 2020: 10.0, 2021: 100.0, 2022: 120.0, 2023: 130.0, 2024: 140.0}
+pat2 = {2018: 900.0, 2019: 950.0, 2020: 960.0, 2021: 1000.0, 2022: 1100.0, 2023: 1200.0, 2024: 1300.0}
+revisar("la ventana son 5 anios calendario, no 5 validos", [a for a, _ in v.roes_banco(un2, pat2)[0]], [2020, 2021, 2022, 2023, 2024])
+revisar("un solo ROE: lista vacia sin datos", v.roes_banco({}, {}), ([], []))
+revisar("crecimiento sostenible = ROE x (1 - payout)", round(v.crecimiento_sostenible(0.10, 60.0), 3), 0.04)
+revisar("sin payout no hay crecimiento sostenible", v.crecimiento_sostenible(0.10, None), None)
+
 reportar_y_salir()

@@ -25,6 +25,15 @@ SPREAD_MINIMO_WACC_G = 0.03         # WACC - g por debajo de esto => la perpetui
 CRECIMIENTO_PERPETUO_BANCOS = 0.04  # nominal en COP: inflación de largo plazo + ~0,5 % real
 ANIOS_MINIMOS_EBIT = 4              # menos años de EBIT anual => no se calcula EPV
 COMMODITY_PURO = {"ECOPETROL", "MINEROS"}
+# DCF explícito de dos etapas (P1 de Codex, H3): complementa al EPV con proyección, reinversión y valor terminal.
+ANIOS_EXPLICITOS = 5                # etapa explícita; después, valor terminal
+DELTA_G_EXPLICITO = 0.01            # ±1 pp de crecimiento nominal en los escenarios bajo/alto (central = inflación)
+ANIOS_MINIMOS_MARGEN = 4            # años de margen EBIT/ingresos para normalizar; menos => DCF no determinable
+VENTANA_MARGEN_ANIOS = 3            # el margen bajo/alto son el peor/mejor promedio móvil de esta ventana
+DIFERENCIA_EPV_DCF_AVISO = 0.25     # si EPV y DCF centrales difieren más que esto (relativo al menor) se avisa
+# Qué valor se usa cuando hay EPV y DCF: "menor_de_epv_y_dcf" (criterio conservador, Whitman: una empresa solo es barata
+# si lo es con ambos métodos) o "epv" (solo el EPV, como antes del 6-oct-2026). Un solo lugar para revertirlo.
+POLITICA_VALOR_CENTRAL = "menor_de_epv_y_dcf"
 UMBRAL_FRANQUICIA = 1.10            # EPV / capital invertido
 UMBRAL_DESTRUCCION = 0.90
 
@@ -82,6 +91,9 @@ LIMITE_DEUDA_PATRIMONIO_INMOBILIARIO = 2.0
 SOLVENCIA_TOTAL_MINIMA_PCT = 12.5
 CET1_MINIMO_PCT = 9.0
 CARTERA_VENCIDA_90_MAXIMA_PCT = 5.0
+# ROE de los bancos: sobre patrimonio PROMEDIO y sin años donde el patrimonio salta (cambio de perímetro o de base).
+UMBRAL_RUPTURA_PATRIMONIO = 0.25    # |patrimonio_t / patrimonio_(t-1) - 1| por encima de esto = ruptura de la serie
+ANIOS_ROE_BANCO = 5
 COSTO_RIESGO_MAXIMO_PCT = 3.0
 
 
@@ -189,6 +201,109 @@ def sensibilidad_epv(ebit, wacc, deuda_neta, minoritarios, acciones):
     return filas
 
 
+def margenes_ebit(ingresos_por_anio: dict, ebit_por_anio: dict) -> dict:
+    """{año: EBIT / ingresos} de los años que tienen ambos rubros y ingresos positivos."""
+    return {a: ebit_por_anio[a] / ingresos_por_anio[a] for a in sorted(ebit_por_anio)
+            if ingresos_por_anio.get(a) and ingresos_por_anio[a] > 0}
+
+
+def margenes_escenarios(margenes: dict):
+    """(bajo, central, alto, detalle) del margen EBIT sobre ingresos.
+    central = promedio de TODOS los años de la ventana (no la regla de tendencia del EPV: una tendencia con
+    R² >= 0,5 puede ser solo la recuperación de un año malo, como el COVID de 2020 en Terpel);
+    bajo / alto = el peor / mejor promedio móvil de `VENTANA_MARGEN_ANIOS` años (un año extremo aislado no
+    define el escenario). None si hay menos de `ANIOS_MINIMOS_MARGEN` años."""
+    anios = sorted(margenes)
+    if len(anios) < ANIOS_MINIMOS_MARGEN:
+        return None, None, None, {"anios": anios}
+    valores = [margenes[a] for a in anios]
+    k = VENTANA_MARGEN_ANIOS
+    moviles = [sum(valores[i:i + k]) / k for i in range(len(valores) - k + 1)]
+    return min(moviles), sum(valores) / len(valores), max(moviles), {
+        "anios": anios, "margen_minimo_anual": min(valores), "margen_maximo_anual": max(valores),
+        "margen_ultimos_3": sum(valores[-3:]) / 3}
+
+
+def dcf_dos_etapas(ingresos_base, margen_ebit, wacc, roic, deuda_neta, minoritarios, acciones,
+                   g=CRECIMIENTO_INFLACION, anios=ANIOS_EXPLICITOS, tasa=TASA_NOMINAL,
+                   g_terminal=CRECIMIENTO_INFLACION):
+    """DCF de flujo libre de la empresa (FCFF) en dos etapas, en miles de millones de COP.
+
+    Etapa explícita (`anios`): ingresos crecen a `g` nominal con margen EBIT constante, NOPAT = EBIT x (1 - tasa)
+    y se REINVIERTE g / ROIC del NOPAT (capex neto y capital de trabajo que exige crecer): FCFF = NOPAT x (1 - g / ROIC).
+    El ROIC de la reinversión no baja del WACC (`max(roic, wacc)`): una empresa que rinde menos que su costo de capital
+    no se modela destruyendo valor al crecer (esa lectura depende de un ROIC contable volátil) sino con crecimiento neutro.
+    Valor terminal: perpetuidad creciente a `g_terminal` (inflación) con ROIC = WACC, es decir el crecimiento nominal
+    no crea valor (se paga con reinversión) y el terminal queda en NOPAT / WACC: la versión de Greenwald. Esto corrige
+    el EPV de la casa, que le da a g = 3 % crecimiento sin reinversión.
+    Descuento a fin de año. None en lo que no se puede calcular (WACC - g terminal por debajo del mínimo, ROIC, margen
+    o ingresos no positivos): nunca un número inventado."""
+    vacio = {"ev": None, "patrimonio": None, "por_accion": None, "peso_terminal": None, "flujos": []}
+    if None in (ingresos_base, margen_ebit, wacc, roic) or ingresos_base <= 0 or margen_ebit <= 0 or roic <= 0:
+        return vacio
+    if wacc - g_terminal < SPREAD_MINIMO_WACC_G or wacc <= 0 or wacc <= g:
+        return vacio
+    roic = max(roic, wacc)
+    nopat0 = ingresos_base * margen_ebit * (1 - tasa)
+    vp, flujos = 0.0, []
+    for t in range(1, anios + 1):
+        nopat = nopat0 * (1 + g) ** t
+        fcff = nopat * (1 - g / roic)
+        vp += fcff / (1 + wacc) ** t
+        flujos.append({"anio": t, "nopat": nopat, "fcff": fcff})
+    nopat_terminal = nopat0 * (1 + g) ** anios * (1 + g_terminal)
+    valor_terminal = nopat_terminal * (1 - g_terminal / wacc) / (wacc - g_terminal)   # ROIC terminal = WACC
+    vp_terminal = valor_terminal / (1 + wacc) ** anios
+    ev = vp + vp_terminal
+    patrimonio = ev - deuda_neta - (minoritarios or 0)
+    return {"ev": ev, "patrimonio": patrimonio,
+            "por_accion": patrimonio * 1e9 / acciones if acciones else None,
+            "peso_terminal": vp_terminal / ev if ev else None, "flujos": flujos}
+
+
+def escenarios_dcf(ingresos_base, margenes, wacc, roic, deuda_neta, minoritarios, acciones):
+    """{bajo, central, alto} del DCF. bajo = peor margen móvil, g - 1 pp, WACC + 1 pp; central = margen medio, g
+    = inflación, WACC; alto = mejor margen móvil, g + 1 pp, WACC - 1 pp. Escenarios de supuestos, no percentiles.
+    Devuelve (escenarios, detalle de márgenes) o (None, detalle) si no hay margen normalizable."""
+    bajo_m, central_m, alto_m, det = margenes_escenarios(margenes)
+    if central_m is None:
+        return None, det
+    g = CRECIMIENTO_INFLACION
+    esc = {
+        "bajo": dcf_dos_etapas(ingresos_base, bajo_m, wacc + DELTA_WACC, roic, deuda_neta, minoritarios, acciones,
+                               g=g - DELTA_G_EXPLICITO),
+        "central": dcf_dos_etapas(ingresos_base, central_m, wacc, roic, deuda_neta, minoritarios, acciones, g=g),
+        "alto": dcf_dos_etapas(ingresos_base, alto_m, wacc - DELTA_WACC, roic, deuda_neta, minoritarios, acciones,
+                               g=g + DELTA_G_EXPLICITO),
+    }
+    det.update({"margen_bajo": bajo_m, "margen_central": central_m, "margen_alto": alto_m})
+    return esc, det
+
+
+def conciliar_epv_dcf(epv: dict | None, dcf: dict | None, politica: str = POLITICA_VALOR_CENTRAL):
+    """(método usado, {bajo, central, alto} por acción, avisos). `epv` y `dcf` son {bajo, central, alto} por acción o
+    None si el método no aplica / no es determinable. Con la política "menor_de_epv_y_dcf" rige el método de menor
+    valor central; el escenario bajo y el alto salen de ESE mismo método (no se mezclan métodos dentro de un rango) y
+    se llevan a un mínimo de 0 (responsabilidad limitada: un patrimonio no vale menos que cero). Sin EPV no se
+    valora (el DCF no sustituye a un EPV no determinable). Si el DCF central es <= 0 el método usado es el DCF y el
+    valor central queda en 0: el patrimonio no vale nada con ese método."""
+    if not epv or epv.get("central") is None:
+        return None, None, []
+    if politica == "epv" or not dcf or dcf.get("central") is None:
+        return "epv", dict(epv), []
+    usado, nombre = (dcf, "dcf") if dcf["central"] < epv["central"] else (epv, "epv")
+    por_accion = {k: (max(usado[k], 0.0) if usado.get(k) is not None else None) for k in ("bajo", "central", "alto")}
+    avisos = []
+    menor, mayor = sorted((epv["central"], dcf["central"]))
+    if menor > 0 and mayor / menor - 1 > DIFERENCIA_EPV_DCF_AVISO:
+        avisos.append(f"EPV ({epv['central']:,.0f}) y DCF ({dcf['central']:,.0f}) difieren más de {DIFERENCIA_EPV_DCF_AVISO:.0%}: "
+                      f"rige el menor ({nombre.upper()}); la diferencia es lo que el EPV paga por crecer sin reinvertir "
+                      "o por una regla de normalización distinta")
+    elif menor <= 0:
+        avisos.append(f"el {('EPV' if epv['central'] <= 0 else 'DCF')} central es <= 0: el patrimonio no vale nada con ese método")
+    return nombre, por_accion, avisos
+
+
 def diagnostico_greenwald(epv_ev: float, capital_invertido: float):
     """franquicia / commodity / destruccion_valor según EPV frente al capital invertido."""
     if not capital_invertido or epv_ev is None:
@@ -210,6 +325,43 @@ def pvl_justificado(roe: float, ke: float, g: float = CRECIMIENTO_PERPETUO_BANCO
     if ke is None or roe is None or ke <= g:
         return None
     return max((roe - g) / (ke - g), 0.0)
+
+
+def roes_banco(utilidad_por_anio: dict, patrimonio_por_anio: dict, n: int = ANIOS_ROE_BANCO):
+    """([(año, ROE)], avisos) de un banco: utilidad neta / patrimonio PROMEDIO (inicial y final; el final solo si no
+    hay año previo). Un año se excluye cuando el patrimonio de cierre salta más de `UMBRAL_RUPTURA_PATRIMONIO` frente
+    al del año anterior: la serie cambió de perímetro o de base (Grupo Cibest 2025: -36 %, ROE de 22 % que no
+    existió; Banco de Bogotá 2022: -38 %) y su ROE no es comparable. La ventana son los últimos `n` años CALENDARIO de la
+    serie: un año excluido no se reemplaza por uno más viejo (eso arrastraría el COVID de 2020 al escenario bajo)."""
+    validos, avisos = [], []
+    if not utilidad_por_anio:
+        return validos, avisos
+    desde = max(utilidad_por_anio) - n + 1
+    for a in sorted(x for x in utilidad_por_anio if x >= desde):
+        un, pat = utilidad_por_anio.get(a), patrimonio_por_anio.get(a)
+        if un is None or not pat or pat <= 0:
+            continue
+        previo = patrimonio_por_anio.get(a - 1)
+        if previo and previo > 0:
+            salto = pat / previo - 1
+            if abs(salto) > UMBRAL_RUPTURA_PATRIMONIO:
+                avisos.append(f"ROE {a} excluido: el patrimonio de cierre cambió {salto:+.0%} frente a {a - 1} "
+                              "(cambio de perímetro o de base de la serie)")
+                continue
+            base = (pat + previo) / 2
+        else:
+            base = pat
+        validos.append((a, un / base))
+    return validos, avisos
+
+
+def crecimiento_sostenible(roe: float, payout_pct):
+    """g = ROE x (1 - payout): el crecimiento del patrimonio que se financia solo con utilidades retenidas.
+    None sin payout. Informativo: compara el g de la fórmula (`CRECIMIENTO_PERPETUO_BANCOS`) con lo que el banco
+    puede sostener sin emitir capital."""
+    if roe is None or payout_pct is None:
+        return None
+    return roe * (1 - payout_pct / 100)
 
 
 def escenarios_banco(roes: list, ke: float, patrimonio: float, acciones: float):

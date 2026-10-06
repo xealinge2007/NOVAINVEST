@@ -195,7 +195,12 @@ def main():
             "ruta_valor": ruta, "ventaja_nivel": ventaja["nivel"], "ventaja_puntaje": ventaja["puntaje"],
             "catalizador_nivel": cat["nivel"],
             "detalle": {
-                "metodo": det.get("metodo"), "avisos": det.get("avisos") or [],
+                "metodo": det.get("metodo"), "avisos": (det.get("avisos") or []) + (det.get("avisos_metodo") or []),
+                "metodo_usado": det.get("metodo_usado"), "epv": det.get("epv"), "dcf": det.get("dcf"),
+                "politica_valor_central": det.get("politica_valor_central"),
+                "escenario_spot_por_accion": det.get("escenario_spot_por_accion"),
+                "roe_anuales_pct": det.get("roe_anuales_pct"), "roe_anios": det.get("roe_anios"),
+                "crecimiento_sostenible_pct": det.get("crecimiento_sostenible_pct"),
                 "sensibilidad_nav": det.get("sensibilidad_nav"),
                 "crecimiento_real_implicito_pct": det.get("crecimiento_real_implicito_pct"),
                 "percentil_propio": {"per": percentiles.get(em["id"], {}).get("per"),
@@ -270,11 +275,21 @@ def main():
             "ventaja_nivel": r["ventaja_nivel"], "catalizador_nivel": r["catalizador_nivel"],
             "renta_sostenible": r.get("renta_sostenible"), "detalle": {**r["detalle"], "nombre": r["nombre"], "slug": r["slug"]},
         } for r in resultados]
-        cliente.table("ranking_valor").upsert(filas, on_conflict="emisor_id").execute()
+        try:
+            cliente.table("ranking_valor").upsert(filas, on_conflict="emisor_id").execute()
+        except Exception as e:
+            if "cuadrante_check" not in str(e):
+                raise
+            print("AVISO: ranking_valor aún acepta solo los cuadrantes viejos; aplica db/migrate_p6_nombres_y_categorias.sql. "
+                  "Se escribe con los nombres viejos.")
+            for f in filas:
+                f["cuadrante"] = rk.CUADRANTE_A_LEGADO.get(f["cuadrante"], f["cuadrante"])
+            cliente.table("ranking_valor").upsert(filas, on_conflict="emisor_id").execute()
         print(f"\nSupabase: {len(ventajas)} ventajas y {len(filas)} filas de ranking.")
+        _guardar_historial(cliente, resultados)
     except Exception as e:  # tablas sin crear: db/migrate_p3_ranking_y_ventajas.sql
-        print(f"\nAVISO: no se pudo escribir en ventaja_competitiva/ranking_valor ({type(e).__name__}): "
-              "¿aplicaste db/migrate_p3_ranking_y_ventajas.sql? Solo se escribió el CSV.")
+        print(f"\nAVISO: no se pudo escribir en ventaja_competitiva/ranking_valor ({type(e).__name__}: {str(e)[:400]}). "
+              "Si las tablas no existen, aplica db/migrate_p3_ranking_y_ventajas.sql. Solo se escribió el CSV.")
         return
 
     # El veredicto también queda en score_valor (esquema del plan): cuadrante, tamaño y trampa.

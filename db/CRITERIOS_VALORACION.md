@@ -126,3 +126,33 @@ patrimonio del EPV no los sobrestima (al 31-mar-2026 el total es 3.637,6, con ar
 de los derechos de uso y el interés del arrendamiento queda debajo del EBIT: tratamiento coherente con restar el pasivo por arrendamiento como deuda.
 La cifra de 881,2 del XBRL (valor presente de pagos mínimos de arrendamientos financieros) mide otra cosa y no se suma.
 
+
+## P2 de Codex: categorías, retorno y escenarios (6-oct-2026)
+
+- **Categorías descriptivas** (reemplazan `safe_cheap` / `trampa_descuento` / `safe_cara`; `db/migrate_p6_nombres_y_categorias.sql` migra las filas):
+  `descuento_con_soporte` (pasa seguridad, margen >= 20 % y catalizador vivo o renta sostenible), `descuento_sin_soporte` (lo mismo sin
+  catalizador ni renta: la antigua "trampa"), `sin_descuento` y `seguridad_no_evaluada`. Cada fila trae además `riesgos` (datos, deuda, liquidez)
+  con su cifra; son informativos y no cambian la categoría. `score_valor` conserva su esquema del plan.
+- **Retorno anual ilustrativo**: si el precio converge al valor base en 3 años (`HORIZONTE_ILUSTRATIVO_ANIOS`, supuesto de la casa) más la renta solo si es
+  sostenible. Es condicional y sin impuestos ni costos: no es un pronóstico. Margen de seguridad, subida al valor base y este retorno se muestran por separado.
+- **Historial** (`ranking_valor_historial`): una fila por corrida con valor, precio, estados usados y causa del cambio. La causa solo distingue estados
+  nuevos, precio vivo de cotizadas (holdings) y "mismos estados" (supuesto, acciones o método: aún no se guardan por separado).
+- **Escenarios**: `valor_p25_mmm` / `valor_p75_mmm` pasan a `valor_bajo_mmm` / `valor_alto_mmm` (la migración los renombra; los jobs funcionan con ambos nombres).
+
+## P1 de Codex: DCF, commodities y bancos (6-oct-2026)
+
+- **DCF explícito de dos etapas** (`valoracion.dcf_dos_etapas`, `escenarios_dcf`), para emisores `real` que no son commodity puro ni tienen asociadas:
+  ingresos crecen a la inflación (±1 pp en los escenarios), margen EBIT **normalizado sobre toda la ventana del perímetro vigente** (bajo / alto = peor / mejor
+  promedio móvil de 3 años; no la regla de tendencia del EPV), NOPAT a la tasa estatutaria, **reinversión = g / max(ROIC, WACC)** y valor terminal con ROIC = WACC
+  (el crecimiento no crea valor: terminal = NOPAT / WACC). Se corrige así que el EPV con g = 3 % da crecimiento sin reinvertir. Exige 4 años de margen y un ROIC positivo.
+- **Política de valor central** (`POLITICA_VALOR_CENTRAL`): con EPV y DCF rige el **menor de los dos centrales**, y el rango bajo / alto sale de ese mismo método (nunca se
+  mezclan métodos dentro de un rango); los valores se llevan a >= 0. Un emisor solo es "con descuento" si lo es con ambos métodos. Si el DCF central es <= 0 el emisor
+  queda no determinable. Para volver al EPV solo: `POLITICA_VALOR_CENTRAL = "epv"`. No aplican DCF: ISA y GEB (asociadas), Ecopetrol y Mineros (commodity).
+- **Terpel** (el motivo de la fase): EPV 37.338 (regla de tendencia, EBIT 1.188 de los últimos 3 años) frente a DCF 22.083 (margen EBIT medio 2,77 % 2019-2025). Rige 22.083,
+  margen de seguridad 14,7 % (antes 49,5 %): deja de ser "con descuento" y pasa del puesto 1 al 3.
+- **Commodities puros** (Ecopetrol, Mineros): se muestra el **escenario spot** (EBIT de los últimos 12 meses) separado del normalizado (promedio del período). No hay serie de
+  precios sostenibles de la materia prima en la base: el "normalizado" es el promedio histórico de la compañía, no un precio de ciclo (pendiente declarado).
+- **Bancos**: ROE = utilidad neta / **patrimonio promedio**, y se excluye el año en que el patrimonio de cierre salta más de 25 % (`UMBRAL_RUPTURA_PATRIMONIO`): Grupo Cibest 2025
+  (-36 %, ROE de 22 % que no existió) y Banco de Bogotá 2022 (-38 %). La ventana son 5 años calendario. Cibest pasa de 24.597 / 36.788 / 59.557 a 28.075 / 35.398 / 49.613
+  (el escenario alto era el artefacto); Banco de Bogotá central de 13.500 a 12.376. Se agrega el crecimiento sostenible con utilidades retenidas (ROE x (1 - payout)) como aviso, y un
+  aviso cuando los indicadores regulatorios mezclan entidades (Cibest, Davivienda). **Sigue pendiente**: indicadores regulatorios de la Superfinanciera de la misma entidad y período, y un costo del riesgo normalizado.

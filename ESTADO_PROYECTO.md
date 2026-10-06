@@ -1,4 +1,7 @@
-# NOVAINVEST — estado del proyecto (leer esto primero)
+# NOVAINVEST — estado del proyecto (bitácora histórica)
+
+> **Vigente (6-oct-2026): `blueprint.md` (estado y siguientes pasos) y `db/CRITERIOS_VALORACION.md` (criterios).** Este archivo es la bitácora larga hasta el 25-sep-2026: lo que
+> contradiga a esos dos documentos está superado (p. ej. "W4–W7 sin empezar", el ranking ROIC−WACC como criterio de valor, o el flujo de push por `subtree split`).
 
 Última actualización de este encabezado: 1-oct-2026. **El diario real llega hasta el
 25-sep-2026**; la tabla de fases de abajo se corrigió el 1-oct: F3 está desplegada y F4a quedó

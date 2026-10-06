@@ -1,41 +1,46 @@
 # Blueprint — novainvest
-<!-- Actualizado: 2026-10-04 18:30 -->
+<!-- Actualizado: 2026-10-06 -->
 
 ## 1. Qué quiero lograr
 Identificar el valor de cada empresa de la BVC a partir de sus estados financieros, ROIC, márgenes,
 FCF, deuda, valoración, múltiplos y ventajas competitivas, con datos trazables y etiquetas que no
-induzcan a error. Auditoría independiente pendiente.
+induzcan a error. Auditoría independiente: la pedirá Alex cuando quiera (no hay destinatario fijado).
 
-## 2. En qué punto está
-P0-P3 de la auditoría propia hechos y en producción (ranking por puertas en /fundamentales/ranking).
-Aplicada la revisión de Codex del 04-oct: renta exige payout, seguridad no evaluada nunca favorable,
-desfase de resultados bloquea, sin tamaño de posición, endpoint con error visible, escenarios rotulados.
-PEI pasó de "segura y barata" a "trampa de descuento". Falta push de esta tanda y la auditoría humana.
+## 2. En qué punto está (6-oct-2026)
+- Motor de valor, ranking por puertas y PWA en producción hasta el commit `220240c`. Criterios vigentes: `db/CRITERIOS_VALORACION.md`
+  (fuente única); `ESTADO_PROYECTO.md` y `DOCTRINA_VALOR.md` son bitácoras históricas.
+- Tras la revisión de Codex (`db/CODEX_INFORME_AUDITORIA_2026-10-04.md`) se hicieron P2 (categorías descriptivas, riesgos, retorno ilustrativo,
+  historial, escenarios bajo/alto) y P1 (DCF explícito con política "menor de EPV y DCF", escenario spot en commodities, ROE de bancos
+  sobre patrimonio promedio sin rupturas). Commits locales `ed67ae5` (orden del repo), `bc503e9` (P2) y el de P1; **sin push** (requiere "sí" de Alex).
+- Pruebas: `python jobs/correr_pruebas.py` → 14/14.
+- Respaldo del corpus `C:\Proyectos\BVC\` hecho el 6-oct-2026 en `G:\Mi unidad\Respaldos\BVC_2026-10-06` (Google Drive): 1.003 archivos, 6.499.328.408 bytes, idénticos al origen.
 
 ## 3. Archivos en juego
-- apps/api/app/services/ranking_valor.py — reglas de cuadrantes y puertas
-- jobs/ranking_valor.py — arma el ranking (fechas, desfase, subida, distribución)
-- jobs/analizador_fundamental.py — TTM (T4 acumulado como anual), distribución de PEI fuera del dividendo
-- apps/web/src/pages/RankingValor.jsx — escenarios, margen y subida por separado
-- db/CONCILIACION_PEI_CONCONCRETO.md — insumos y fuentes de ambas valoraciones
-- db/NOTA_AUDITORIA_EXTERNA.md — nota para el auditor humano (pendiente de enviar)
+- apps/api/app/services/valoracion.py — EPV, DCF (`dcf_dos_etapas`), conciliación (`conciliar_epv_dcf`, `POLITICA_VALOR_CENTRAL`), bancos (`roes_banco`)
+- apps/api/app/services/ranking_valor.py — puertas, categorías, riesgos, retorno ilustrativo, causa del cambio
+- jobs/valoracion_por_accion.py, jobs/ranking_valor.py, jobs/compat_esquema.py — cálculo, ranking e historial
+- apps/web/src/pages/RankingValor.jsx — categorías, riesgos, EPV vs DCF, historial
+- db/migrate_p6_nombres_y_categorias.sql — **pendiente de aplicar por Alex** (renombra p25/p75, nuevas categorías, tabla de historial)
+- db/CONCILIACION_PEI_CONCONCRETO.md, db/NOTA_AUDITORIA_EXTERNA.md — insumos y nota para un auditor humano
 
 ## 4. Cambios hechos
-- Tanda Codex del 04-oct-2026: ver commit siguiente a e28c51a; sin push.
+- 6-oct: P2 y P1 de Codex (ver sección 2). Se corrió el pipeline real (`valoracion_por_accion.py`, `ranking_valor.py`) con el esquema viejo: los jobs
+  escriben `valor_p25_mmm` / `valor_p75_mmm` y las categorías viejas mientras no se aplique la migración P6. El historial no se guarda hasta aplicarla.
+- Efecto en el ranking: Terpel pasa de 37.338 (margen 49,5 %, puesto 1) a 22.083 (14,7 %, puesto 3, "sin descuento"); Promigas de 7.556 a 5.058; Cibest 36.788 → 35.398 con alto 49.613 (antes 59.557).
+  PEI queda 1.º como "descuento sin soporte" (no tiene catalizador ni renta sostenible).
 
 ## 5. Intentos fallidos — no repetir
-- [2026-09-25] Probé navegar SIMEV (BVC tipo 082/entidad 000004) con el navegador automatizado →
-  falló porque el filtro devuelve "No hay información" de forma intermitente; causa no resuelta.
-  No repetir con navegador automatizado.
-- [2026-09-25] Probé buscar estados financieros de BVC en bvc.com.co → falló porque solo hay
-  presentaciones corporativas, no estados financieros. No repetir.
-- [2026-10-04] Probé leer PDF de pei.com.co con WebFetch → falló (404 o binario); funciona descargar y
-  extraer con pdfplumber, o usar los informes de Fiducoldex. No repetir WebFetch directo sobre PDF.
+- [2026-09-25] Navegar SIMEV (BVC tipo 082/entidad 000004) con el navegador automatizado → "No hay información" intermitente. No repetir.
+- [2026-09-25] Buscar estados financieros de BVC en bvc.com.co → solo hay presentaciones. No repetir.
+- [2026-10-04] Leer PDF de pei.com.co con WebFetch → 404 o binario; funciona descargar y extraer con pdfplumber o usar Fiducoldex.
+- [2026-10-06] DCF con reinversión g/ROIC usando el ROIC TTM sin piso → GEB -431 y Celsia 113 por acción (ROIC contable de 5-6 %). Se corrigió con ROIC = max(ROIC, WACC).
+- [2026-10-06] Edición por script con `str.replace` sin `assert`: dos reemplazos no coincidieron y no avisaron. Siempre afirmar que el texto existe.
 
 ## 6. Siguientes pasos
-- Publicar esta tanda (git push origin main) con el OK de Alex.
-- PEI (6-oct): cerrado con fuente primaria (EEFF 30-jun-2026 en pei.com.co): deuda 2.676 al 11,89 %, 4,73x EBITDA, cobertura 1,78x, sin covenants, vencimientos, capex 1S 42,5, sin impuestos latentes, rentas contratadas 2.979. CORREGIDO un error mío (costo 11,4 % inferido; el real es 11,89 %). ABIERTO: concentración por activo/arrendatario (no se publica). EVENTO: Terranum 2.181.025 M aprobado por la asamblea del 22-sep (70,76 %), parte vinculada, pendiente de autoridades: recalcular títulos/NAV al cierre.
-- Reexpresiones y perímetro (6-oct): política + revisión de 8 casos pusheadas (aa29f8c, 5fddb0a); ventana de perímetro vigente (`PERIMETRO_DESDE`, `jobs/diagnostico_perimetro.py`) aplicada a EPV y ventaja. Conconcreto y Cementos Argos no determinables, Mineros 11.760, Terpel igual. ABIERTO: reconstruir las series previas a una ruptura (hoy se descartan); (cerrado el 6-oct: la D&A del XBRL, 3.370 en el 1T y 6.994 en el 1S, es correcta y se verificó con los EEFF del 2T; el EBITDA de la compañía es el dudoso y no se usa).
-- Terpel (#1) revisado (6-oct): central 37.338 usa EBIT de los últimos 3 años por tendencia (R² 0,79, influida por el COVID); con el promedio del período vale 22.673 (+20 % sobre el precio). Aviso informativo agregado a todos los EPV (`por_accion_promedio_periodo`). Deuda verificada (nota 23 de los EEFF 1T-2026): los arrendamientos (788) YA están dentro de los 3.651.
-- GEB: hecho el 5-oct (migrate_p4_resultado_asociadas.sql aplicada; EPV con minoritario a mercado (migrate_p5): 2.454 por acción, margen -24 %, safe_cara #9). ISA igual (minoritario a mercado + asociadas): 10.796 por acción, margen -168 %, #17; depende del WACC CAPM 12,2 %.
-- Enviar db/NOTA_AUDITORIA_EXTERNA.md a un auditor humano (falta destinatario).
+1. Alex: aplicar `db/migrate_p6_nombres_y_categorias.sql` en el SQL Editor de Supabase y luego re-correr `jobs/ranking_valor.py` (activa historial y nombres nuevos).
+2. Alex: decidir si deja `POLITICA_VALOR_CENTRAL = "menor_de_epv_y_dcf"` o vuelve a `"epv"`; y dar el "sí" para el push de los 3 commits locales.
+3. Disparadores de recálculo (ver memoria `novainvest-estado-y-disparadores`): cierre de Terranum por PEI, cierre anual 2026 (Cementos Argos), concentración de PEI sin fuente.
+4. Pendiente P1: indicadores regulatorios de bancos de la misma entidad y período (Superfinanciera), costo del riesgo normalizado, precios sostenibles de commodities,
+   DCF para ISA y GEB (requiere ingresos asociados al resultado de asociadas), holdings con participaciones no cotizadas por múltiplos.
+5. Pendiente P2: guardar acciones y supuestos en el historial para separar esa causa del cambio del valor.
+6. P3 (backtest punto en el tiempo): solo sirve para descartar con n ≈ 24 emisores.

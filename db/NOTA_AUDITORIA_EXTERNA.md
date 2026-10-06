@@ -4,6 +4,10 @@
 **Versión del 06-oct-2026** (commit `6fc6393` en `main`). Lista para enviar. Esta nota resume qué se construyó, qué debe
 verificar un tercero sin sesgos y dónde es más probable que haya errores.
 
+**Cambios del 06-oct (tarde), tras la revisión de Codex** (detalle al final de `db/CRITERIOS_VALORACION.md`): categorías descriptivas con riesgos y retorno ilustrativo (P2); DCF explícito
+con la política "menor de EPV y DCF" (Terpel pasa de 37.338 a 22.083 por acción y del puesto 1 al 3); ROE de bancos sobre patrimonio promedio sin años con ruptura (Grupo Cibest 2025 era un artefacto de 22 %).
+Un auditor debe juzgar en especial la política del menor de los dos métodos y el supuesto de ROIC = WACC en el valor terminal del DCF.
+
 **Cambios desde la versión del 04-oct** (detalle en las secciones 4 y 5 y en `db/CRITERIOS_VALORACION.md`):
 - GEB e ISA se valoran con el resultado de asociadas y el interés minoritario a mercado (antes GEB era "no determinable").
 - Política de reexpresión: rige la versión más reciente de cada cierre anual (con revisión a mano de los saltos de ventas > 10 %).

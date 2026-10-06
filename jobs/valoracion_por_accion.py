@@ -80,6 +80,16 @@ DATOS_OPERATIVOS = {
 }  # el libro ya es valor razonable: sin potencial por encima
 
 
+def _entidad_regulatoria(slug):
+    """Texto `entidad_medida` de db/semillas/bancos_regulatorio.csv del último período del emisor (None si no está)."""
+    import csv
+    ruta = RAIZ / "db" / "semillas" / "bancos_regulatorio.csv"
+    if not ruta.is_file():
+        return None
+    filas = [f for f in csv.DictReader(ruta.open(encoding="utf-8")) if f["emisor_slug"] == slug]
+    return max(filas, key=lambda r: r["periodo"])["entidad_medida"] if filas else None
+
+
 def _r(x, d=1):
     return None if x is None else round(x, d)
 
@@ -110,7 +120,7 @@ def valorar_real(cliente, em, a, acciones_total):
     con_asociadas = em["slug"] in v.EMISORES_CON_ASOCIADAS
     minoritario_mercado = em["slug"] in v.EMISORES_MINORITARIO_A_MERCADO
     try:
-        anuales = _anuales(cliente, em["id"], ["utilidad_operacional"] + (["resultado_asociadas"] if con_asociadas else [])
+        anuales = _anuales(cliente, em["id"], ["utilidad_operacional", "ingresos"] + (["resultado_asociadas"] if con_asociadas else [])
                            + (["utilidad_minoritarios"] if minoritario_mercado else []))
     except Exception:  # columna sin migrar (db/migrate_p4_resultado_asociadas.sql, migrate_p5_utilidad_minoritarios.sql)
         return no_determinable("falta aplicar db/migrate_p4_resultado_asociadas.sql o db/migrate_p5_utilidad_minoritarios.sql "
@@ -199,6 +209,57 @@ def valorar_real(cliente, em, a, acciones_total):
                                       f"promedio de todo el período ({plano:,.0f}) el valor central sería {por_accion_promedio:,.0f} por "
                                       f"acción ({(por_accion_promedio / por_accion['central'] - 1) * 100:+.0f} %): la tendencia puede venir de una "
                                       "recuperación y no de un crecimiento estructural")
+    # DCF explícito (P1 de Codex, H3): contraste y, con la política vigente, tope del EPV. No aplica a commodities puros (el margen
+    # sobre ingresos de un precio spot no es normalizable con esta serie) ni a emisores con asociadas (el resultado de asociadas
+    # no tiene ingresos asociados). El mismo perímetro vigente que el EPV: años desde `PERIMETRO_DESDE`.
+    dcf, dcf_detalle, motivo_sin_dcf = None, None, None
+    if em["slug"] in v.COMMODITY_PURO:
+        motivo_sin_dcf = "commodity puro: el margen sobre ingresos depende del precio spot; ver escenario spot vs normalizado"
+    elif con_asociadas:
+        motivo_sin_dcf = "emisor con resultado de asociadas: no hay ingresos asociados a esa utilidad"
+    else:
+        ingresos_serie = {y: f["ingresos"] for y, f in anuales.items() if f.get("ingresos") and (not desde or y >= desde)}
+        ebit_op = {y: f["utilidad_operacional"] for y, f in anuales.items()
+                   if f.get("utilidad_operacional") is not None and (not desde or y >= desde)}
+        margenes = v.margenes_ebit(ingresos_serie, ebit_op)
+        ingresos_base = a.get("ingresos_ttm") or (ingresos_serie[max(ingresos_serie)] if ingresos_serie else None)
+        roic = (a.get("roic_ajustado") or 0) / 100 or None
+        if len(margenes) < v.ANIOS_MINIMOS_MARGEN:
+            motivo_sin_dcf = f"solo {len(margenes)} año(s) de margen EBIT; se exigen {v.ANIOS_MINIMOS_MARGEN}"
+        elif not roic or roic <= 0:
+            motivo_sin_dcf = "sin ROIC positivo para modelar la reinversión"
+        else:
+            esc_dcf, dcf_detalle = v.escenarios_dcf(ingresos_base, margenes, wacc, roic, deuda_neta, minoritarios, acciones_total)
+            if esc_dcf and esc_dcf["central"]["por_accion"] is not None:
+                dcf = {k: esc_dcf[k]["por_accion"] for k in ("bajo", "central", "alto")}
+                dcf_detalle["peso_terminal_central"] = esc_dcf["central"]["peso_terminal"]
+                dcf_detalle["roic_pct"] = roic * 100
+                dcf_detalle["ingresos_base_mmm"] = ingresos_base
+            else:
+                motivo_sin_dcf = "el DCF no es calculable con estos insumos (margen o spread WACC - g)"
+    epv_por_accion = {k: esc[k]["por_accion"] for k in ("bajo", "central", "alto")}
+    metodo_usado, usado, avisos_conciliacion = v.conciliar_epv_dcf(epv_por_accion, dcf)
+    if metodo_usado == "dcf" and usado["central"] <= 0:
+        return no_determinable("el DCF da un patrimonio <= 0 (" + (avisos_conciliacion[0] if avisos_conciliacion else "sin detalle")
+                               + "): la empresa no cubre su deuda neta con el flujo normalizado")
+    por_accion_epv = por_accion
+    if metodo_usado == "dcf":
+        por_accion = {k: _r(usado[k], 1) for k in ("bajo", "central", "alto")}
+        esc_usado = {k: {"patrimonio": (usado[k] * acciones_total / 1e9 if usado[k] is not None else None)} for k in usado}
+        central = {**central, "patrimonio": esc_usado["central"]["patrimonio"]}
+        esc = {**esc, "bajo": {**esc["bajo"], "patrimonio": esc_usado["bajo"]["patrimonio"]},
+               "alto": {**esc["alto"], "patrimonio": esc_usado["alto"]["patrimonio"]}}
+    avisos_info = list(avisos_conciliacion)  # informativos: no bajan la confianza, como el aviso de sensibilidad
+    if motivo_sin_dcf:
+        avisos_info.append("DCF no aplicado: " + motivo_sin_dcf)
+    # Commodities puros: escenario spot (EBIT de los últimos 12 meses) separado del normalizado (promedio del período). No hay serie
+    # de precios sostenibles de la materia prima en la base: el "normalizado" es el promedio histórico de la compañía, no un precio de ciclo.
+    spot = None
+    if em["slug"] in v.COMMODITY_PURO and a.get("utilidad_operacional_ttm") is not None and acciones_total:
+        _, eq_spot = v.valor_epv(a["utilidad_operacional_ttm"], wacc, deuda_neta, minoritarios)
+        spot = _r(eq_spot * 1e9 / acciones_total, 1) if eq_spot is not None else None
+        avisos_info.append(f"escenario spot (EBIT de los últimos 12 meses {a['utilidad_operacional_ttm']:,.0f}): {spot if spot is not None else 'no determinable'} por acción "
+                      "contra el central normalizado (promedio del período); no se cuenta con una serie de precios sostenibles de la materia prima")
     return {
         "determinable": True,
         "epv_mmm": _r(central["ev"]),
@@ -208,7 +269,18 @@ def valorar_real(cliente, em, a, acciones_total):
         "tasa": wacc,
         "confianza": "baja" if avisos else "media",
         "detalle": {
-            "metodo": "EPV (Greenwald) a valor del patrimonio por acción",
+            "metodo": ("DCF explícito (menor de EPV y DCF)" if metodo_usado == "dcf" else "EPV (Greenwald) a valor del patrimonio por acción"),
+            "metodo_usado": metodo_usado,
+            "epv": {"por_accion": por_accion_epv, "margen_seguridad_pct": _r(v.margen_seguridad(por_accion_epv["central"], precio))},
+            "dcf": ({"por_accion": {k: _r(dcf[k], 1) for k in dcf}, "margen_seguridad_pct": _r(v.margen_seguridad(dcf["central"], precio)),
+                     "supuestos": f"{v.ANIOS_EXPLICITOS} años explícitos; ingresos crecen a la inflación ({v.CRECIMIENTO_INFLACION:.0%}) ±1 pp; margen EBIT "
+                                  "normalizado sobre toda la ventana (bajo/alto = peor/mejor promedio móvil de 3 años); NOPAT con la tasa estatutaria "
+                                  f"({v.TASA_NOMINAL:.0%}); reinversión = g / max(ROIC, WACC); terminal con ROIC = WACC (el crecimiento no crea valor)",
+                     **{k: _r(x, 4) if isinstance(x, float) else x for k, x in (dcf_detalle or {}).items() if k != "anios"},
+                     "anios_margen": (dcf_detalle or {}).get("anios")} if dcf else {"no_aplicado": motivo_sin_dcf}),
+            "politica_valor_central": v.POLITICA_VALOR_CENTRAL,
+            "avisos_metodo": avisos_info,
+            "escenario_spot_por_accion": spot,
             "por_accion": por_accion, "precio": precio,
             "margen_seguridad_pct": _r(v.margen_seguridad(por_accion["central"], precio)),
             "acciones_total": acciones_total,
@@ -230,9 +302,14 @@ def valorar_real(cliente, em, a, acciones_total):
 
 def valorar_banco(cliente, em, a, acciones_total):
     anuales = _anuales(cliente, em["id"], ["utilidad_neta", "patrimonio"])
-    roes = [f["utilidad_neta"] / f["patrimonio"] for y, f in sorted(anuales.items())
-            if f.get("utilidad_neta") is not None and f.get("patrimonio")][-5:]
-    avisos_banco = []
+    # ROE sobre patrimonio PROMEDIO y sin años con ruptura de la serie (P1 de Codex: bancos). Antes: utilidad / patrimonio de cierre,
+    # lo que dejó a Grupo Cibest con un ROE de 22 % en 2025 (patrimonio -36 %) como escenario alto.
+    serie_roe, avisos_banco = v.roes_banco({y: f["utilidad_neta"] for y, f in anuales.items() if f.get("utilidad_neta") is not None},
+                                           {y: f["patrimonio"] for y, f in anuales.items() if f.get("patrimonio")})
+    roes = [r for _, r in serie_roe]
+    entidad = _entidad_regulatoria(em["slug"])
+    if entidad and ";" in entidad:
+        avisos_banco.append("los indicadores regulatorios del emisor mezclan entidades (" + entidad + "): se usan solo como puerta de seguridad")
     if len(roes) < 3 and a.get("roe") is not None:
         # Davivienda Group cotiza desde 2025 (un solo ROE anual): se completa con el ROE de los últimos
         # 12 meses. Con una serie corta el rango bajo/alto casi solo se mueve por el Ke.
@@ -248,6 +325,10 @@ def valorar_banco(cliente, em, a, acciones_total):
         return no_determinable(f"Ke {ke:.1%} <= crecimiento perpetuo {v.CRECIMIENTO_PERPETUO_BANCOS:.1%}")
     precio = a.get("precio")
     por_accion = {k: _r(esc[k]["por_accion"], 1) for k in ("bajo", "central", "alto")}
+    g_sost = v.crecimiento_sostenible(esc["roe_central"], a.get("payout_pct"))
+    if g_sost is not None and g_sost < v.CRECIMIENTO_PERPETUO_BANCOS:
+        avisos_banco.append(f"crecimiento sostenible con utilidades retenidas {g_sost:.1%} (ROE {esc['roe_central']:.1%} x (1 - payout {a['payout_pct']:.0f} %)) "
+                            f"por debajo del g de la fórmula ({v.CRECIMIENTO_PERPETUO_BANCOS:.0%}): crecer a ese ritmo exige capital nuevo")
     return {
         "determinable": True,
         "bajo": esc["bajo"]["patrimonio"], "central": esc["central"]["patrimonio"], "alto": esc["alto"]["patrimonio"],
@@ -259,6 +340,8 @@ def valorar_banco(cliente, em, a, acciones_total):
             "acciones_total": acciones_total, "ke_pct": _r(ke * 100, 2),
             "g_pct": v.CRECIMIENTO_PERPETUO_BANCOS * 100,
             "roe_anuales_pct": [_r(r * 100, 1) for r in roes], "roe_central_pct": _r(esc["roe_central"] * 100, 1),
+            "roe_anios": [y for y, _ in serie_roe], "roe_base": "utilidad neta / patrimonio promedio, sin años con ruptura de patrimonio",
+            "crecimiento_sostenible_pct": _r(g_sost * 100, 1) if g_sost is not None else None,
             "pvl_justificado": {k: _r(esc[k]["pvl"], 2) for k in ("bajo", "central", "alto")},
             "avisos": avisos_banco + ["el ROE histórico no descuenta el deterioro futuro de cartera; los indicadores "
                        "regulatorios (db/semillas/bancos_regulatorio.csv) solo entran como puerta de seguridad"],
