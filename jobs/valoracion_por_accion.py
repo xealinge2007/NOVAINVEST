@@ -175,6 +175,11 @@ def valorar_real(cliente, em, a, acciones_total):
         avisos.append(f"solo {len(ebit)} años de EBIT")
     if aviso_minoritario:
         avisos.append(aviso_minoritario)
+    if desde:
+        avisos.append(f"EBIT solo desde {desde} ({len(ebit)} años): antes de esa fecha el emisor tenía otro perímetro (operaciones "
+                      "discontinuadas o ventas de filiales) y mezclarlo valoraría una empresa que ya no existe")
+        if em["slug"] in v.COMMODITY_PURO:
+            avisos.append("commodity con ventana corta: el promedio cubre el ciclo de precios de forma incompleta")
     if con_asociadas:
         avisos.append("EBIT incluye el resultado de asociadas (método de participación, neto de impuesto) "
                       f"de {len(asociadas)} años; el escenario alto no usa el TTM porque no hay TTM de asociadas")

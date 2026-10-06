@@ -50,11 +50,18 @@ NO_DETERMINABLE_POR_METODO: dict = {}
 # EPV (EBIT × (1 - tasa)) queda igual a NOPAT operativo + resultado de asociadas, sin gravarla dos veces.
 EMISORES_CON_ASOCIADAS = {"GEB", "ISA"}
 
-# Primer año del EBIT anual que está en el perímetro vigente del emisor. Cementos Argos vendió sus operaciones en
-# EE. UU. (2024): hasta 2022 el EBIT es del negocio global (700-1.640) y desde 2023 del negocio sin EE. UU. (467-662);
-# promediar ambos valora una empresa que ya no existe (el EPV daba un EBIT normalizado de 955). Con la regla de
-# `ANIOS_MINIMOS_EBIT` queda no determinable hasta contar con el cierre de 2026.
-PERIMETRO_DESDE = {"CEMENTOS_ARGOS": 2023}
+# Primer año de la serie anual que está en el perímetro vigente del emisor (`jobs/diagnostico_perimetro.py`, 6-oct-2026).
+# Una reexpresión solo corrige un año hacia atrás, así que la serie queda con un perímetro por año; solo los años desde la
+# ÚLTIMA ruptura (ventas o EBIT que cambian más de 10 % entre el informe propio y la versión reexpresada) comparten
+# perímetro con el último cierre. Mezclar valora una empresa que ya no existe. Con `ANIOS_MINIMOS_EBIT` (4) un emisor con
+# menos años en el perímetro vigente queda no determinable. Emisores sin ruptura no figuran.
+#   CEMENTOS_ARGOS 2023 (-72 % EBIT) y 2024 (+42 %): vendió EE. UU.; solo 2024-2025 -> no determinable hasta el cierre de 2026.
+#   GRUPO_ARGOS 2023 y 2024 (-58 % EBIT, operaciones discontinuadas): informativo (ruta holding, sin EPV).
+#   MINEROS 2022 (EBIT +141 %, operación discontinuada): 2022-2025, 4 años.
+#   CONSTRUCTORA_CONCONCRETO 2020-2021 (EBIT 74,3 -> -250,2: contrato oneroso y reclasificación de ingresos).
+#   ENKA 2021 (-23 %), EL_CONDOR 2020 (+65 %), BVC 2022 (-17 %): también excluidos del ranking por liquidez o por método.
+PERIMETRO_DESDE = {"CEMENTOS_ARGOS": 2024, "GRUPO_ARGOS": 2024, "MINEROS": 2022, "CONSTRUCTORA_CONCONCRETO": 2021,
+                   "ENKA": 2021, "EL_CONDOR": 2020, "BVC": 2022}
 
 # Emisores cuyo interés minoritario se valora a mercado. El libro subestima al minoritario cuando la filial
 # rinde mucho sobre su patrimonio (GEB: 175 de utilidad anual de minoritarios contra 454 en libros, ROE ~38 %).

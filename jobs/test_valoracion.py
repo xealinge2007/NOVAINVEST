@@ -117,8 +117,14 @@ revisar("cobertura = 565,656 / 318,10", pd["cobertura_x"], 1.78)
 revisar("sin deuda no hay perfil", v.perfil_deuda_vehiculo([], 141.4), None)
 
 print("--- perimetro vigente ---")
-revisar("Cementos Argos: el EBIT del EPV arranca en 2023 (sin EE. UU.)", v.PERIMETRO_DESDE.get("CEMENTOS_ARGOS"), 2023)
-revisar("con 3 anios desde 2023 no se alcanza el minimo de 4: no determinable", 3 < v.ANIOS_MINIMOS_EBIT, True)
+from diagnostico_perimetro import ventana_consistente  # noqa: E402
+revisar("la ventana arranca en la ultima ruptura", ventana_consistente([2023, 2024], 2017), 2024)
+revisar("sin rupturas, desde el primer año con datos", ventana_consistente([], 2019), 2019)
+revisar("una sola ruptura (Mineros 2022)", ventana_consistente([2022], 2019), 2022)
+revisar("Cementos Argos: 2024-2025 son 2 años y no alcanzan los 4 minimos",
+        2025 - v.PERIMETRO_DESDE["CEMENTOS_ARGOS"] + 1 < v.ANIOS_MINIMOS_EBIT, True)
+revisar("Mineros: 2022-2025 son justo los 4 minimos", 2025 - v.PERIMETRO_DESDE["MINEROS"] + 1 >= v.ANIOS_MINIMOS_EBIT, True)
+revisar("Terpel no tiene ruptura: no figura", "TERPEL" in v.PERIMETRO_DESDE, False)
 
 print("--- minoritario a mercado ---")
 # Ultimos 3 anios: (60 + 100 + 140) / 3 = 100; Ke 13 %, g 3 % => 100 / 0,10 = 1.000. El 2022 (900) no entra.

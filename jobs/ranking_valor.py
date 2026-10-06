@@ -131,7 +131,9 @@ def main():
         por_accion = det.get("por_accion") or {}
 
         costo = (a.get("costo_patrimonio") if arq == "banco" else a.get("wacc"))
-        ventaja = vc.evaluar(em["slug"], arq, anuales.get(em["id"], {}), (costo or 0) / 100 or None,
+        desde = vc_val.PERIMETRO_DESDE.get(em["slug"], 0)  # solo años del perímetro vigente (ver valoracion.PERIMETRO_DESDE)
+        serie = {y: f for y, f in anuales.get(em["id"], {}).items() if y >= desde}
+        ventaja = vc.evaluar(em["slug"], arq, serie, (costo or 0) / 100 or None,
                              (ve or {}).get("diagnostico_epv_vs_activos"))
         ventajas.append({"emisor_id": em["id"], **ventaja})
 

@@ -92,13 +92,22 @@ eventos de control, un backtest sirve para descartar, no para probar (plan zesty
   utilidad total idéntica: la versión nueva es la base de operaciones continuas), Cementos Argos 2023 y 2024 (dos
   cambios de perímetro seguidos) y Enka 2021 (cambio de resultados sin discontinuadas; causa no verificada). Conservada:
   Grupo Cibest 2021 (falso positivo: el comparativo del XBRL 2022 rotula con 2020 los valores de 2021, idénticos al original).
-- **Perímetro vigente (`PERIMETRO_DESDE`):** una reexpresión solo corrige el año inmediatamente anterior, así que los años
-  más viejos quedan en la base antigua y la serie mezcla perímetros. Cementos Argos vendió sus operaciones en EE. UU.: su
-  EBIT de 2019-2023 es del negocio global (700-1.640) y el de 2024-2025 del negocio sin EE. UU. (649-662). El EPV promediaba
-  955 de EBIT normalizado y valoraba una empresa que ya no existe. Desde el 5-oct el EBIT arranca en 2023; con el mínimo de
-  4 años (`ANIOS_MINIMOS_EBIT`) queda **no determinable hasta contar con el cierre de 2026**. Mineros conserva sus 7 años, con la
-  advertencia de que antes de 2022 el EBIT incluye una operación hoy discontinuada (sin versión reexpresada disponible).
-- **Efecto medido en el ranking:** Conconcreto (334 → 38 por acción, último), Terpel (38.524 → 37.338, sigue primero), Mineros
-  (8.693 → 9.327; con el EBIT 2022 de operaciones continuas, 391,7 en vez de 162,4) y Cementos Argos (de rankeado a no determinable).
-  Grupo Argos (ruta holding) no cambia; Enka y BVC están excluidas por liquidez.
+- **Perímetro vigente (`PERIMETRO_DESDE`, 6-oct-2026):** una reexpresión solo corrige un año hacia atrás: el valor vigente de cada año
+  viene del informe siguiente y está en el perímetro de ese informe, que puede cambiar cada año. Solo los años desde la **última
+  ruptura** comparten perímetro con el último cierre. Una ruptura en el año k es una diferencia de más de 10 % en ventas o en
+  EBIT entre el valor propio de k y su versión reexpresada del informe k+1. `jobs/diagnostico_perimetro.py` lo calcula sobre
+  todo el corpus XBRL (solo lectura) y la regla (`ventana_consistente`) tiene pruebas. La ventana se aplica al EBIT del EPV y a la serie de la ventaja
+  competitiva; con `ANIOS_MINIMOS_EBIT` = 4, un emisor con menos años queda no determinable.
+  | Emisor | Rupturas | Ventana | Años | Resultado |
+  |---|---|---|---:|---|
+  | Cementos Argos | 2023 (EBIT −72 %), 2024 (+42 %) | 2024- | 2 | no determinable hasta el cierre de 2026 |
+  | Grupo Argos | 2023 (−25 %), 2024 (−58 %) | 2024- | 2 | informativo (ruta holding, sin EPV) |
+  | Mineros | 2022 (+141 %) | 2022- | 4 | EPV 11.760 (antes 9.327); confianza baja: commodity con ventana corta |
+  | Conconcreto | 2020 (+11 %), 2021 (−437 %) | 2021- | 5 | no determinable: EBIT normalizado 2021-2025 de −3,7 |
+  | Enka, El Cóndor, BVC | 2021 / 2020 / 2022 | desde la ruptura | 5 / 6 / 4 | excluidos del ranking por liquidez o método |
+  | Terpel y los demás | ninguna | toda la serie | — | sin cambio |
+  Terpel es el caso que motivó medir la ruptura sobre el EBIT y no solo sobre las ventas: sus ventas cambian ±7,8 % entre versiones
+  pero su EBIT solo −0,4 % (2023) y −5,6 % (2024).
+- **Efecto medido en el ranking (6-oct-2026):** Conconcreto y Cementos Argos salen del ranking como no determinables; Mineros sube de 9.327 a 11.760 por
+  acción; Terpel no cambia (37.338, primero). Los demás desplazamientos de centavos vienen de los precios diarios.
 

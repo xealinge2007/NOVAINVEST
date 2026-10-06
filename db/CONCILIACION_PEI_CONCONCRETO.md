@@ -184,7 +184,12 @@ termina en julio de 2026 y su EBITDA del trimestre es −29.357 por provisiones 
 márgenes por proyecto del backlog, y el valor de las participaciones por encima del libro (no hay valoración
 independiente de las concesiones). Con la reexpresión, el EPV por EBIT no es confiable hasta resolver el punto 2.
 
-**Resultado actual (5-oct, tras la política de reexpresión):** puesto 18 de 18, "segura, sin descuento" (central 38 contra precio 479). El valor del grupo por EPV no recoge el valor de las participaciones por encima del libro (361.020 en libros; ver punto 4): es un suelo operativo, no una valoración completa.
+**Resultado actual (6-oct, con la ventana de perímetro vigente):** **no determinable**. La política de reexpresión dio un EPV de 38 por acción con
+el promedio 2019-2025; pero 2019 y 2020 están en otra base (el informe 2022 reclasificó 58.094 de intereses de deuda subordinada a ingresos
+operativos y provisionó el contrato oneroso de Vía 40), así que la serie comparable es 2021-2025: EBIT −250,2, 252,7, 109,6, −162,6 y 32,0,
+promedio **−3,7**. El método EPV no valora un EBIT normalizado negativo. El resultado práctico es el mismo que el de 38 contra 479: el
+poder de generación operativo de cinco años no sostiene el precio. El valor del grupo está en las participaciones (361.020 en libros) y no se
+modela aquí.
 
 **Pendiente (Codex H6.3):** cartera de contratos, márgenes por proyecto, capital de trabajo, garantías y
 contingencias. Nada de eso está en el XBRL que se lee hoy.
