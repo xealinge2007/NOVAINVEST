@@ -153,7 +153,7 @@ def valorar_real(cliente, em, a, acciones_total):
             aviso_minoritario = (f"minoritario a mercado {valor_min:,.0f} (utilidad normalizada {util_norm:,.0f} / "
                                  f"(Ke {ke:.1%} - g {v.CRECIMIENTO_INFLACION:.0%})) en vez de {minoritario_libros:,.0f} en libros; "
                                  "igual en los tres escenarios")
-    esc =v.escenarios_epv(plano, ult3, ebit_norm, wacc, deuda_neta, minoritarios, acciones_total,
+    esc = v.escenarios_epv(plano, ult3, ebit_norm, wacc, deuda_neta, minoritarios, acciones_total,
                            ebit_ttm=None if con_asociadas else a.get("utilidad_operacional_ttm"))
     central = esc["central"]
     if central["patrimonio"] is None or central["patrimonio"] <= 0:

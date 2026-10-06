@@ -85,7 +85,11 @@ cobertura "mínima de 1,85x" también cambia a **1,78x**. Ambas cifras ya no se 
   entidad ligada a los accionistas de la administradora recibiría parte del pago en títulos de PEI a NAV. Cierre sujeto a autoridades de
   competencia y regulatorias. La **asamblea extraordinaria del 22-sep-2026** (segunda convocatoria, quórum 76,78 %) aprobó el pago en
   especie de la Emisión XIII Tramo y la renuncia al derecho de preferencia con el 70,76 % de los títulos (35.346.876); la del 15-sep no
-  alcanzó el quórum especial. La prensa (Pluralidadz, no verificada en documento oficial) reporta ~58 % capital (~750 en títulos + ~507
+  alcanzó el quórum especial. Del comunicado de prensa del 22-sep (PDF adjunto por Alex, mismo documento de pei.com.co): la operación se viene
+  comunicando **desde la Asamblea Ordinaria de marzo de 2026**; el crecimiento de AUM es ~**27 %** (el comunicado del 9-jul decía ~29 %) y ~35 % de GLA;
+  el siguiente paso es **radicar la Emisión XIII Tramo ante la Superfinanciera** y solo después el cierre; PEI declara > 12.000 inversionistas y un
+  portafolio avaluado en > 10,1 billones. Esos documentos NO traen concentración por activo ni por arrendatario, precio por título de la emisión ni el
+  número de títulos nuevos. La prensa (Pluralidadz, no verificada en documento oficial) reporta ~58 % capital (~750 en títulos + ~507
   de caja) y ~42 % deuda asumida (~917), LTV pro forma 27,4 % y plazo medio de deuda de 6 años.
 - **Lectura:** pagar con títulos a NAV, cuando el mercado los negocia a 45 % del NAV, es favorable para los inversionistas actuales frente a
   emitir al precio de mercado: el NAV por título casi no cambia y no hay dilución del NAV. Pero el número de títulos sube (~10 % si son ~750 a
@@ -119,7 +123,7 @@ de prensa y presentación "Conference Call 1T2026" (p. 8 y 19) de Conconcreto, c
 | D&A | no publicada | 3.370,1 (flujo de caja) = PP&E 3.227,8 + intangibles 142,3 | Cuadra por dos vías |
 | EBITDA | 18.607 | 16.577,6 (EBIT + D&A) | **Brecha 2.029,4 (11 %) sin explicar** |
 
-- **Corregido más abajo (lectura de los EEFF del 1T-2026):** la D&A del flujo de caja (3.370,1) era incompleta; la del estado de resultados es 5.288,9 y deja la brecha en 110,6. Lo que sigue se escribió antes de leerlos. El EBIT es correcto; la brecha viene de una definición de EBITDA que la compañía **no publica**
+- **Corrección del 6-oct (ver «EBITDA» más abajo):** la D&A de 3.370,1 es la correcta; la conclusión del 5-oct de que era incompleta fue un error mío. El EBIT es correcto y la brecha con el EBITDA de la compañía viene de una definición que **no publica**.
   (ni el comunicado, ni la presentación, ni el XBRL traen la conciliación). Probada una hipótesis: sumar "otros
   gastos" (1.316) deja 713 sin explicar; en el 1T-2025 la misma prueba deja 1.113. No hay un rubro único que
   cierre ambos trimestres, así que no se fuerza una explicación.
@@ -139,16 +143,19 @@ de prensa y presentación "Conference Call 1T2026" (p. 8 y 19) de Conconcreto, c
 Fuente: `EEFF.zip` de conconcreto.com (estados consolidados y separados con notas, firmados; 71 pp. los
 consolidados) y la presentación "Conference Call 1T2026". Cifras en COP millones.
 
-**1. EBITDA: la brecha de 2.029 se explica casi toda, y corrige lo anterior.** El estado de resultados registra
-la depreciación en dos lugares (notas 7.18 y 7.20): costo de ventas (PP&E 3.723,5 + intangibles 69,0 + derechos
-de uso 33,6) y gastos de administración (1.462,8) = **5.288,9**. El flujo de caja y el XBRL traen solo 3.370,1.
-EBIT 13.207,6 + 5.288,9 = **18.496,4**, a 110,6 (0,6 %) del 18.607 del comunicado. En el 1T-2025 la D&A del
-estado de resultados (5.608,1) sí iguala a la del flujo de caja, así que la diferencia es del 1T-2026. Nuestro
-EBITDA de 16.578 subestima: la D&A que usamos (flujo de caja) es incompleta en ese trimestre.
-Aún abierto: (a) los 110,6; (b) la nota de segmentos (7.31) trae un EBITDA de **20.207,9** para el 1T-2026 y
-37.983,9 para el 1T-2025, distinto del comunicado (18.607) en 2026 e igual en 2025: la compañía publica dos
-cifras de EBITDA para el mismo trimestre sin conciliarlas, y en el 1T-2025 ninguna definición cierra (brecha de
-8.714,6 sobre EBIT + D&A).
+**1. EBITDA del 1T-2026: nuestra D&A es la correcta; la cifra de la compañía es la dudosa (corregido el 6-oct).** El 5-oct concluí que la D&A del
+flujo de caja y del XBRL (3.370,1) era incompleta porque el estado de resultados del 1T (notas 7.18 y 7.20) suma 5.288,9 (costo de ventas 3.723,5 +
+69,0 + 33,6, y administración 1.462,8). **Estaba equivocado.** Con los estados del 2T-2026 (descargados el 6-oct) se verifica por cuatro vías:
+(a) el movimiento de PP&E del 1T da 3.227,8 de depreciación + 142,3 de intangibles = 3.370,1; (b) el del 1S-2026 da 6.805,4, y el flujo de caja del 1S
+trae 6.994,0 (= 6.805,4 + ~188,6 de intangibles); (c) la nota del estado de resultados del 1S suma 6.814,2 (costo 5.087,5 + 563,0 + 21,5, y
+administración 1.142,3), a 2,6 % del flujo de caja; (d) el 1S-2025 cuadra al peso (10.798,76 contra 10.798,76). Con el 5.288,9 del 1T, el 2T solo
+tendría 1.525 de D&A (6.814,2 − 5.288,9) contra 3.624 por flujo de caja: el 5.288,9 es el valor atípico, no el 3.370,1.
+Nuestro EBITDA queda: **1T-2026 16.577,6** (EBIT 13.207,6 + 3.370,1) y **1S-2026 25.236,6** (18.242,6 + 6.994,0), tal como están en la base.
+La compañía publica tres cifras que no cierran con eso ni entre sí: **18.607** (comunicado y presentación del 1T), **20.207,9** en la nota de segmentos
+del 1T y el **mismo 20.207,9** en la nota de segmentos del 1S-2026 (JUN-2026), que no puede ser: con un EBIT de 18.242,6 en el semestre implicaría una D&A de
+1.965 en seis meses. Es una cifra que no se actualizó. En el 1S-2025 la nota trae un EBITDA de 56.463,3 sobre un EBIT de 4.927,4 (51.535,9 de diferencia): la
+definición de la compañía suma otras partidas que no publica. **Decisión:** no se usa el EBITDA de la compañía; el nuestro (EBIT + D&A del flujo de caja,
+cuadrado con el movimiento de PP&E) queda tal cual. El EPV usa EBIT, así que nada cambia en el ranking.
 
 **2. Reexpresión de años anteriores (hallazgo mayor).** El XBRL de 2022 reexpresa el 2021: EBIT original 74,3 →
 **−250,2** (utilidad bruta 88,4 → −236,1; utilidad neta 49,8 → −198,9); también 2019 (114,4 → 104,3) y 2020

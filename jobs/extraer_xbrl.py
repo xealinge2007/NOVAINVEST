@@ -180,7 +180,8 @@ def decidir_reexpresion(previos: dict, comparativo: dict, financiero: bool = Fal
     if revisada == "aplicar":
         return {**previos, **reexpresion}, ("aplicada" if clave else "sin_cambio"), detalle
     base = "utilidad_neta" if financiero else "ingresos"
-    if base in cambios and cambios[base][0] and             abs(cambios[base][1] - cambios[base][0]) > UMBRAL_CAMBIO_PERIMETRO * abs(cambios[base][0]):
+    if (base in cambios and cambios[base][0]
+            and abs(cambios[base][1] - cambios[base][0]) > UMBRAL_CAMBIO_PERIMETRO * abs(cambios[base][0])):
         return {**comparativo, **previos}, "no_aplicada", detalle
     return {**previos, **reexpresion}, ("aplicada" if clave else "sin_cambio"), detalle
 
