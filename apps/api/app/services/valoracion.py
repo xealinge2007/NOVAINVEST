@@ -48,7 +48,7 @@ NO_DETERMINABLE_POR_METODO: dict = {}
 # Emisores cuyo EPV debe incluir el resultado de asociadas (método de participación). Esa utilidad ya viene
 # neta del impuesto de la asociada, así que entra al EBIT "equivalente" dividida por (1 - tasa): el NOPAT del
 # EPV (EBIT × (1 - tasa)) queda igual a NOPAT operativo + resultado de asociadas, sin gravarla dos veces.
-EMISORES_CON_ASOCIADAS = {"GEB"}
+EMISORES_CON_ASOCIADAS = {"GEB", "ISA"}
 
 # Emisores cuyo interés minoritario se valora a mercado. El libro subestima al minoritario cuando la filial
 # rinde mucho sobre su patrimonio (GEB: 175 de utilidad anual de minoritarios contra 454 en libros, ROE ~38 %).
