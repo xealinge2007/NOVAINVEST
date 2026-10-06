@@ -52,7 +52,7 @@ EMISORES_CON_ASOCIADAS = {"GEB"}
 
 # Emisores cuyo interés minoritario se valora a mercado. El libro subestima al minoritario cuando la filial
 # rinde mucho sobre su patrimonio (GEB: 175 de utilidad anual de minoritarios contra 454 en libros, ROE ~38 %).
-EMISORES_MINORITARIO_A_MERCADO = {"GEB"}
+EMISORES_MINORITARIO_A_MERCADO = {"GEB", "ISA"}
 ANIOS_UTILIDAD_MINORITARIOS = 3
 
 # Seguridad (Pilar 1, Whitman). Por tipo de negocio, no un 4x único.
