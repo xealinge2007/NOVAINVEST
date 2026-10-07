@@ -1,5 +1,7 @@
 # Nota para la auditoría externa independiente
 
+**Estado (6-oct-2026): esta nota NO se enviará: Alex decidió que la auditoría externa no se realizará. Se conserva como descripción de los supuestos y limitaciones del motor.**
+
 **Para: Auditor externo.**
 **Versión del 06-oct-2026** (commit `6fc6393` en `main`). Lista para enviar. Esta nota resume qué se construyó, qué debe
 verificar un tercero sin sesgos y dónde es más probable que haya errores.

@@ -148,6 +148,9 @@ La cifra de 881,2 del XBRL (valor presente de pagos mínimos de arrendamientos f
 - **Política de valor central** (`POLITICA_VALOR_CENTRAL`): con EPV y DCF rige el **menor de los dos centrales**, y el rango bajo / alto sale de ese mismo método (nunca se
   mezclan métodos dentro de un rango); los valores se llevan a >= 0. Un emisor solo es "con descuento" si lo es con ambos métodos. Si el DCF central es <= 0 el emisor
   queda no determinable. Para volver al EPV solo: `POLITICA_VALOR_CENTRAL = "epv"`. No aplican DCF: ISA y GEB (asociadas), Ecopetrol y Mineros (commodity).
+- **Divergencia = evidencia provisional** (decisión del 6-oct): si EPV y DCF centrales difieren más de 25 % (`DIFERENCIA_EPV_DCF_AVISO`), la valoración baja a confianza baja y
+  `nivel_evidencia` queda "provisional" (`divergen_epv_dcf`). Los dos métodos no se corroboran, así que la cifra debe revisarse antes de apoyarse en ella.
+- **Alcance del proyecto** (Alex, 6-oct-2026): la auditoría externa **no se realizará**. Los números no tienen validación independiente ni backtest, y así deben leerse. Alex define cuándo el proyecto está terminado.
 - **Terpel** (el motivo de la fase): EPV 37.338 (regla de tendencia, EBIT 1.188 de los últimos 3 años) frente a DCF 22.083 (margen EBIT medio 2,77 % 2019-2025). Rige 22.083,
   margen de seguridad 14,7 % (antes 49,5 %): deja de ser "con descuento" y pasa del puesto 1 al 3.
 - **Commodities puros** (Ecopetrol, Mineros): se muestra el **escenario spot** (EBIT de los últimos 12 meses) separado del normalizado (promedio del período). No hay serie de

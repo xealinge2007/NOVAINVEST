@@ -280,6 +280,15 @@ def escenarios_dcf(ingresos_base, margenes, wacc, roic, deuda_neta, minoritarios
     return esc, det
 
 
+def divergen_epv_dcf(epv: dict | None, dcf: dict | None) -> bool:
+    """True si los centrales de EPV y DCF son positivos y difieren más de `DIFERENCIA_EPV_DCF_AVISO` (relativo al menor).
+    Con esa diferencia la valoración baja a confianza baja (evidencia "provisional"): los dos métodos no se corroboran."""
+    if not epv or not dcf or epv.get("central") is None or dcf.get("central") is None:
+        return False
+    menor, mayor = sorted((epv["central"], dcf["central"]))
+    return menor > 0 and mayor / menor - 1 > DIFERENCIA_EPV_DCF_AVISO
+
+
 def conciliar_epv_dcf(epv: dict | None, dcf: dict | None, politica: str = POLITICA_VALOR_CENTRAL):
     """(método usado, {bajo, central, alto} por acción, avisos). `epv` y `dcf` son {bajo, central, alto} por acción o
     None si el método no aplica / no es determinable. Con la política "menor_de_epv_y_dcf" rige el método de menor

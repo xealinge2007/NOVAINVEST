@@ -267,7 +267,7 @@ def valorar_real(cliente, em, a, acciones_total):
         "diagnostico_epv_vs_activos": v.diagnostico_greenwald(central["ev"], capital),
         "bajo": esc["bajo"]["patrimonio"], "central": central["patrimonio"], "alto": esc["alto"]["patrimonio"],
         "tasa": wacc,
-        "confianza": "baja" if avisos else "media",
+        "confianza": "baja" if (avisos or v.divergen_epv_dcf(epv_por_accion, dcf)) else "media",
         "detalle": {
             "metodo": ("DCF explícito (menor de EPV y DCF)" if metodo_usado == "dcf" else "EPV (Greenwald) a valor del patrimonio por acción"),
             "metodo_usado": metodo_usado,
