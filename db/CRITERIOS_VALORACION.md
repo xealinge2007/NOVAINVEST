@@ -147,7 +147,7 @@ La cifra de 881,2 del XBRL (valor presente de pagos mínimos de arrendamientos f
   (el crecimiento no crea valor: terminal = NOPAT / WACC). Se corrige así que el EPV con g = 3 % da crecimiento sin reinvertir. Exige 4 años de margen y un ROIC positivo.
 - **Política de valor central** (`POLITICA_VALOR_CENTRAL`): con EPV y DCF rige el **menor de los dos centrales**, y el rango bajo / alto sale de ese mismo método (nunca se
   mezclan métodos dentro de un rango); los valores se llevan a >= 0. Un emisor solo es "con descuento" si lo es con ambos métodos. Si el DCF central es <= 0 el emisor
-  queda no determinable. Para volver al EPV solo: `POLITICA_VALOR_CENTRAL = "epv"`. No aplican DCF: ISA y GEB (asociadas), Ecopetrol y Mineros (commodity).
+  queda no determinable. Para volver al EPV solo: `POLITICA_VALOR_CENTRAL = "epv"`. No aplican DCF: Ecopetrol y Mineros (commodity).
 - **Divergencia = evidencia provisional** (decisión del 6-oct): si EPV y DCF centrales difieren más de 25 % (`DIFERENCIA_EPV_DCF_AVISO`), la valoración baja a confianza baja y
   `nivel_evidencia` queda "provisional" (`divergen_epv_dcf`). Los dos métodos no se corroboran, así que la cifra debe revisarse antes de apoyarse en ella.
 - **Alcance del proyecto** (Alex, 6-oct-2026): la auditoría externa **no se realizará**. Los números no tienen validación independiente ni backtest, y así deben leerse. Alex define cuándo el proyecto está terminado.
@@ -159,3 +159,15 @@ La cifra de 881,2 del XBRL (valor presente de pagos mínimos de arrendamientos f
   (-36 %, ROE de 22 % que no existió) y Banco de Bogotá 2022 (-38 %). La ventana son 5 años calendario. Cibest pasa de 24.597 / 36.788 / 59.557 a 28.075 / 35.398 / 49.613
   (el escenario alto era el artefacto); Banco de Bogotá central de 13.500 a 12.376. Se agrega el crecimiento sostenible con utilidades retenidas (ROE x (1 - payout)) como aviso, y un
   aviso cuando los indicadores regulatorios mezclan entidades (Cibest, Davivienda). **Sigue pendiente**: indicadores regulatorios de la Superfinanciera de la misma entidad y período, y un costo del riesgo normalizado.
+
+## Ajustes posteriores del 6-oct-2026
+
+- **DCF de ISA y GEB** (emisores con asociadas): DCF del negocio operativo (margen del EBIT consolidado, que excluye las asociadas) + el resultado de asociadas como renta neta
+  capitalizada **sin crecimiento al Ke** (`valor_asociadas`, promedio de 3 años / Ke), igual en los tres escenarios como el minoritario a mercado. Rige el menor de EPV y DCF: ISA
+  10.900 -> 7.312 y GEB 2.454 -> 957 por acción (ambos ya eran "sin descuento"). El DCF operativo de GEB es negativo (ROIC contable 4,7 %, deuda neta 17.235): lo sostiene la renta de asociadas.
+- **Historial con insumos**: cada corrida guarda acciones, WACC / Ke, método usado, EBIT normalizado y deuda neta (`ranking_valor_historial.cambio.insumos`); la causa del cambio los compara
+  (tolerancia 0,5 %, acciones exactas). Una corrida anterior sin insumos no se declara como cambio.
+- **Ranking aparte sin la puerta de liquidez** (pedido de Alex): `detalle.sin_liquidez` en cada fila, `RANKING_VALOR_SIN_LIQUIDEZ_BVC.csv` y casilla en la pantalla. Las demás puertas siguen
+  igual y la liquidez queda como riesgo visible. **Resultado: no entra ningún emisor más.** Los 6 bajo la puerta (BVC, El Cóndor, Enka, ETB, Fabricato, Nutresa) quedan excluidos por datos o por
+  valor: EBIT normalizado negativo (El Cóndor, Fabricato), patrimonio no cubre la deuda neta (ETB), alerta de datos (Nutresa: el precio coincide con la oferta de recompra, P/VL 14,6; Enka: 2021 duplicado),
+  activos de terceros en el balance (BVC). Con el modelo actual no hay evidencia de "mayor potencial" en lo ilíquido; mostrarlo exigiría otro método (p. ej. por activos) y no hay backtest.

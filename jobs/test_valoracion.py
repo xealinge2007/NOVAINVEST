@@ -170,6 +170,12 @@ revisar("sin ROIC no se valora", v.dcf_dos_etapas(1000.0, 0.10, 0.10, None, 0.0,
 revisar("el terminal es NOPAT / WACC: sin reinversion explicita el EV sube",
         v.dcf_dos_etapas(1000.0, 0.10, 0.10, 1e9, 0.0, 0.0, 1e6)["ev"] > d["ev"], True)
 
+print("--- asociadas: renta neta al Ke, sin crecimiento ---")
+vA, rA = v.valor_asociadas({2022: 90.0, 2023: 100.0, 2024: 110.0, 2025: 120.0}, 0.10)
+revisar("promedio de los ultimos 3 anios (110) / Ke 10 % = 1.100", (round(rA, 1), round(vA, 1)), (110.0, 1100.0))
+revisar("resultado negativo no se capitaliza", v.valor_asociadas({2024: -5.0, 2025: -5.0}, 0.10), (None, None))
+revisar("sin Ke no se capitaliza", v.valor_asociadas({2025: 100.0}, None), (None, None))
+
 print("--- margen EBIT normalizado ---")
 ing = {2019: 1000.0, 2020: 500.0, 2021: 1000.0, 2022: 1000.0, 2023: 1000.0}
 ebt = {2019: 30.0, 2020: 5.0, 2021: 30.0, 2022: 40.0, 2023: 50.0}

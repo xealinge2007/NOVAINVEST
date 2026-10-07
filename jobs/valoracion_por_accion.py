@@ -210,13 +210,10 @@ def valorar_real(cliente, em, a, acciones_total):
                                       f"acción ({(por_accion_promedio / por_accion['central'] - 1) * 100:+.0f} %): la tendencia puede venir de una "
                                       "recuperación y no de un crecimiento estructural")
     # DCF explícito (P1 de Codex, H3): contraste y, con la política vigente, tope del EPV. No aplica a commodities puros (el margen
-    # sobre ingresos de un precio spot no es normalizable con esta serie) ni a emisores con asociadas (el resultado de asociadas
-    # no tiene ingresos asociados). El mismo perímetro vigente que el EPV: años desde `PERIMETRO_DESDE`.
+    # sobre ingresos de un precio spot no es normalizable con esta serie). Con asociadas (GEB, ISA) se suma su valor aparte. El mismo perímetro vigente que el EPV: años desde `PERIMETRO_DESDE`.
     dcf, dcf_detalle, motivo_sin_dcf = None, None, None
     if em["slug"] in v.COMMODITY_PURO:
         motivo_sin_dcf = "commodity puro: el margen sobre ingresos depende del precio spot; ver escenario spot vs normalizado"
-    elif con_asociadas:
-        motivo_sin_dcf = "emisor con resultado de asociadas: no hay ingresos asociados a esa utilidad"
     else:
         ingresos_serie = {y: f["ingresos"] for y, f in anuales.items() if f.get("ingresos") and (not desde or y >= desde)}
         ebit_op = {y: f["utilidad_operacional"] for y, f in anuales.items()
@@ -229,8 +226,21 @@ def valorar_real(cliente, em, a, acciones_total):
         elif not roic or roic <= 0:
             motivo_sin_dcf = "sin ROIC positivo para modelar la reinversión"
         else:
-            esc_dcf, dcf_detalle = v.escenarios_dcf(ingresos_base, margenes, wacc, roic, deuda_neta, minoritarios, acciones_total)
-            if esc_dcf and esc_dcf["central"]["por_accion"] is not None:
+            # Con asociadas: DCF del negocio operativo (EBIT consolidado, que las excluye) + las asociadas como renta neta al Ke, sin
+            # crecimiento (`valor_asociadas`); igual en los tres escenarios, como el minoritario a mercado.
+            valor_asoc = None
+            if con_asociadas:
+                valor_asoc, resultado_asoc = v.valor_asociadas(asociadas, (a.get("costo_patrimonio") or 0) / 100 or None)
+            if con_asociadas and valor_asoc is None:
+                motivo_sin_dcf = "sin resultado de asociadas positivo o sin Ke para capitalizarlo"
+            esc_dcf, dcf_detalle = (None, {}) if motivo_sin_dcf else v.escenarios_dcf(
+                ingresos_base, margenes, wacc, roic, deuda_neta, minoritarios - (valor_asoc or 0), acciones_total)
+            if valor_asoc is not None and dcf_detalle is not None:
+                dcf_detalle["valor_asociadas_mmm"] = valor_asoc
+                dcf_detalle["resultado_asociadas_normalizado_mmm"] = resultado_asoc
+            if motivo_sin_dcf:
+                pass
+            elif esc_dcf and esc_dcf["central"]["por_accion"] is not None:
                 dcf = {k: esc_dcf[k]["por_accion"] for k in ("bajo", "central", "alto")}
                 dcf_detalle["peso_terminal_central"] = esc_dcf["central"]["peso_terminal"]
                 dcf_detalle["roic_pct"] = roic * 100

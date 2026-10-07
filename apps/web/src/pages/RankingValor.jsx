@@ -235,7 +235,18 @@ function Detalle({ f }) {
   );
 }
 
+// Ranking aparte SIN la puerta de liquidez (jobs/ranking_valor.py guarda el veredicto paralelo en detalle.sin_liquidez).
+function aSinLiquidez(f) {
+  const sl = f.detalle?.sin_liquidez;
+  if (!sl) return f;
+  return {
+    ...f, posicion: sl.posicion, excluido: sl.excluido, cuadrante: sl.cuadrante, puerta_fallida: sl.puerta_fallida,
+    motivo_exclusion: sl.motivo_exclusion, nivel_evidencia: sl.nivel_evidencia, detalle: { ...f.detalle, riesgos: sl.riesgos },
+  };
+}
+
 export default function RankingValor() {
+  const [sinLiquidez, setSinLiquidez] = useState(false);
   const [filas, setFilas] = useState([]);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -253,8 +264,11 @@ export default function RankingValor() {
     })();
   }, []);
 
-  const ranking = filas.filter((f) => !f.excluido);
-  const excluidos = filas.filter((f) => f.excluido);
+  const vista = sinLiquidez
+    ? filas.map(aSinLiquidez).sort((a, b) => (a.posicion ?? 1e9) - (b.posicion ?? 1e9))
+    : filas;
+  const ranking = vista.filter((f) => !f.excluido);
+  const excluidos = vista.filter((f) => f.excluido);
   const nombre = (f) => f.detalle?.nombre || f.detalle?.slug || `#${f.emisor_id}`;
 
   return (
@@ -279,6 +293,14 @@ export default function RankingValor() {
           .
         </p>
       </div>
+
+      <label className="flex max-w-3xl items-start gap-2 text-sm text-slate-600">
+        <input type="checkbox" className="mt-1" checked={sinLiquidez} onChange={(e) => setSinLiquidez(e.target.checked)} />
+        <span>
+          Ranking aparte sin la puerta de liquidez. La liquidez deja de excluir y pasa a ser un riesgo visible en cada fila; las demás puertas (datos,
+          seguridad, valor) siguen igual. Ojo: no hay backtest que muestre que lo ilíquido rinda más, y el costo de entrar y salir puede comerse el descuento.
+        </span>
+      </label>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {cargando && <p className="text-sm text-slate-500">Cargando…</p>}

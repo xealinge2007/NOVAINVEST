@@ -108,6 +108,18 @@ revisar("mismos estados: residual declarado, no inventado", "mismos estados fina
 c = rk.causa_del_cambio(ant, {**ant, "valor_central": 90.0, "precio": 85.0, "ruta": "holding"})
 revisar("holding: precio vivo de cotizadas", any("precio vivo" in x for x in c["causas"]), True)
 
+print("--- historial: causas por insumos guardados ---")
+ins = {"acciones_total": 100.0, "wacc_pct": 11.1, "metodo_usado": "epv", "ebit_normalizado_mmm": 1000.0, "deuda_neta_mmm": 500.0}
+ant2 = {**ant, "insumos": ins}
+c = rk.causa_del_cambio(ant2, {**ant2, "valor_central": 90.0, "insumos": {**ins, "acciones_total": 120.0}})
+revisar("cambio de acciones se atribuye al conteo de acciones", [x for x in c["causas"] if "acciones" in x], ["conteo de acciones: 100 -> 120"])
+c = rk.causa_del_cambio(ant2, {**ant2, "valor_central": 90.0, "insumos": {**ins, "metodo_usado": "dcf", "wacc_pct": 12.0}})
+revisar("cambio de metodo y WACC", sorted(x.split(":")[0] for x in c["causas"]), ["WACC / costo del patrimonio", "método usado"])
+c = rk.causa_del_cambio(ant2, {**ant2, "valor_central": 90.0, "insumos": {**ins, "deuda_neta_mmm": 500.5}})
+revisar("variacion de deuda dentro de la tolerancia no cuenta", "residual" in str(c["causas"]) or "mismos estados e insumos" in c["causas"][0], True)
+c = rk.causa_del_cambio(ant, {**ant, "valor_central": 90.0, "precio": 85.0, "insumos": ins})
+revisar("si la corrida anterior no guardo insumos no se inventa causa", "no guardó esos insumos" in c["causas"][0], True)
+
 print("--- nombres vigentes y legado ---")
 revisar("mapa legado", rk.CUADRANTE_LEGADO["safe_cheap"], "descuento_con_soporte")
 revisar("score_valor conserva su esquema", rk.CUADRANTE_A_SCORE_VALOR[rk.SIN_SOPORTE], "trampa_descuento")

@@ -182,7 +182,9 @@ def main():
             "desfase_resultados_trimestres": _desfase_trimestres(a.get("fuente_resultados"), a.get("balance_de")),
         }
         res = rk.evaluar(entrada)
+        res_sin_liquidez = rk.evaluar(entrada, ignorar_liquidez=True)
         res.update({
+            "sin_liquidez": res_sin_liquidez, "bajo_la_puerta_de_liquidez": entrada["elegible"] is False,
             "emisor_id": em["id"], "slug": em["slug"], "nombre": em["nombre"],
             "valor_bajo": por_accion.get("bajo"), "valor_central": por_accion.get("central"),
             "valor_alto": por_accion.get("alto"), "precio": det.get("precio") or a.get("precio"),
@@ -192,6 +194,9 @@ def main():
                 por_accion.get("central"), det.get("precio") or a.get("precio"),
                 a.get("dividend_yield_pct") if res.get("renta_sostenible") else None),
             "balance_de": a.get("balance_de"), "fuente_resultados": a.get("fuente_resultados"),
+            "insumos": {"acciones_total": det.get("acciones_total"), "wacc_pct": det.get("wacc_pct") or det.get("ke_pct"),
+                        "metodo_usado": det.get("metodo_usado") or det.get("metodo"),
+                        "ebit_normalizado_mmm": det.get("ebit_normalizado_mmm"), "deuda_neta_mmm": det.get("deuda_neta_mmm")},
             "ruta_valor": ruta, "ventaja_nivel": ventaja["nivel"], "ventaja_puntaje": ventaja["puntaje"],
             "catalizador_nivel": cat["nivel"],
             "detalle": {
@@ -227,6 +232,18 @@ def main():
         resultados.append(res)
 
     rk.ordenar(resultados)
+    # Ranking aparte SIN la puerta de liquidez: mismas puertas de datos, seguridad y valor; se ordena por separado.
+    paralelo = [{**r["sin_liquidez"], "slug": r["slug"], "margen_seguridad_pct": r["margen_seguridad_pct"],
+                 "ventaja_puntaje": r["ventaja_puntaje"]} for r in resultados]
+    rk.ordenar(paralelo)
+    for r, p in zip(resultados, paralelo):
+        r["detalle"]["sin_liquidez"] = {
+            "posicion": p["posicion"], "excluido": p["excluido"], "cuadrante": p["cuadrante"],
+            "puerta_fallida": p["puerta_fallida"], "motivo_exclusion": p["motivo_exclusion"],
+            "nivel_evidencia": p["nivel_evidencia"], "riesgos": p.get("riesgos") or [],
+            "bajo_la_puerta_de_liquidez": r["bajo_la_puerta_de_liquidez"],
+            "nota": "ranking aparte sin la puerta de liquidez: la liquidez es un riesgo, no un filtro; sin backtest que muestre mayor potencial en lo ilíquido",
+        }
 
     print(f"{'#':>2} {'EMISOR':26s}{'CUADRANTE':24s}{'VALOR (bajo/central/alto)':30s}{'PRECIO':>9s}{'MARGEN':>8s}  VENTAJA   EVIDENCIA")
     for r in sorted(resultados, key=lambda r: (r["posicion"] is None, r["posicion"] or 0, r["slug"])):
@@ -249,6 +266,21 @@ def main():
                         "retorno_anual_ilustrativo_pct": (r["retorno_ilustrativo"] or {}).get("retorno_pct"),
                         "riesgos": " | ".join(x["texto"] for x in (r.get("riesgos") or []))})
 
+    with open(RAIZ / "RANKING_VALOR_SIN_LIQUIDEZ_BVC.csv", "w", newline="", encoding="utf-8-sig") as fh:
+        campos = ["posicion", "slug", "nombre", "cuadrante", "bajo_la_puerta_de_liquidez", "valor_bajo", "valor_central", "valor_alto", "precio",
+                  "margen_seguridad_pct", "nivel_evidencia", "riesgos", "puerta_fallida", "motivo_exclusion"]
+        w = csv.DictWriter(fh, fieldnames=campos, extrasaction="ignore")
+        w.writeheader()
+        for r in sorted(resultados, key=lambda r: (r["detalle"]["sin_liquidez"]["posicion"] is None,
+                                                    r["detalle"]["sin_liquidez"]["posicion"] or 0)):
+            sl = r["detalle"]["sin_liquidez"]
+            w.writerow({**r, "posicion": sl["posicion"], "cuadrante": sl["cuadrante"], "nivel_evidencia": sl["nivel_evidencia"],
+                        "puerta_fallida": sl["puerta_fallida"], "motivo_exclusion": sl["motivo_exclusion"],
+                        "riesgos": " | ".join(x["texto"] for x in sl["riesgos"])})
+    nuevos = [r for r in resultados if r["detalle"]["sin_liquidez"]["posicion"] and r["excluido"]]
+    print(f"\nSin la puerta de liquidez entran {len(nuevos)} emisor(es) más: " + ", ".join(
+        f"{r['slug']} (#{r['detalle']['sin_liquidez']['posicion']}, {r['detalle']['sin_liquidez']['cuadrante']})" for r in nuevos))
+
     if args.dry_run:
         print("\n(dry-run: no se escribió en Supabase)")
         return
@@ -259,9 +291,11 @@ def main():
         r["cambio"] = rk.causa_del_cambio(
             {"valor_central": previo["valor_central"], "precio": previo["precio"],
              "balance": ((previo.get("detalle") or {}).get("fechas") or {}).get("balance"),
-             "resultados": ((previo.get("detalle") or {}).get("fechas") or {}).get("resultados")} if previo else None,
+             "resultados": ((previo.get("detalle") or {}).get("fechas") or {}).get("resultados"),
+             "insumos": ((previo.get("detalle") or {}).get("cambio") or {}).get("insumos")} if previo else None,
             {"valor_central": r["valor_central"], "precio": r["precio"], "balance": r["balance_de"],
-             "resultados": r["fuente_resultados"], "ruta": r["ruta_valor"]})
+             "resultados": r["fuente_resultados"], "ruta": r["ruta_valor"], "insumos": r["insumos"]})
+        r["cambio"]["insumos"] = r["insumos"]
         r["detalle"]["cambio"] = r["cambio"]
     try:
         cliente.table("ventaja_competitiva").upsert(ventajas, on_conflict="emisor_id").execute()

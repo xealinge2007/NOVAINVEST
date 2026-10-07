@@ -46,13 +46,15 @@ def _excluido(puerta, motivo):
             "tamano_relativo": None, "nivel_evidencia": None}
 
 
-def evaluar(e: dict) -> dict:
+def evaluar(e: dict, ignorar_liquidez: bool = False) -> dict:
     """Veredicto de un emisor. `e` trae: elegible, motivo_no_elegible, alerta_datos, pilar1 (bool|None),
     pilar1_motivo, valor ({determinable, motivo, margen_seguridad_pct, confianza}),
     catalizador_nivel, dividend_yield_pct, payout_pct."""
-    if e.get("elegible") is False:
+    # `ignorar_liquidez` arma el ranking aparte sin la puerta 0 (decisión de Alex, 6-oct-2026): las demás puertas siguen igual y la
+    # liquidez pasa a ser un riesgo visible (`riesgos_de`), no un filtro.
+    if e.get("elegible") is False and not ignorar_liquidez:
         return _excluido("liquidez", e.get("motivo_no_elegible") or "no pasa la puerta de liquidez")
-    alerta = (e.get("alerta_datos") or "").replace(ALERTA_LIQUIDEZ, "").strip(" |")
+    alerta = (e.get("alerta_datos") or "").replace(ALERTA_LIQUIDEZ, "").strip(" |")  # la alerta de liquidez no es de datos
     if alerta:
         return _excluido("datos", f"alerta de datos abierta: {alerta[:160]}")
     if e.get("pilar1") is False:
@@ -128,6 +130,27 @@ def retorno_anualizado_ilustrativo(valor_base, precio, renta_sostenible_pct=None
                           "sin impuestos ni costos de transacción. Ilustrativo, no es un pronóstico")}
 
 
+INSUMOS_COMPARADOS = (("acciones_total", "conteo de acciones", 0.0), ("wacc_pct", "WACC / costo del patrimonio", 0.005),
+                      ("metodo_usado", "método usado", None), ("ebit_normalizado_mmm", "EBIT normalizado", 0.005),
+                      ("deuda_neta_mmm", "deuda neta", 0.005))
+
+
+def _causas_por_insumos(anterior: dict | None, nuevo: dict | None) -> list[str]:
+    """Insumos que cambiaron entre dos corridas (acciones, WACC, método, EBIT normalizado, deuda neta). Solo se compara
+    lo que ambas corridas guardaron: lo que falta en una de las dos no se declara como cambio."""
+    causas = []
+    for clave, nombre, tolerancia in INSUMOS_COMPARADOS:
+        a, b = (anterior or {}).get(clave), (nuevo or {}).get(clave)
+        if a is None or b is None:
+            continue
+        if tolerancia is None:
+            if a != b:
+                causas.append(f"{nombre}: {a} -> {b}")
+        elif a == 0 and b != 0 or a != 0 and abs(b / a - 1) > tolerancia:
+            causas.append(f"{nombre}: {a:,.4g} -> {b:,.4g}")
+    return causas
+
+
 def causa_del_cambio(anterior: dict | None, nuevo: dict) -> dict:
     """Qué cambió entre dos corridas del ranking y a qué se atribuye el cambio del valor (Codex P2.6).
     Cada lado trae valor_central, precio, balance, resultados y, si aplica, ruta. Sin acciones ni supuestos
@@ -147,9 +170,13 @@ def causa_del_cambio(anterior: dict | None, nuevo: dict) -> dict:
                           f"resultados {anterior.get('resultados')} -> {nuevo.get('resultados')})")
         if nuevo.get("ruta") == "holding" and dp is not None and abs(dp) >= UMBRAL_CAMBIO_VALOR_PCT:
             causas.append("precio vivo de las participaciones cotizadas del holding")
+        causas += _causas_por_insumos(anterior.get("insumos"), nuevo.get("insumos"))
         if not causas:
-            causas.append("mismos estados financieros: cambió un supuesto, el conteo de acciones o el método "
-                          "(el historial aún no guarda esos insumos por separado)")
+            if anterior.get("insumos") and nuevo.get("insumos"):
+                causas.append("mismos estados e insumos guardados: el cambio viene del precio vivo o de una regla del modelo")
+            else:
+                causas.append("mismos estados financieros: cambió un supuesto, el conteo de acciones o el método "
+                              "(la corrida anterior no guardó esos insumos por separado)")
     return {"valor_cambio_pct": round(dv, 1), "precio_cambio_pct": round(dp, 1) if dp is not None else None,
             "causas": causas}
 

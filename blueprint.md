@@ -36,11 +36,14 @@ induzcan a error. La auditoría externa NO se realizará (decisión de Alex, 6-o
 - [2026-10-06] DCF con reinversión g/ROIC usando el ROIC TTM sin piso → GEB -431 y Celsia 113 por acción (ROIC contable de 5-6 %). Se corrigió con ROIC = max(ROIC, WACC).
 - [2026-10-06] Edición por script con `str.replace` sin `assert`: dos reemplazos no coincidieron y no avisaron. Siempre afirmar que el texto existe.
 
+- 6-oct (noche): historial con insumos, DCF de ISA/GEB (asociadas al Ke sin crecimiento), ranking aparte sin liquidez (0 emisores nuevos), despliegue verificado
+  (Render expone `/fundamentales/ranking-valor/{emisor_id}/historial`; el bundle de Vercel trae las cadenas nuevas; sin ver datos en pantalla por no tener login).
+
 ## 6. Siguientes pasos
 1. Hecho: migración P6 aplicada (6-oct); política "menor de EPV y DCF" confirmada, con confianza baja si EPV y DCF divergen más de 25 %.
 2. Alex define el cierre del proyecto; no hay auditor externo.
 3. Disparadores de recálculo (ver memoria `novainvest-estado-y-disparadores`): cierre de Terranum por PEI, cierre anual 2026 (Cementos Argos), concentración de PEI sin fuente.
-4. Pendiente P1: indicadores regulatorios de bancos de la misma entidad y período (Superfinanciera), costo del riesgo normalizado, precios sostenibles de commodities,
-   DCF para ISA y GEB (requiere ingresos asociados al resultado de asociadas), holdings con participaciones no cotizadas por múltiplos.
-5. Pendiente P2: guardar acciones y supuestos en el historial para separar esa causa del cambio del valor.
+4. Pendiente P1 (necesita datos externos y permiso de descarga): indicadores regulatorios de bancos de la misma entidad y período (Superfinanciera), costo del riesgo normalizado,
+   precios sostenibles de commodities; holdings con participaciones no cotizadas por múltiplos.
+5. Abierto: valorar los 6 emisores ilíquidos con otro método (por activos) si Alex quiere explorar ese ranking; hoy no tienen valor determinable.
 6. P3 (backtest punto en el tiempo): solo sirve para descartar con n ≈ 24 emisores.

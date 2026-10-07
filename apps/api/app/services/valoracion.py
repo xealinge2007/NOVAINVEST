@@ -135,6 +135,18 @@ def ebit_equivalente(ebit: float, resultado_asociadas: float, tasa: float = TASA
     return ebit + resultado_asociadas / (1 - tasa)
 
 
+def valor_asociadas(resultados_por_anio: dict, ke: float, anios: int = 3):
+    """(valor, resultado normalizado) de las asociadas: promedio de los últimos `anios` años del resultado por método de
+    participación (ya neto de impuesto), capitalizado SIN crecimiento al costo del patrimonio: Resultado / Ke. Es la renta
+    neta de los dueños, por eso Ke y no WACC; sin crecimiento porque el DCF de la casa no regala crecimiento sin reinversión.
+    (None, None) si no hay resultado positivo o falta Ke."""
+    ultimos = [resultados_por_anio[a] for a in sorted(resultados_por_anio)][-anios:]
+    if not ultimos or not ke or ke <= 0:
+        return None, None
+    resultado = sum(ultimos) / len(ultimos)
+    return (resultado / ke, resultado) if resultado > 0 else (None, None)
+
+
 def minoritario_a_mercado(utilidades_por_anio: dict, ke: float, g: float = CRECIMIENTO_INFLACION):
     """(valor, utilidad normalizada) del interés minoritario: promedio de la utilidad que le corresponde en los
     últimos `ANIOS_UTILIDAD_MINORITARIOS` años, capitalizada como perpetuidad creciente a (Ke - g). Es utilidad
