@@ -45,5 +45,5 @@ induzcan a error. La auditoría externa NO se realizará (decisión de Alex, 6-o
 3. Disparadores de recálculo (ver memoria `novainvest-estado-y-disparadores`): cierre de Terranum por PEI, cierre anual 2026 (Cementos Argos), concentración de PEI sin fuente.
 4. Pendiente P1 (necesita datos externos y permiso de descarga): indicadores regulatorios de bancos de la misma entidad y período (Superfinanciera), costo del riesgo normalizado,
    precios sostenibles de commodities; holdings con participaciones no cotizadas por múltiplos.
-5. Abierto: valorar los 6 emisores ilíquidos con otro método (por activos) si Alex quiere explorar ese ranking; hoy no tienen valor determinable.
+5. Hecho el 6-oct para Conconcreto: valor por activos exploratorio (357 / 680 / 1.003 por acción; precio equivale a 65,9 % del libro de los activos no líquidos), fuera del ranking. Abierto: extenderlo a los otros ilíquidos (Fabricato, El Cóndor, ETB) y decidir si entra al ranking aparte.
 6. P3 (backtest punto en el tiempo): solo sirve para descartar con n ≈ 24 emisores.

@@ -171,3 +171,12 @@ La cifra de 881,2 del XBRL (valor presente de pagos mínimos de arrendamientos f
   igual y la liquidez queda como riesgo visible. **Resultado: no entra ningún emisor más.** Los 6 bajo la puerta (BVC, El Cóndor, Enka, ETB, Fabricato, Nutresa) quedan excluidos por datos o por
   valor: EBIT normalizado negativo (El Cóndor, Fabricato), patrimonio no cubre la deuda neta (ETB), alerta de datos (Nutresa: el precio coincide con la oferta de recompra, P/VL 14,6; Enka: 2021 duplicado),
   activos de terceros en el balance (BVC). Con el modelo actual no hay evidencia de "mayor potencial" en lo ilíquido; mostrarlo exigiría otro método (p. ej. por activos) y no hay backtest.
+
+## Valor por activos de Conconcreto (exploratorio, 6-oct-2026)
+
+`jobs/valor_por_activos.py` + `valoracion.valor_por_activos` / `factor_implicito_activos`; resultado en `db/VALOR_POR_ACTIVOS_CONSTRUCTORA_CONCONCRETO.md`. **No entra al ranking.** Parte el activo del XBRL
+consolidado del 2T-2026 (2.220,7 mil millones, verificado que las 11 partidas suman el total y que activo = pasivo + patrimonio) y aplica factores de realizabilidad de la casa, estilo Graham
+(caja 100 %; cuentas por cobrar 70/85/100; inventarios 50/65/80; participaciones 50/75/100; intangibles 0; etc.), con los pasivos a libros. Resultado: **357 / 680 / 1.003 por acción contra 487**
+(central +28 %); libro 1.119 por acción (P/VL 0,44). Lectura robusta, sin factores de la casa: el precio equivale a que los activos no líquidos valgan **65,9 % de su libro**. Advertencias: los factores son
+convención, no medición; el ROE de 2,7 % está muy por debajo del WACC (12,1 %), así que el valor depende de vender los activos, no de conservarlos; participaciones (338,7) y otras inversiones financieras
+(334,6) son el 30 % del activo y no tienen avalúo independiente (Devimed termina en julio de 2026 con provisiones); los anticipos de clientes (314,4) se tratan como pasivo pleno (conservador).

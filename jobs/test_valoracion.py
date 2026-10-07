@@ -176,6 +176,25 @@ revisar("promedio de los ultimos 3 anios (110) / Ke 10 % = 1.100", (round(rA, 1)
 revisar("resultado negativo no se capitaliza", v.valor_asociadas({2024: -5.0, 2025: -5.0}, 0.10), (None, None))
 revisar("sin Ke no se capitaliza", v.valor_asociadas({2025: 100.0}, None), (None, None))
 
+print("--- valor por activos (Graham) ---")
+# caja 100 (100 %), cuentas por cobrar 200 (50/75/100 %), inventarios 300 (20/40/60 %); pasivos 250, minoritarios 10, 100 M acciones
+parts = {"caja": 100.0, "cxc": 200.0, "inv": 300.0}
+fac = {"caja": (1, 1, 1), "cxc": (0.5, 0.75, 1.0), "inv": (0.2, 0.4, 0.6)}
+va = v.valor_por_activos(parts, fac, 250.0, 10.0, 100_000_000)
+# bajo: 100 + 100 + 60 = 260 - 260 = 0; central: 100 + 150 + 120 = 370 - 260 = 110; alto: 100 + 200 + 180 = 480 - 260 = 220
+revisar("bajo = 0", round(va["bajo"]["patrimonio"], 1), 0.0)
+revisar("central = 110 mil millones = 1.100 por accion", (round(va["central"]["patrimonio"], 1), round(va["central"]["por_accion"], 0)), (110.0, 1100.0))
+revisar("alto = 220", round(va["alto"]["patrimonio"], 1), 220.0)
+try:
+    v.valor_por_activos({"caja": 1.0, "raro": 5.0}, {"caja": (1, 1, 1)}, 0.0, 0.0, 1e6)
+    revisar("partida sin factor levanta error", False, True)
+except KeyError:
+    revisar("partida sin factor levanta error (no se asume 100 %)", True, True)
+# precio justo: capitalizacion 200 => 100 + f x 500 - 260 = 200 => f = 360/500 = 72 %
+f = v.factor_implicito_activos(parts, ("caja",), 250.0, 10.0, 200.0)
+revisar("factor implicito de los activos no liquidos = 72 %", round(f, 3), 0.72)
+revisar("sin activos no liquidos no hay factor", v.factor_implicito_activos({"caja": 5.0}, ("caja",), 1.0, 0.0, 10.0), None)
+
 print("--- margen EBIT normalizado ---")
 ing = {2019: 1000.0, 2020: 500.0, 2021: 1000.0, 2022: 1000.0, 2023: 1000.0}
 ebt = {2019: 30.0, 2020: 5.0, 2021: 30.0, 2022: 40.0, 2023: 50.0}

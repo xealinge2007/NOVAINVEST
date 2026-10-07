@@ -426,6 +426,33 @@ def ltv_holding(neto_propio: float, participaciones_brutas: float):
     return max(-neto_propio, 0.0) / participaciones_brutas
 
 
+def valor_por_activos(partidas: dict, factores: dict, pasivos: float, minoritarios: float, acciones: float):
+    """{bajo, central, alto} de valor del patrimonio por activos, estilo Graham / valor de liquidación, en miles de millones de
+    COP y por acción. `partidas` = {nombre: libros} (deben partir el activo total sin doble conteo), `factores` = {nombre:
+    (bajo, central, alto)} de realizabilidad sobre libros, `pasivos` a libros (100 %). Patrimonio = sum(factor x partida) -
+    pasivos - minoritarios. Los factores son una CONVENCIÓN de la casa, no una medición: hasta no tener avalúos o precios
+    de venta, el resultado es un contraste de cuánto sostienen los activos, no un valor intrínseco. Sin factor para una
+    partida con saldo: se levanta KeyError (no se asume 100 %)."""
+    esc = {}
+    for i, nombre in enumerate(("bajo", "central", "alto")):
+        activos = sum(valor * factores[k][i] for k, valor in partidas.items())
+        patrimonio = activos - pasivos - (minoritarios or 0)
+        esc[nombre] = {"activos_realizables": activos, "patrimonio": patrimonio,
+                       "por_accion": patrimonio * 1e9 / acciones if acciones else None}
+    return esc
+
+
+def factor_implicito_activos(partidas: dict, liquidas: tuple, pasivos: float, minoritarios: float, capitalizacion: float):
+    """Factor uniforme f sobre los activos NO líquidos que iguala el valor por activos a la capitalización de mercado:
+    caja + f x (activos - caja) - pasivos - minoritarios = capitalización. Dice cuánto de su libro tendrían que valer los
+    activos no líquidos para que el precio sea justo (sin supuestos de la casa). None si no hay activos no líquidos."""
+    caja = sum(partidas[k] for k in liquidas)
+    resto = sum(partidas.values()) - caja
+    if resto <= 0:
+        return None
+    return (capitalizacion + pasivos + (minoritarios or 0) - caja) / resto
+
+
 def margen_seguridad(valor: float, precio: float):
     """(valor - precio) / valor, en %. Positivo = cotiza por debajo de su valor. Mismo signo y
     convención que `valor_estimado.descuento_pct`."""
