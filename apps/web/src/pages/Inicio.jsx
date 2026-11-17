@@ -15,11 +15,6 @@ const MODULOS = [
     descripcion: "Screener y ranking de emisores de la BVC.",
   },
   {
-    to: "/senales",
-    titulo: "Señales",
-    descripcion: "Alertas de precio, volumen y eventos.",
-  },
-  {
     to: "/etf",
     titulo: "ETF",
     descripcion: "Fichas de fondos indexados disponibles.",

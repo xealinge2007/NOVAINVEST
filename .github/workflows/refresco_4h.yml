@@ -1,9 +1,10 @@
 name: Refresco de velas 4h
 
 on:
-  schedule:
+  # Congelado en V0 del plan v4 (17-nov-2026): solo ejecucion manual.
+  # schedule:
     # cada 4h en horario de mercado EEUU/Colombia: 9,13,17,21 UTC (~4,8,12,16 am Colombia)
-    - cron: "0 9,13,17,21 * * 1-5"
+  #  - cron: "0 9,13,17,21 * * 1-5"
   workflow_dispatch: {}
 
 jobs:

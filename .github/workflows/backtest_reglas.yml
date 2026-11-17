@@ -1,9 +1,10 @@
 name: Backtest de reglas de confluencia
 
 on:
-  schedule:
+  # Congelado en V0 del plan v4 (17-nov-2026): solo ejecucion manual.
+  # schedule:
     # semanal, domingo 10:00 UTC — vectorbt es costoso, no hace falta correrlo cada día
-    - cron: "0 10 * * 0"
+  #  - cron: "0 10 * * 0"
   workflow_dispatch: {}
 
 jobs:

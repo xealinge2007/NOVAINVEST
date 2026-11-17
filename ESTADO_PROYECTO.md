@@ -1,5 +1,7 @@
 # NOVAINVEST — estado del proyecto (bitácora histórica)
 
+> **Plan vigente desde el 17-nov-2026: `PLAN-V4.md`.**
+>
 > **Vigente (6-oct-2026): `blueprint.md` (estado y siguientes pasos) y `db/CRITERIOS_VALORACION.md` (criterios).** Este archivo es la bitácora larga hasta el 25-sep-2026: lo que
 > contradiga a esos dos documentos está superado (p. ej. "W4–W7 sin empezar", el ranking ROIC−WACC como criterio de valor, o el flujo de push por `subtree split`).
 

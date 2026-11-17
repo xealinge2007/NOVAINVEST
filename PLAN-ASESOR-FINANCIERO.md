@@ -1,3 +1,5 @@
+> **HISTÓRICO (17-nov-2026).** El plan vigente es `PLAN-V4.md`. Lo que contradiga a ese documento está superado.
+
 # PLAN MAESTRO v3 — NOVAINVEST: asesor financiero personal + analizador de acciones BVC
 ### (ejecutar con Sonnet 5, escalar a Opus según criterios §12)
 

@@ -1,9 +1,10 @@
 name: Generar señales de confluencia
 
 on:
-  schedule:
+  # Congelado en V0 del plan v4 (17-nov-2026): solo ejecucion manual.
+  # schedule:
     # 30 min después de cada refresco 4h (9,13,17,21 UTC) para que los datos ya estén cargados
-    - cron: "30 9,13,17,21 * * 1-5"
+  #  - cron: "30 9,13,17,21 * * 1-5"
   workflow_dispatch: {}
 
 jobs:
