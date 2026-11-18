@@ -40,6 +40,37 @@ CUADRANTE_A_SCORE_VALOR = {CON_SOPORTE: "safe_cheap", SIN_SOPORTE: "trampa_descu
 # Horizonte del retorno ilustrativo: un supuesto de la casa, no un pronóstico (Codex H1 / P2.2).
 HORIZONTE_ILUSTRATIVO_ANIOS = 3
 
+# Atraso frente al calendario (V1 del plan v4). Plazos de publicación usados para decidir qué período ya
+# "debería" estar cargado: intermedios 60 días después del cierre del trimestre; cierre anual 90 días.
+# Son holguras de la casa sobre los plazos de la Superfinanciera, no los plazos legales exactos.
+DIAS_PUBLICACION_INTERMEDIO = 60
+DIAS_PUBLICACION_ANUAL = 90
+ATRASO_MAXIMO_TRIMESTRES = 2   # más que esto => riesgo de datos visible (no excluye)
+
+
+def periodo_exigible(hoy) -> tuple[int, int]:
+    """(año, trimestre) del último período que ya debería estar publicado a la fecha `hoy`."""
+    from datetime import date, timedelta
+    anio, trimestre = hoy.year, (hoy.month - 1) // 3   # trimestre cerrado más reciente (0 = el T4 del año anterior)
+    if trimestre == 0:
+        anio, trimestre = anio - 1, 4
+    for _ in range(8):
+        mes_fin = trimestre * 3
+        fin = date(anio, 12, 31) if trimestre == 4 else date(anio, mes_fin + 1, 1) - timedelta(days=1)
+        plazo = DIAS_PUBLICACION_ANUAL if trimestre == 4 else DIAS_PUBLICACION_INTERMEDIO
+        if fin + timedelta(days=plazo) <= hoy:
+            return anio, trimestre
+        anio, trimestre = (anio - 1, 4) if trimestre == 1 else (anio, trimestre - 1)
+    raise ValueError(f"sin período exigible para {hoy}")
+
+
+def atraso_trimestres(ultimo: tuple[int, int] | None, hoy) -> int | None:
+    """Trimestres entre el último período cargado (año, trimestre) y el exigible a `hoy`. Nunca negativo."""
+    if not ultimo:
+        return None
+    exigible = periodo_exigible(hoy)
+    return max(0, (exigible[0] - ultimo[0]) * 4 + (exigible[1] - ultimo[1]))
+
 
 def _excluido(puerta, motivo):
     return {"excluido": True, "puerta_fallida": puerta, "motivo_exclusion": motivo, "cuadrante": None,
@@ -104,6 +135,9 @@ def riesgos_de(e: dict, nivel_evidencia: str, desfase: int | None) -> list[dict]
         riesgos.append({"tipo": "datos", "texto": "evidencia provisional: el valor se calculó con confianza baja"})
     if desfase:
         riesgos.append({"tipo": "datos", "texto": f"resultados {desfase} trimestre(s) más viejos que el balance"})
+    atraso = e.get("atraso_trimestres")
+    if atraso is not None and atraso > ATRASO_MAXIMO_TRIMESTRES:
+        riesgos.append({"tipo": "datos", "texto": f"estados financieros con {atraso} trimestres de atraso frente al calendario de publicación"})
     if e.get("pilar1") is None:
         riesgos.append({"tipo": "deuda", "texto": "seguridad financiera no evaluable: " + (e.get("pilar1_motivo") or "faltan insumos")})
     elif e.get("pilar1_motivo"):

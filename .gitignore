@@ -12,3 +12,4 @@ apps/api/.uvicorn.log
 /RANKING_VALOR_BVC.csv
 .agents/
 .claude/skills/
+/PEDIDOS_XBRL.csv

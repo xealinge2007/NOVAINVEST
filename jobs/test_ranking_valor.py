@@ -26,6 +26,22 @@ revisar("seguridad reprobada: no invertible", (r["excluido"], r["puerta_fallida"
 r = rk.evaluar(e(valor={"determinable": False, "motivo": "EBIT negativo"}))
 revisar("sin valor determinable", (r["excluido"], r["motivo_exclusion"]), (True, "EBIT negativo"))
 
+print("--- atraso frente al calendario (V1) ---")
+from datetime import date  # noqa: E402
+revisar("17-nov: el T3 aun no vence (60 dias), exigible T2", rk.periodo_exigible(date(2026, 11, 17)), (2026, 2))
+revisar("30-nov: ya vence el T3", rk.periodo_exigible(date(2026, 11, 30)), (2026, 3))
+revisar("15-mar: el anual aun no vence (90 dias), exigible T3 del año anterior", rk.periodo_exigible(date(2027, 3, 15)), (2026, 3))
+revisar("1-abr: ya vence el anual", rk.periodo_exigible(date(2027, 4, 1)), (2026, 4))
+revisar("al dia => 0", rk.atraso_trimestres((2026, 2), date(2026, 11, 17)), 0)
+revisar("anual 2025 a 17-nov-2026 => 2", rk.atraso_trimestres((2025, 4), date(2026, 11, 17)), 2)
+revisar("periodo mas nuevo que el exigible no da negativo", rk.atraso_trimestres((2026, 3), date(2026, 11, 17)), 0)
+revisar("sin periodo => None", rk.atraso_trimestres(None, date(2026, 11, 17)), None)
+r = rk.evaluar(e(atraso_trimestres=3))
+revisar("atraso 3 => riesgo de datos visible, no excluye",
+        (r["excluido"], any("atraso" in x["texto"] for x in r["riesgos"])), (False, True))
+r = rk.evaluar(e(atraso_trimestres=2))
+revisar("atraso 2 => sin riesgo", any("atraso" in x["texto"] for x in r["riesgos"]), False)
+
 print("--- cuadrantes ---")
 r = rk.evaluar(e(catalizador_nivel="fuerte"))
 revisar("segura, barata y con catalizador = descuento_con_soporte", r["cuadrante"], "descuento_con_soporte")

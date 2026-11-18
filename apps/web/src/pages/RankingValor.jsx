@@ -159,6 +159,9 @@ function Detalle({ f }) {
           <p className="mt-1">
             Balance a {d.fechas.balance || "—"}; resultados: {d.fechas.resultados || "—"}
             {d.fechas.desfase_trimestres > 0 ? ` (${d.fechas.desfase_trimestres} trimestre(s) más viejos que el balance)` : ""}.
+            {d.fechas.periodo_exigible && (d.fechas.atraso_trimestres > 0
+              ? ` Atraso: ${d.fechas.atraso_trimestres} trimestre(s) frente a ${d.fechas.periodo_exigible}, el último período que ya debería estar publicado.`
+              : ` Al día frente a ${d.fechas.periodo_exigible}.`)}
           </p>
         )}
         {d.renta?.distribucion && (

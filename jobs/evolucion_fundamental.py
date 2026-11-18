@@ -67,7 +67,7 @@ from analizador_fundamental import (  # noqa: E402
 
 # Fecha de cierre aproximada de cada período -- estándar calendario, no la
 # fecha real de radicación (esa no se guarda; ver LAG_RADICACION_DIAS).
-FIN_DE_PERIODO = {"T1": (3, 31), "T2": (6, 30), "T3": (9, 30), "ANUAL": (12, 31)}
+FIN_DE_PERIODO = {"T1": (3, 31), "T2": (6, 30), "T3": (9, 30), "T4": (12, 31), "ANUAL": (12, 31)}
 
 # Plazo típico de radicación de resultados trimestrales ante la
 # Superfinanciera en Colombia -- aproximado, no exacto por emisor. Es la
@@ -228,6 +228,9 @@ def calcular_evolucion(filas: list[dict], precios: list[dict], acciones: float |
         set(ebitda_ttm) | set(ingresos_ttm) | set(operacional_ttm) | set(utilidad_ttm) | set(patrimonio_por_clave),
         key=lambda k: _orden(*k),
     )
+    # T4 y ANUAL cierran en la misma fecha: si el año tiene los dos, el punto de la serie es el ANUAL
+    # (si no, el percentil contaría dos veces el 31 de diciembre).
+    claves = [k for k in claves if not (k[1] == "T4" and (k[0], "ANUAL") in set(claves))]
 
     serie = []
     for anio, periodo in claves:

@@ -17,6 +17,7 @@ import csv
 import re
 import io
 import sys
+from datetime import date
 from pathlib import Path
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
@@ -180,6 +181,7 @@ def main():
             "payout_pct": a.get("payout_pct"),
             "ruta_valor": ruta, "liquidez_mediana_cop": (liq or {}).get("mediana_cop"),
             "desfase_resultados_trimestres": _desfase_trimestres(a.get("fuente_resultados"), a.get("balance_de")),
+            "atraso_trimestres": rk.atraso_trimestres(_fecha_resultados(a.get("fuente_resultados")), date.today()),
         }
         res = rk.evaluar(entrada)
         res_sin_liquidez = rk.evaluar(entrada, ignorar_liquidez=True)
@@ -216,7 +218,9 @@ def main():
                 "renta": {"yield_pct": a.get("dividend_yield_pct"), "payout_pct": a.get("payout_pct"),
                           "distribucion": distribucion_curada(em["slug"], det.get("precio") or a.get("precio"))},
                 "fechas": {"balance": a.get("balance_de"), "resultados": a.get("fuente_resultados"),
-                           "desfase_trimestres": _desfase_trimestres(a.get("fuente_resultados"), a.get("balance_de"))},
+                           "desfase_trimestres": _desfase_trimestres(a.get("fuente_resultados"), a.get("balance_de")),
+                           "atraso_trimestres": entrada["atraso_trimestres"],
+                           "periodo_exigible": "{}-T{}".format(*rk.periodo_exigible(date.today()))},
                 "subida_pct": rk.subida_al_valor(por_accion.get("central"), det.get("precio") or a.get("precio")),
                 "riesgos": res.get("riesgos") or [],
                 "retorno_ilustrativo": rk.retorno_anualizado_ilustrativo(
@@ -258,12 +262,14 @@ def main():
     with open(RAIZ / "RANKING_VALOR_BVC.csv", "w", newline="", encoding="utf-8-sig") as fh:
         campos = ["posicion", "slug", "nombre", "cuadrante", "tamano_relativo", "valor_bajo", "valor_central", "valor_alto",
                   "precio", "margen_seguridad_pct", "subida_al_valor_base_pct", "retorno_anual_ilustrativo_pct",
-                  "nivel_evidencia", "ventaja_nivel", "catalizador_nivel", "riesgos", "puerta_fallida", "motivo_exclusion"]
+                  "nivel_evidencia", "ventaja_nivel", "catalizador_nivel", "balance_de", "fuente_resultados", "atraso_trimestres",
+                  "riesgos", "puerta_fallida", "motivo_exclusion"]
         w = csv.DictWriter(fh, fieldnames=campos, extrasaction="ignore")
         w.writeheader()
         for r in sorted(resultados, key=lambda r: (r["posicion"] is None, r["posicion"] or 0)):
             w.writerow({**r, "subida_al_valor_base_pct": None if r["subida_pct"] is None else round(r["subida_pct"], 1),
                         "retorno_anual_ilustrativo_pct": (r["retorno_ilustrativo"] or {}).get("retorno_pct"),
+                        "atraso_trimestres": r["detalle"]["fechas"]["atraso_trimestres"],
                         "riesgos": " | ".join(x["texto"] for x in (r.get("riesgos") or []))})
 
     with open(RAIZ / "RANKING_VALOR_SIN_LIQUIDEZ_BVC.csv", "w", newline="", encoding="utf-8-sig") as fh:

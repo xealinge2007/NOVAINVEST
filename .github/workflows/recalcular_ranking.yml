@@ -1,0 +1,38 @@
+name: Recalcular ranking de valor
+
+on:
+  schedule:
+    # sábados 13:00 UTC = 8:00 am Colombia, con los cierres de la semana ya cargados por el refresco diario
+    - cron: "0 13 * * 6"
+  workflow_dispatch: {}
+
+jobs:
+  ranking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r apps/api/requirements.txt
+
+      - name: Recalcular (analizador -> evolución -> solidez -> valoración -> holdings -> ranking)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python jobs/recalcular_ranking.py
+
+      - name: Guardar los CSV del ranking
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ranking-valor
+          path: |
+            RANKING_VALOR_BVC.csv
+            RANKING_VALOR_SIN_LIQUIDEZ_BVC.csv
+            ANALISIS_FUNDAMENTAL_BVC.csv
+          if-no-files-found: ignore
