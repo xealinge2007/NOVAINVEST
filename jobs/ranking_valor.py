@@ -29,6 +29,7 @@ sys.path.insert(0, str(RAIZ / "apps" / "api"))
 from app.services import ranking_valor as rk  # noqa: E402
 from app.services import valoracion as vc_val  # noqa: E402
 from app.services import ventaja_competitiva as vc  # noqa: E402
+from app.services import lentes as ln  # noqa: E402
 from app.services.catalizador import evaluar_catalizadores  # noqa: E402
 from app.services.liquidez import liquidez_valor  # noqa: E402
 
@@ -48,7 +49,50 @@ ORDEN = {"T1": 1, "T2": 2, "T3": 3, "T4": 4, "ANUAL": 5}
 RUTA_POR_ARQUETIPO = {"holding": "holding", "banco": "banco", "real": "activos_epv",
                       "vehiculo_inmobiliario": "inmobiliario", "infraestructura_mercado": "activos_epv"}
 CAMPOS_ANUALES = ("utilidad_operacional,patrimonio,deuda_financiera,efectivo,interes_minoritario,"
-                  "ingresos,utilidad_bruta,utilidad_neta")
+                  "ingresos,utilidad_bruta,utilidad_neta,activos_totales,flujo_caja_operativo,acciones_en_circulacion")
+MULTIPLOS = ("per", "precio_valor_libro", "ev_ebitda")
+FINANCIERO_LENTES = {"banco", "holding", "vehiculo_inmobiliario"}
+
+
+def _ev_por_accion(a):
+    """(EV por acción, deuda neta por acción) coherentes con el EV/EBITDA del analizador: EV x precio / capitalización."""
+    if not a.get("ev_mmm") or not a.get("capitalizacion_mmm") or not a.get("precio"):
+        return {}
+    ev = a["precio"] * a["ev_mmm"] / a["capitalizacion_mmm"]
+    return {"ev_por_accion": ev, "deuda_neta_por_accion": ev - a["precio"]}
+
+
+def calcular_lentes(resultados, analisis_por_slug, series, anuales_por_slug):
+    """V2: agrega a cada resultado las 3 lentes, el consenso y los puntajes en `detalle["lentes"]`."""
+    actuales = {s: {m: a.get(m) for m in MULTIPLOS} for s, a in analisis_por_slug.items()}
+    for r in resultados:
+        a = analisis_por_slug[r["slug"]]
+        precio = r["precio"]
+        ev = _ev_por_accion(a)
+        financiero = r["arquetipo"] in FINANCIERO_LENTES
+        historia = ln.lente_historia(series.get(r["slug"], {}), actuales[r["slug"]], precio, financiero, **ev) if precio else None
+        pares = ln.lente_pares(r["slug"], actuales, precio, **ev) if precio else None
+        intrinseco = r["valor_central"] if r["valor_central"] and r["valor_central"] > 0 else None
+        cons = ln.consenso({"intrinseco": intrinseco, "historia": (historia or {}).get("valor"),
+                            "pares": (pares or {}).get("valor")}, precio, r["nivel_evidencia"],
+                           r["detalle"]["fechas"]["atraso_trimestres"])
+        serie = anuales_por_slug.get(r["slug"], {})
+        anios = sorted(serie)
+        f_score = (ln.piotroski(serie[anios[-1]], serie[anios[-2]]) if len(anios) >= 2 and not financiero
+                   else {"puntaje": None, "nota": "no aplica a bancos, holdings ni vehículos" if financiero else "menos de 2 años"})
+        r["consenso"] = cons
+        r["detalle"]["lentes"] = {
+            "intrinseco": {"valor": intrinseco, "metodo": r["detalle"].get("metodo_usado") or r["ruta_valor"],
+                           "rango": [r["valor_bajo"], r["valor_alto"]]},
+            "historia": historia, "pares": pares, "consenso": cons,
+            "dcf_inverso": {"crecimiento_real_implicito_pct": r["detalle"].get("crecimiento_real_implicito_pct"),
+                            "lectura": "crecimiento real perpetuo que el precio de hoy ya descuenta con el WACC de la casa"},
+            "calidad": {"piotroski": f_score, "piotroski_anio": anios[-1] if anios else None, **ln.NO_CALCULABLES},
+            "costo_capital": {"beta": a.get("beta"), "beta_fuente": a.get("beta_fuente"),
+                              "beta_regresion": a.get("beta_regresion"), "ke_pct": a.get("costo_patrimonio"),
+                              "wacc_pct": a.get("wacc")},
+        }
+
 
 
 def _fecha_resultados(fuente: str | None):
@@ -187,7 +231,7 @@ def main():
         res_sin_liquidez = rk.evaluar(entrada, ignorar_liquidez=True)
         res.update({
             "sin_liquidez": res_sin_liquidez, "bajo_la_puerta_de_liquidez": entrada["elegible"] is False,
-            "emisor_id": em["id"], "slug": em["slug"], "nombre": em["nombre"],
+            "emisor_id": em["id"], "slug": em["slug"], "nombre": em["nombre"], "arquetipo": arq,
             "valor_bajo": por_accion.get("bajo"), "valor_central": por_accion.get("central"),
             "valor_alto": por_accion.get("alto"), "precio": det.get("precio") or a.get("precio"),
             "margen_seguridad_pct": valor["margen_seguridad_pct"],
@@ -235,6 +279,21 @@ def main():
         })
         resultados.append(res)
 
+    series = {}
+    try:
+        id_a_slug = {e["id"]: e["slug"] for e in emisores}
+        filas_serie = cliente.table("evolucion_fundamental_serie").select(
+            "emisor_id,anio,periodo," + ",".join(MULTIPLOS)).order("anio").limit(5000).execute().data
+        filas_serie.sort(key=lambda f: (f["anio"], ORDEN.get(f["periodo"], 0)))
+        for f in filas_serie:
+            for m in MULTIPLOS:
+                series.setdefault(id_a_slug.get(f["emisor_id"]), {}).setdefault(m, []).append(f.get(m))
+    except Exception as e:
+        print(f"AVISO: sin serie de múltiplos ({type(e).__name__}); la lente de historia queda vacía.")
+    analisis_por_slug = {em["slug"]: analisis[em["id"]] for em in emisores if em["id"] in analisis}
+    anuales_por_slug = {em["slug"]: anuales.get(em["id"], {}) for em in emisores}
+    calcular_lentes(resultados, analisis_por_slug, series, anuales_por_slug)
+
     rk.ordenar(resultados)
     # Ranking aparte SIN la puerta de liquidez: mismas puertas de datos, seguridad y valor; se ordena por separado.
     paralelo = [{**r["sin_liquidez"], "slug": r["slug"], "margen_seguridad_pct": r["margen_seguridad_pct"],
@@ -262,6 +321,7 @@ def main():
     with open(RAIZ / "RANKING_VALOR_BVC.csv", "w", newline="", encoding="utf-8-sig") as fh:
         campos = ["posicion", "slug", "nombre", "cuadrante", "tamano_relativo", "valor_bajo", "valor_central", "valor_alto",
                   "precio", "margen_seguridad_pct", "subida_al_valor_base_pct", "retorno_anual_ilustrativo_pct",
+                  "veredicto_consenso", "precio_justo", "rango_justo", "incertidumbre", "votos",
                   "nivel_evidencia", "ventaja_nivel", "catalizador_nivel", "balance_de", "fuente_resultados", "atraso_trimestres",
                   "riesgos", "puerta_fallida", "motivo_exclusion"]
         w = csv.DictWriter(fh, fieldnames=campos, extrasaction="ignore")
@@ -270,6 +330,10 @@ def main():
             w.writerow({**r, "subida_al_valor_base_pct": None if r["subida_pct"] is None else round(r["subida_pct"], 1),
                         "retorno_anual_ilustrativo_pct": (r["retorno_ilustrativo"] or {}).get("retorno_pct"),
                         "atraso_trimestres": r["detalle"]["fechas"]["atraso_trimestres"],
+                        "veredicto_consenso": r["consenso"]["veredicto"], "precio_justo": r["consenso"].get("precio_justo"),
+                        "rango_justo": "-".join(f"{x:,.0f}" for x in r["consenso"].get("rango_justo") or []),
+                        "incertidumbre": r["consenso"].get("incertidumbre"),
+                        "votos": " ".join(f"{k}:{v}" for k, v in r["consenso"]["votos"].items()),
                         "riesgos": " | ".join(x["texto"] for x in (r.get("riesgos") or []))})
 
     with open(RAIZ / "RANKING_VALOR_SIN_LIQUIDEZ_BVC.csv", "w", newline="", encoding="utf-8-sig") as fh:

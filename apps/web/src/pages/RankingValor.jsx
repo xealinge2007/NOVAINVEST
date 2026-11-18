@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getHistorialRankingValor, getRankingValor } from "../api/client";
 import { fmt } from "../lib/fundamentalesUtils";
+import { VeredictoChip } from "../components/Veredicto";
 
 // Categorías descriptivas: dicen qué se verificó, no qué hacer. Los nombres viejos (safe_cheap...) quedan por si
 // la base aún no migró; la API ya los normaliza.
@@ -318,6 +319,8 @@ export default function RankingValor() {
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Emisor</th>
+                <th className="px-3 py-2" title="Consenso de 3 lentes: valor intrínseco, su propia historia de múltiplos y sus pares. Rige lo que digan al menos 2">Veredicto (3 lentes)</th>
+                <th className="px-3 py-2 text-right" title="Mediana de las lentes con valor; entre paréntesis, la menor y la mayor">Precio justo</th>
                 <th className="px-3 py-2" title="Categoría descriptiva; pasa el cursor sobre ella para ver su definición">Categoría</th>
                 <th className="px-3 py-2 text-right" title="Escenarios de supuestos, no percentiles ni probabilidades">Escenarios por acción (bajo · base · alto)</th>
                 <th className="px-3 py-2 text-right">Precio</th>
@@ -347,7 +350,8 @@ export default function RankingValor() {
           <div className="flex flex-col divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
             {excluidos.map((f) => (
               <div key={f.emisor_id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-sm">
-                <span className="w-56 shrink-0 font-medium text-slate-800">{nombre(f)}</span>
+                <Link to={`/valor/${f.emisor_id}`} className="w-56 shrink-0 font-medium text-slate-800 hover:text-brand-700 hover:underline">{nombre(f)}</Link>
+                <VeredictoChip consenso={f.detalle?.lentes?.consenso} />
                 <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
                   {PUERTA[f.puerta_fallida] || f.puerta_fallida}
                 </span>
@@ -375,7 +379,18 @@ function FilaRanking({ f, nombre, abierta, alternar }) {
     <>
       <tr className="cursor-pointer hover:bg-slate-50" onClick={alternar}>
         <td className="px-3 py-2 font-mono text-xs text-slate-400">{f.posicion}</td>
-        <td className="px-3 py-2 font-medium text-slate-800">{nombre}</td>
+        <td className="px-3 py-2 font-medium text-slate-800">
+          <Link to={`/valor/${f.emisor_id}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand-700 hover:underline">{nombre}</Link>
+        </td>
+        <td className="px-3 py-2"><VeredictoChip consenso={f.detalle?.lentes?.consenso} /></td>
+        <td className="cifra px-3 py-2 text-right text-slate-700">
+          {f.detalle?.lentes?.consenso?.precio_justo ? (
+            <>
+              <strong>{fmt(f.detalle.lentes.consenso.precio_justo, 0)}</strong>
+              <span className="block text-xs text-slate-400">({fmt(f.detalle.lentes.consenso.rango_justo[0], 0)} – {fmt(f.detalle.lentes.consenso.rango_justo[1], 0)})</span>
+            </>
+          ) : "—"}
+        </td>
         <td className="px-3 py-2"><Etiqueta def={CUADRANTE} valor={f.cuadrante} /></td>
         <td className="cifra px-3 py-2 text-right text-slate-700">
           {fmt(f.valor_bajo, 0)} · <strong>{fmt(f.valor_central, 0)}</strong> · {fmt(f.valor_alto, 0)}
@@ -395,7 +410,7 @@ function FilaRanking({ f, nombre, abierta, alternar }) {
       </tr>
       {abierta && (
         <tr>
-          <td colSpan={10} className="p-0"><Detalle f={f} /></td>
+          <td colSpan={12} className="p-0"><Detalle f={f} /></td>
         </tr>
       )}
     </>

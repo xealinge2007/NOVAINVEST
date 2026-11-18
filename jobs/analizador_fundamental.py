@@ -43,6 +43,7 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
+from app.services.lentes import beta_sectorial  # noqa: E402
 
 TRIMESTRES = ["T1", "T2", "T3", "T4"]
 # Campos de FLUJO (se acumulan en el año). Los demás son de SALDO (foto a una fecha).
@@ -907,6 +908,7 @@ def main():
         financiero = em["sector"] in SECTORES_FINANCIEROS
         metodo_valor = "ROE-Ke" if financiero else "ROIC-WACC"
         beta = costo_patrimonio = costo_deuda_dt = wacc = roic = eva = spread = None
+        beta_regresion = beta_fuente = None
         correlacion_dolar = None
         motivo_sin_roic = ""
         if not elegido or not retornos_icolcap:
@@ -917,10 +919,11 @@ def main():
             retornos_activo = _retornos_diarios(serie_activo)
             if retornos_usdcop:
                 correlacion_dolar = correlacion_pearson(retornos_activo, retornos_usdcop)
-            beta = beta_vs_indice(retornos_activo, retornos_icolcap)
-            if beta is None:
-                motivo_sin_roic = "menos de 60 pregones en común con COLCAP para estimar beta"
-            elif financiero:
+            # V2 del plan v4: la regresión contra el COLCAP queda como dato informativo (mide liquidez,
+            # no riesgo); el Ke usa el beta sectorial reapalancado (app/services/lentes.py).
+            beta_regresion = beta_vs_indice(retornos_activo, retornos_icolcap)
+            beta, beta_fuente = beta_sectorial(em["sector"], deuda, capitalizacion, sup["tasa_renta"])
+            if financiero:
                 roe_fraccion = _div(utilidad, patrimonio)
                 if roe_fraccion is None:
                     motivo_sin_roic = "sin utilidad neta TTM o sin patrimonio"
@@ -1005,6 +1008,8 @@ def main():
                 alerta_consistencia,
             ])),
             "beta": _r(beta, 2),
+            "beta_regresion": _r(beta_regresion, 2),
+            "beta_fuente": beta_fuente,
             "costo_patrimonio": _pct(costo_patrimonio),
             "costo_deuda_dt": _pct(costo_deuda_dt),
             "wacc": _pct(wacc),
@@ -1059,6 +1064,8 @@ def main():
         fila_db["slug"] = fila["emisor"]
         filas_supabase.append(fila_db)
     columnas_db = set(cliente.table("fundamentales_analisis").select("*").limit(1).execute().data[0].keys())
+    solo_csv = [c for c in ("beta_regresion", "beta_fuente") if c not in columnas_db]
+    filas_supabase = [{k: v for k, v in f.items() if k not in solo_csv} for f in filas_supabase]
     faltan = [c for c in CAMPOS_AMPLIADOS_SALIDA if c not in columnas_db]
     if faltan:
         print("AVISO: falta aplicar db/migrate_p1_estados_ampliados.sql -- no se guardan en Supabase: "
