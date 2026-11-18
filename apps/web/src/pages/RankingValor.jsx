@@ -287,10 +287,12 @@ export default function RankingValor() {
           no son percentiles ni probabilidades. El margen de seguridad y la subida al valor base no son un retorno
           esperado, porque no tienen horizonte; el retorno anual ilustrativo sí declara uno (3 años), pero es condicional a que el precio converja al valor y no es un pronóstico.{" "}
           <strong className="text-amber-700">
-            No es una recomendación de compra ni tiene backtest: es un punto de partida para investigar. La evidencia de
+            No es una recomendación de compra: es un punto de partida para investigar. La evidencia de
             cada fila dice qué tan firme es el dato (aún ninguna está “verificada”: falta la auditoría externa).
           </strong>{" "}
-          Para la ficha de cada emisor, ve a{" "}
+          Orden: veredicto por consenso de 3 lentes y, dentro de cada veredicto, mayor rendimiento por dividendo (el valor intrínseco no le ganó
+          al dividendo en la prueba contra la historia: <Link to="/fundamentales/aciertos" className="text-brand-700 underline">ver aciertos</Link>).
+          Toca el nombre de un emisor para abrir su ficha de una página. Para los estados financieros, ve a{" "}
           <Link to="/fundamentales" className="text-brand-700 underline">
             Fundamentales
           </Link>

@@ -136,8 +136,11 @@ def _guardar_historial(cliente, resultados):
         "emisor_id": r["emisor_id"], "valor_bajo": r["valor_bajo"], "valor_central": r["valor_central"],
         "valor_alto": r["valor_alto"], "precio": r["precio"], "margen_seguridad_pct": r["margen_seguridad_pct"],
         "subida_pct": r["subida_pct"], "cuadrante": r["cuadrante"], "ruta_valor": r["ruta_valor"],
-        "balance_de": r["balance_de"], "fuente_resultados": r["fuente_resultados"], "cambio": r["cambio"],
-    } for r in resultados if r["valor_central"] is not None]
+        "balance_de": r["balance_de"], "fuente_resultados": r["fuente_resultados"],
+        # V4: la foto del veredicto viaja en el jsonb `cambio` (sin migración); la lee app/services/aciertos.py.
+        "cambio": {**r["cambio"], "veredicto": r["consenso"]["veredicto"], "precio_justo": r["consenso"].get("precio_justo"),
+                   "incertidumbre": r["consenso"].get("incertidumbre")},
+    } for r in resultados if r["valor_central"] is not None or r["consenso"].get("precio_justo")]
     try:
         cliente.table("ranking_valor_historial").insert(filas).execute()
         cambios = [r for r in resultados if (r["cambio"].get("valor_cambio_pct") or 0) and abs(r["cambio"]["valor_cambio_pct"]) >= rk.UMBRAL_CAMBIO_VALOR_PCT]
@@ -293,12 +296,17 @@ def main():
     analisis_por_slug = {em["slug"]: analisis[em["id"]] for em in emisores if em["id"] in analisis}
     anuales_por_slug = {em["slug"]: anuales.get(em["id"], {}) for em in emisores}
     calcular_lentes(resultados, analisis_por_slug, series, anuales_por_slug)
+    for r in resultados:
+        r["veredicto"] = r["consenso"]["veredicto"]
+        r["dividend_yield_pct"] = analisis_por_slug[r["slug"]].get("dividend_yield_pct")
+        r["detalle"]["criterio_orden"] = rk.CRITERIO_ORDEN
 
-    rk.ordenar(resultados)
+    rk.ordenar_v3(resultados)
     # Ranking aparte SIN la puerta de liquidez: mismas puertas de datos, seguridad y valor; se ordena por separado.
     paralelo = [{**r["sin_liquidez"], "slug": r["slug"], "margen_seguridad_pct": r["margen_seguridad_pct"],
-                 "ventaja_puntaje": r["ventaja_puntaje"]} for r in resultados]
-    rk.ordenar(paralelo)
+                 "ventaja_puntaje": r["ventaja_puntaje"], "veredicto": r["veredicto"],
+                 "dividend_yield_pct": r["dividend_yield_pct"]} for r in resultados]
+    rk.ordenar_v3(paralelo)
     for r, p in zip(resultados, paralelo):
         r["detalle"]["sin_liquidez"] = {
             "posicion": p["posicion"], "excluido": p["excluido"], "cuadrante": p["cuadrante"],

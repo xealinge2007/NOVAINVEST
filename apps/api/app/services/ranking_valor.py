@@ -242,3 +242,27 @@ def ordenar(resultados: list[dict]) -> list[dict]:
         if r["excluido"]:
             r["posicion"] = None
     return ranked
+
+
+# V3 del plan v4 (db/BACKTEST_V3.md, 17-nov-2026): el motor de valor NO superó al rival simple
+# (rendimiento por dividendo) en la prueba punto-en-el-tiempo. Regla fijada antes de la prueba: el rival
+# simple pasa a ser la referencia principal del orden y el valor intrínseco queda como una lente del
+# consenso. Orden: veredicto por consenso, luego mayor rendimiento por dividendo, luego mayor margen.
+ORDEN_VEREDICTO = {"infravalorada": 0, "en_precio": 1, "senales_mixtas": 2, "no_determinable": 3, "sobrevalorada": 4}
+CRITERIO_ORDEN = ("veredicto por consenso de 3 lentes; dentro de cada veredicto, mayor rendimiento por dividendo "
+                  "(referencia principal tras el backtest V3); luego mayor margen de seguridad")
+
+
+def ordenar_v3(resultados: list[dict]) -> list[dict]:
+    """Como `ordenar`, pero con el criterio de V3. Usa `veredicto` y `dividend_yield_pct` de cada resultado."""
+    def clave(r):
+        margen = r.get("margen_seguridad_pct")
+        return (ORDEN_VEREDICTO.get(r.get("veredicto"), 3), -(r.get("dividend_yield_pct") or 0),
+                -(margen if margen is not None else -1e9))
+    ranked = sorted((r for r in resultados if not r["excluido"]), key=clave)
+    for i, r in enumerate(ranked, start=1):
+        r["posicion"] = i
+    for r in resultados:
+        if r["excluido"]:
+            r["posicion"] = None
+    return ranked

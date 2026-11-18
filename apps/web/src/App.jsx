@@ -13,6 +13,8 @@ import Login from "./pages/Login";
 import Objetivos from "./pages/Objetivos";
 import Perfil from "./pages/Perfil";
 import Portafolio from "./pages/Portafolio";
+import Aciertos from "./pages/Aciertos";
+import FichaAccion from "./pages/FichaAccion";
 import RankingValor from "./pages/RankingValor";
 import Senales from "./pages/Senales";
 
@@ -39,6 +41,8 @@ export default function App() {
           <Route path="portafolio" element={<Portafolio />} />
           <Route path="fundamentales" element={<Fundamentales />} />
           <Route path="fundamentales/ranking" element={<RankingValor />} />
+          <Route path="fundamentales/aciertos" element={<Aciertos />} />
+          <Route path="valor/:emisorId" element={<FichaAccion />} />
           <Route path="senales" element={<Senales />} />
           <Route path="etf" element={<FichasEtf />} />
           <Route path="cuenta" element={<Cuenta />} />

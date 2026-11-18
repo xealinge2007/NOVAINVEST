@@ -36,6 +36,24 @@ async def mis_posiciones(usuario: UsuarioActual = Depends(get_current_usuario)):
     return resp.data
 
 
+@router.get("/valor-bvc")
+async def valor_bvc(usuario: UsuarioActual = Depends(get_current_usuario)):
+    """V5: posiciones BVC con su veredicto por consenso, alertas y cupo de inversión del mes."""
+    from app.routers.finanzas import estado_fondo_emergencia
+    from app.services.puente_portafolio import cupo_mensual, posiciones_bvc
+    cliente = cliente_supabase_de(usuario)
+    posiciones = cliente.table("posiciones").select("*").eq("user_id", usuario.id).eq("activa", True).execute().data
+    ranking = cliente.table("ranking_valor").select("emisor_id,precio,detalle").execute().data
+    por_slug = {(r.get("detalle") or {}).get("slug"): r for r in ranking}
+    try:
+        from app.routers.finanzas import mi_presupuesto
+        presupuesto = await mi_presupuesto(usuario)
+    except HTTPException:
+        presupuesto = None
+    fondo = await estado_fondo_emergencia(usuario)
+    return {**posiciones_bvc(posiciones, por_slug, MAPA_TICKER_A_EMISOR_SLUG), "cupo_mes": cupo_mensual(presupuesto, fondo)}
+
+
 @router.delete("/posiciones/{posicion_id}")
 async def eliminar_posicion(posicion_id: int, usuario: UsuarioActual = Depends(get_current_usuario)):
     cliente = cliente_supabase_de(usuario)

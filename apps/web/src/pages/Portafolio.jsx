@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { VeredictoChip } from "../components/Veredicto";
+import { fmt } from "../lib/fundamentalesUtils";
 import {
   calcularOptimizador,
   calcularRebalanceo,
@@ -6,6 +9,7 @@ import {
   eliminarPosicion,
   getMetricasPortafolio,
   getMisPosiciones,
+  getValorBvcPortafolio,
   importarExtractoBroker,
 } from "../api/client";
 
@@ -20,6 +24,7 @@ export default function Portafolio() {
       <div className="border-b border-slate-200 pb-4">
         <h1 className="font-serif text-2xl font-semibold text-slate-900">Portafolio</h1>
       </div>
+      <SeccionValorBvc />
       <SeccionPosiciones />
       <SeccionMetricas />
       <SeccionRebalanceo />
@@ -247,6 +252,61 @@ function SeccionOptimizador() {
           <p>Retorno esperado: {resultado.retorno_esperado_anual_pct}% · Volatilidad: {resultado.volatilidad_anual_pct}% · Sharpe: {resultado.sharpe_esperado}</p>
           <p className="font-sans text-xs text-slate-400">{resultado.nota}</p>
         </div>
+      )}
+    </section>
+  );
+}
+
+// V5 del plan v4: puente entre el motor de valor y las finanzas personales.
+function SeccionValorBvc() {
+  const [d, setD] = useState(null);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    getValorBvcPortafolio().then(setD).catch((e) => setError(e.message));
+  }, []);
+  if (error) return <p className="text-sm text-amber-700">Valor de tus acciones BVC no disponible: {error}</p>;
+  if (!d) return null;
+  const cupo = d.cupo_mes || {};
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-serif text-base font-medium text-slate-900">Tus acciones BVC frente a su precio justo</h2>
+      <div className={PANEL}>
+        <p className="font-medium text-slate-700">Cuánto puedes invertir este mes</p>
+        {cupo.monto === null || cupo.monto === undefined ? <p>{cupo.motivo}</p> : (
+          <p>
+            <strong className="cifra">{fmt(cupo.monto, 0)} COP</strong>{" "}
+            {cupo.destino === "fondo_emergencia"
+              ? `— tu ahorro del mes (${fmt(cupo.ahorro_mensual, 0)} COP) va primero al fondo de emergencia. ${cupo.motivo}`
+              : `— ${cupo.motivo}`}
+          </p>
+        )}
+      </div>
+      {d.posiciones.length === 0 ? <p className="text-sm text-slate-500">No tienes acciones de la BVC registradas.</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs uppercase text-slate-400">
+              <tr>
+                <th className="py-1">Acción</th><th>Veredicto</th><th className="text-right">Precio</th>
+                <th className="text-right">Precio justo</th><th className="text-right">Valor</th><th className="text-right">Peso</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {d.posiciones.map((p) => (
+                <tr key={p.ticker}>
+                  <td className="py-1.5">{p.emisor_id ? <Link to={`/valor/${p.emisor_id}`} className="hover:underline">{p.nombre}</Link> : p.nombre}</td>
+                  <td><VeredictoChip consenso={{ veredicto: p.veredicto, incertidumbre: p.incertidumbre }} /></td>
+                  <td className="cifra text-right">{fmt(p.precio, 0)}</td>
+                  <td className="cifra text-right">{fmt(p.precio_justo, 0)}</td>
+                  <td className="cifra text-right">{fmt(p.valor_mercado, 0)}</td>
+                  <td className="cifra text-right">{fmt(p.peso_pct, 1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {d.alertas.length > 0 && (
+        <ul className="list-disc pl-4 text-sm text-amber-800">{d.alertas.map((a, i) => <li key={i}>{a}</li>)}</ul>
       )}
     </section>
   );

@@ -35,6 +35,25 @@ async def ranking_valor(usuario: UsuarioActual = Depends(get_current_usuario)):
     return sorted(filas, key=lambda f: (f["posicion"] is None, f["posicion"] or 0, (f.get("detalle") or {}).get("slug", "")))
 
 
+@router.get("/ranking-valor/aciertos")
+async def aciertos_ranking_valor(usuario: UsuarioActual = Depends(get_current_usuario)):
+    """V4: qué dijo el sistema hace 1/3/6/12/24 meses y cuánto se movió el precio desde entonces."""
+    from app.services.aciertos import aciertos
+    cliente = cliente_supabase_de(usuario)
+    try:
+        fotos = cliente.table("ranking_valor_historial").select(
+            "emisor_id,calculado_en,precio,margen_seguridad_pct,cambio").order("calculado_en").limit(10000).execute().data
+        actuales = cliente.table("ranking_valor").select("emisor_id,precio,detalle").execute().data
+    except Exception as e:
+        raise HTTPException(503, f"No se pudo leer el historial ({type(e).__name__}).") from e
+    nombres = {f["emisor_id"]: (f.get("detalle") or {}).get("nombre") for f in actuales}
+    res = aciertos(fotos, {f["emisor_id"]: f["precio"] for f in actuales if f.get("precio")})
+    for h in res.values():
+        for f in h["filas"]:
+            f["nombre"] = nombres.get(f["emisor_id"])
+    return res
+
+
 @router.get("/ranking-valor/{emisor_id}/historial")
 async def historial_ranking_valor(emisor_id: int, usuario: UsuarioActual = Depends(get_current_usuario)):
     """Historial del valor de un emisor: valor, precio, estados usados y causa del cambio en cada corrida."""

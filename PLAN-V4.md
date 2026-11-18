@@ -1,6 +1,6 @@
 # NOVAINVEST — Plan v4: fiabilidad primero
 
-Fecha: 14-nov-2026 · Estado: **aprobado por Alex el 17-nov-2026; V0 hecho**
+Fecha: 14-nov-2026 · Estado: **ejecutado completo (V0-V5) el 17-nov-2026**; resultados en `db/NOTA_V2_V5_RESULTADOS.md` y `db/BACKTEST_V3.md`
 Repo de trabajo: `C:\Proyectos\novainvest`.
 Este plan reemplaza como guía de ejecución a `PLAN-ASESOR-FINANCIERO.md` (1.473 líneas), que queda como histórico.
 
